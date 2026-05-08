@@ -15,13 +15,13 @@ class HomeScreen extends StatelessWidget {
           IconButton(
             onPressed: () {
               context.read<AuthBloc>().add(AuthLoggedOut());
-              Navigator.pushReplacementNamed(context, '/');
             },
+
             icon: const Icon(Icons.logout),
           ),
         ],
       ),
-      body: const Center(child: Text("Welcome 👋")),
+      body: const Center(child: Text("Welcome!")),
     );
   }
 }

@@ -9,13 +9,16 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
 
   LoginBloc(this.authRepository) : super(const LoginState()) {
     on<LoginSubmitted>((event, emit) async {
-      emit(state.copyWith(isLoading: true));
+      emit(state.copyWith(isLoading: true, error: null));
 
       try {
         await authRepository.login(event.email, event.password);
+
         emit(state.copyWith(isLoading: false));
       } catch (e) {
-        emit(state.copyWith(isLoading: false, error: e.toString()));
+        emit(
+          state.copyWith(isLoading: false, error: "Email atau password salah"),
+        );
       }
     });
   }

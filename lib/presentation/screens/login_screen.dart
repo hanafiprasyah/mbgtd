@@ -11,46 +11,85 @@ class LoginScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final formKey = GlobalKey<FormState>();
     final emailController = TextEditingController();
     final passwordController = TextEditingController();
 
     return BlocProvider(
       create: (_) => LoginBloc(context.read<AuthRepository>()),
       child: Scaffold(
-        body: Padding(
-          padding: const EdgeInsets.all(16),
-          child: BlocListener<LoginBloc, LoginState>(
-            listener: (context, state) {
-              if (state.error == null && !state.isLoading) {
-                Navigator.pushReplacementNamed(context, '/home');
-              }
-            },
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TextField(controller: emailController),
-                TextField(controller: passwordController, obscureText: true),
-                const SizedBox(height: 20),
-                BlocBuilder<LoginBloc, LoginState>(
-                  builder: (context, state) {
-                    return ElevatedButton(
-                      onPressed: state.isLoading
-                          ? null
-                          : () {
-                              context.read<LoginBloc>().add(
-                                LoginSubmitted(
-                                  emailController.text,
-                                  passwordController.text,
-                                ),
-                              );
-                            },
-                      child: state.isLoading
-                          ? const CircularProgressIndicator()
-                          : const Text("Login"),
-                    );
-                  },
-                ),
-              ],
+        body: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Form(
+              key: formKey,
+              child: BlocConsumer<LoginBloc, LoginState>(
+                listener: (context, state) {
+                  if (state.error != null) {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(state.error!)));
+                  }
+                },
+                builder: (context, state) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: emailController,
+                        decoration: const InputDecoration(labelText: "Email"),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return "Email tidak boleh kosong";
+                          }
+                          if (!value.contains('@')) {
+                            return "Format email tidak valid";
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: passwordController,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: "Password",
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return "Password tidak boleh kosong";
+                          }
+                          if (value.length < 6) {
+                            return "Minimal 6 karakter";
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: state.isLoading
+                              ? null
+                              : () {
+                                  if (formKey.currentState!.validate()) {
+                                    context.read<LoginBloc>().add(
+                                      LoginSubmitted(
+                                        emailController.text.trim(),
+                                        passwordController.text.trim(),
+                                      ),
+                                    );
+                                  }
+                                },
+                          child: state.isLoading
+                              ? const CircularProgressIndicator()
+                              : const Text("Login"),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
         ),
