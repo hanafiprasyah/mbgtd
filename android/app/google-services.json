@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "903131753605",
+    "project_id": "mbgtd-c85fb",
+    "storage_bucket": "mbgtd-c85fb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:903131753605:android:5db23a603ecbb0a71b0dec",
+        "android_client_info": {
+          "package_name": "com.example.mbg_test"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCUYaeGUwMU2KHGIBXqxZO3_XCkXIPWS7g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
