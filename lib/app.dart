@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mbg_test/logic/auth/auth_event.dart';
 
 import 'logic/auth/auth_bloc.dart';
 import 'logic/auth/auth_state.dart';
@@ -25,8 +26,19 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class AuthGate extends StatelessWidget {
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  @override
+  void initState() {
+    super.initState();
+    context.read<AuthBloc>().add(AuthCheckRequested());
+  }
 
   @override
   Widget build(BuildContext context) {

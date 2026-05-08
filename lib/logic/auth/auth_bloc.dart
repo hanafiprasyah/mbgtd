@@ -23,6 +23,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     });
 
+    on<AuthCheckRequested>((event, emit) async {
+      final hasToken = await authRepository.hasToken();
+
+      if (hasToken) {
+        emit(AuthAuthenticated());
+      } else {
+        emit(AuthUnauthenticated());
+      }
+    });
+
     on<AuthLoggedOut>((event, emit) async {
       await authRepository.logout();
     });
