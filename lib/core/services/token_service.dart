@@ -6,54 +6,19 @@ class TokenService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final SecureStorageService _storage = SecureStorageService();
 
-  Timer? _refreshTimer;
-
-  /// Start monitoring token lifecycle
-  void start() {
-    _scheduleRefresh();
-  }
-
-  void stop() {
-    _refreshTimer?.cancel();
-  }
-
-  void _scheduleRefresh() async {
-    final user = _auth.currentUser;
-
-    if (user == null) return;
-
-    final idTokenResult = await user.getIdTokenResult();
-
-    final expiration = idTokenResult.expirationTime;
-
-    if (expiration == null) return;
-
-    final now = DateTime.now();
-    final difference = expiration.difference(now);
-
-    // refresh 5 minute before expired
-    final refreshTime = difference - const Duration(minutes: 5);
-
-    _refreshTimer?.cancel();
-
-    _refreshTimer = Timer(refreshTime, () async {
-      await _refreshToken();
-    });
-  }
-
-  Future<void> _refreshToken() async {
+  Future<void> refreshToken() async {
     try {
       final user = _auth.currentUser;
+
       if (user == null) return;
 
-      final newToken = await user.getIdToken(true);
+      final token = await user.getIdToken(true);
 
-      if (newToken != null) {
-        await _storage.saveToken(newToken);
-        _scheduleRefresh(); // loop
+      if (token != null) {
+        await _storage.saveToken(token);
       }
     } catch (e) {
-      // logout on refresh failure
+      // refresh failed? logout.
       await _auth.signOut();
       await _storage.deleteToken();
     }
