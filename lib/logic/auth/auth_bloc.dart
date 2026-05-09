@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/repositories/auth_repository.dart';
+import '../../core/services/token_service.dart';
 
 import 'auth_event.dart';
 import 'auth_state.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository authRepository;
+  final TokenService tokenService = TokenService();
+
   late final StreamSubscription _userSub;
 
   AuthBloc(this.authRepository) : super(AuthInitial()) {
@@ -17,8 +20,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     on<AuthUserChanged>((event, emit) {
       if (event.isLoggedIn) {
+        tokenService.start(); // monitoring token
         emit(AuthAuthenticated());
       } else {
+        tokenService.stop(); // stop on logout user
         emit(AuthUnauthenticated());
       }
     });
@@ -27,6 +32,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final hasToken = await authRepository.hasToken();
 
       if (hasToken) {
+        tokenService.start();
         emit(AuthAuthenticated());
       } else {
         emit(AuthUnauthenticated());
@@ -41,6 +47,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   @override
   Future<void> close() {
     _userSub.cancel();
+    tokenService.stop();
     return super.close();
   }
 }
