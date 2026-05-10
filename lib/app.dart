@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mbg_test/core/routes.dart';
+import 'package:mbg_test/features/volunteer/bloc/volunteer_bloc.dart';
+import 'package:mbg_test/features/volunteer/data/repositories/volunteer_repository.dart';
 import 'package:mbg_test/logic/auth/auth_event.dart';
 
 import 'logic/auth/auth_bloc.dart';
@@ -13,13 +16,25 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RepositoryProvider(
-      create: (_) => AuthRepository(),
-      child: BlocProvider(
-        create: (context) => AuthBloc(context.read<AuthRepository>()),
+    return MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider(create: (_) => AuthRepository()),
+        RepositoryProvider(create: (_) => VolunteerRepository()),
+      ],
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(
+            create: (context) => AuthBloc(context.read<AuthRepository>()),
+          ),
+          BlocProvider(
+            create: (context) =>
+                VolunteerBloc(context.read<VolunteerRepository>()),
+          ),
+        ],
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
           home: const AuthGate(),
+          onGenerateRoute: AppRoutes.generateRoute,
         ),
       ),
     );

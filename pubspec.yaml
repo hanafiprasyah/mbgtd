@@ -39,6 +39,8 @@ dependencies:
   flutter_bloc: ^9.1.1
   equatable: ^2.0.8
   flutter_secure_storage: ^10.1.0
+  intl: ^0.20.2
+  cloud_firestore: ^6.3.0
 
 dev_dependencies:
   flutter_test:
