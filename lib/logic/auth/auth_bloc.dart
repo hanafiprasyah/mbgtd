@@ -23,13 +23,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     on<AuthUserChanged>((event, emit) async {
       if (event.isLoggedIn) {
-        // start background scheduler
-        await scheduler.start();
-
-        // connect scheduler to refresh
-        scheduler.onTick = () async {
-          await tokenService.refreshToken();
-        };
+        // start smart refresh loop
+        await _startSmartRefreshLoop();
 
         emit(AuthAuthenticated());
       } else {
@@ -51,6 +46,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(AuthUnauthenticated());
       }
     });
+  }
+
+  Future<void> _startSmartRefreshLoop() async {
+    final duration = await tokenService.getNextRefreshDuration();
+
+    await scheduler.start(duration);
+
+    scheduler.onTick = () async {
+      final success = await tokenService.refreshTokenWithRetry();
+
+      if (success) {
+        // re-schedule based on a new expiry
+        await _startSmartRefreshLoop();
+      }
+    };
   }
 
   @override

@@ -6,21 +6,60 @@ class TokenService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final SecureStorageService _storage = SecureStorageService();
 
-  Future<void> refreshToken() async {
-    try {
-      final user = _auth.currentUser;
+  /// refresh count
+  Future<Duration> getNextRefreshDuration() async {
+    final user = _auth.currentUser;
+    if (user == null) return const Duration(minutes: 1);
 
-      if (user == null) return;
+    final result = await user.getIdTokenResult();
+    final expiry = result.expirationTime;
 
-      final token = await user.getIdToken(true);
+    if (expiry == null) return const Duration(minutes: 1);
 
-      if (token != null) {
-        await _storage.saveToken(token);
-      }
-    } catch (e) {
-      // refresh failed? logout.
-      await _auth.signOut();
-      await _storage.deleteToken();
+    final now = DateTime.now();
+    final diff = expiry.difference(now);
+
+    // refresh 5 min before token expired
+    final refreshTime = diff - const Duration(minutes: 5);
+
+    if (refreshTime.isNegative) {
+      // fallback
+      return const Duration(seconds: 10);
     }
+
+    return refreshTime;
+  }
+
+  /// refresh + retry mechanism
+  Future<bool> refreshTokenWithRetry({int maxRetry = 3}) async {
+    int attempt = 0;
+    int delaySeconds = 5;
+
+    while (attempt < maxRetry) {
+      try {
+        final user = _auth.currentUser;
+        if (user == null) return false;
+
+        final token = await user.getIdToken(true);
+
+        if (token != null) {
+          await _storage.saveToken(token);
+          return true;
+        }
+      } catch (_) {
+        // retry
+      }
+
+      await Future.delayed(Duration(seconds: delaySeconds));
+      // exponential backoff
+      delaySeconds *= 2;
+      attempt++;
+    }
+
+    // logout if total failure
+    await _auth.signOut();
+    await _storage.deleteToken();
+
+    return false;
   }
 }

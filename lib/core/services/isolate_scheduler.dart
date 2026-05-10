@@ -7,16 +7,21 @@ class IsolateScheduler {
 
   void Function()? onTick;
 
-  Future<void> start() async {
+  Future<void> start(Duration duration) async {
+    stop();
+
     _receivePort = ReceivePort();
 
     _receivePort!.listen((message) {
       if (message == 'tick') {
-        onTick?.call(); // 🔥 trigger ke main isolate
+        onTick?.call();
       }
     });
 
-    _isolate = await Isolate.spawn(_entryPoint, _receivePort!.sendPort);
+    _isolate = await Isolate.spawn(_entryPoint, {
+      'sendPort': _receivePort!.sendPort,
+      'duration': duration.inSeconds,
+    });
   }
 
   void stop() {
@@ -24,8 +29,11 @@ class IsolateScheduler {
     _receivePort?.close();
   }
 
-  static void _entryPoint(SendPort sendPort) {
-    Timer.periodic(const Duration(minutes: 10), (_) {
+  static void _entryPoint(Map<String, dynamic> args) {
+    final sendPort = args['sendPort'] as SendPort;
+    final duration = args['duration'] as int;
+
+    Timer(Duration(seconds: duration), () {
       sendPort.send('tick');
     });
   }
