@@ -26,6 +26,13 @@ class VolunteerListPage extends StatelessWidget {
                   return ListTile(
                     title: Text(r.namaLengkap),
                     subtitle: Text(r.tim),
+                    onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        '/volunteer-detail',
+                        arguments: r,
+                      );
+                    },
                     trailing: IconButton(
                       icon: const Icon(Icons.delete),
                       onPressed: () {

@@ -40,4 +40,22 @@ class Volunteer {
       'createdAt': FieldValue.serverTimestamp(),
     };
   }
+
+  Volunteer copyWith({
+    String? id,
+    String? namaLengkap,
+    DateTime? tanggalLahir,
+    String? alamat,
+    String? jenisKelamin,
+    String? tim,
+  }) {
+    return Volunteer(
+      id: id ?? this.id,
+      namaLengkap: namaLengkap ?? this.namaLengkap,
+      tanggalLahir: tanggalLahir ?? this.tanggalLahir,
+      alamat: alamat ?? this.alamat,
+      jenisKelamin: jenisKelamin ?? this.jenisKelamin,
+      tim: tim ?? this.tim,
+    );
+  }
 }

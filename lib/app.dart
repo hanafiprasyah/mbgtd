@@ -32,9 +32,10 @@ class MyApp extends StatelessWidget {
           ),
         ],
         child: MaterialApp(
+          initialRoute: '/',
+          onGenerateRoute: AppRoutes.generateRoute,
           debugShowCheckedModeBanner: false,
           home: const AuthGate(),
-          onGenerateRoute: AppRoutes.generateRoute,
         ),
       ),
     );
