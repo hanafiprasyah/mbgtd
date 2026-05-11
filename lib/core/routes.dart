@@ -26,7 +26,9 @@ class AppRoutes {
         );
       default:
         return MaterialPageRoute(
-          builder: (_) => const Scaffold(body: Center(child: Text('404'))),
+          builder: (_) => const Scaffold(
+            body: Center(child: Text('404. Route not found!')),
+          ),
         );
     }
   }

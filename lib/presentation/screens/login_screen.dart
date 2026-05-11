@@ -1,99 +1,241 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../logic/login/login_bloc.dart';
 import '../../logic/login/login_event.dart';
 import '../../logic/login/login_state.dart';
 import '../../data/repositories/auth_repository.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isPasswordHidden = true;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final formKey = GlobalKey<FormState>();
-    final emailController = TextEditingController();
-    final passwordController = TextEditingController();
+    final mediaQuery = MediaQuery.of(context);
 
     return BlocProvider(
       create: (_) => LoginBloc(context.read<AuthRepository>()),
       child: Scaffold(
-        body: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Form(
-              key: formKey,
-              child: BlocConsumer<LoginBloc, LoginState>(
-                listener: (context, state) {
-                  if (state.error != null) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text(state.error!)));
-                  }
-                },
-                builder: (context, state) {
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextFormField(
-                        controller: emailController,
-                        decoration: const InputDecoration(labelText: "Email"),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Email tidak boleh kosong";
-                          }
-                          if (!value.contains('@')) {
-                            return "Format email tidak valid";
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: passwordController,
-                        obscureText: true,
-                        decoration: const InputDecoration(
-                          labelText: "Password",
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Password tidak boleh kosong";
-                          }
-                          if (value.length < 6) {
-                            return "Minimal 6 karakter";
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: state.isLoading
-                              ? null
-                              : () {
-                                  if (formKey.currentState!.validate()) {
-                                    context.read<LoginBloc>().add(
-                                      LoginSubmitted(
-                                        emailController.text.trim(),
-                                        passwordController.text.trim(),
+        resizeToAvoidBottomInset: true,
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                reverse: true,
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 24,
+                  bottom: mediaQuery.viewInsets.bottom + 24,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight - 48,
+                  ),
+                  child: IntrinsicHeight(
+                    child: BlocConsumer<LoginBloc, LoginState>(
+                      listener: (context, state) {
+                        if (state.error != null) {
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text(state.error!)));
+                        }
+                      },
+                      builder: (context, state) {
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Spacer(),
+
+                            // Title
+                            Text(
+                              "MBGTD Apps",
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              "Login untuk melanjutkan",
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+
+                            const SizedBox(height: 32),
+
+                            Form(
+                              key: _formKey,
+                              child: Column(
+                                children: [
+                                  TextFormField(
+                                    controller: _emailController,
+                                    keyboardType: TextInputType.emailAddress,
+                                    textInputAction: TextInputAction.next,
+                                    decoration: const InputDecoration(
+                                      labelText: "Email",
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return "Email tidak boleh kosong";
+                                      }
+                                      if (!value.contains('@')) {
+                                        return "Format email tidak valid";
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+                                  TextFormField(
+                                    controller: _passwordController,
+                                    obscureText: _isPasswordHidden,
+                                    textInputAction: TextInputAction.done,
+                                    decoration: InputDecoration(
+                                      labelText: "Password",
+                                      border: const OutlineInputBorder(),
+                                      suffixIcon: IconButton(
+                                        onPressed: () {
+                                          setState(() {
+                                            _isPasswordHidden =
+                                                !_isPasswordHidden;
+                                          });
+                                        },
+                                        icon: Icon(
+                                          _isPasswordHidden
+                                              ? Icons.visibility_off
+                                              : Icons.visibility,
+                                        ),
                                       ),
-                                    );
-                                  }
-                                },
-                          child: state.isLoading
-                              ? const CircularProgressIndicator()
-                              : const Text("Login"),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
+                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return "Password tidak boleh kosong";
+                                      }
+                                      if (value.length < 6) {
+                                        return "Minimal 6 karakter";
+                                      }
+                                      return null;
+                                    },
+                                    onFieldSubmitted: (_) {
+                                      _submit(context, state);
+                                    },
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton(
+                                      onPressed: () async {
+                                        final email = _emailController.text
+                                            .trim();
+
+                                        if (email.isEmpty ||
+                                            !email.contains('@')) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                "Masukkan email valid terlebih dahulu",
+                                              ),
+                                            ),
+                                          );
+                                          return;
+                                        }
+
+                                        try {
+                                          await FirebaseAuth.instance
+                                              .sendPasswordResetEmail(
+                                                email: email,
+                                              );
+
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                "Link reset password telah dikirim ke email",
+                                              ),
+                                            ),
+                                          );
+                                        } catch (e) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                "Gagal mengirim email: $e",
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      child: const Text("Lupa Password?"),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: ElevatedButton(
+                                onPressed: state.isLoading
+                                    ? null
+                                    : () => _submit(context, state),
+                                child: state.isLoading
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Text("Login"),
+                              ),
+                            ),
+
+                            const Spacer(),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),
     );
+  }
+
+  void _submit(BuildContext context, LoginState state) {
+    if (_formKey.currentState!.validate()) {
+      context.read<LoginBloc>().add(
+        LoginSubmitted(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+        ),
+      );
+    }
   }
 }
