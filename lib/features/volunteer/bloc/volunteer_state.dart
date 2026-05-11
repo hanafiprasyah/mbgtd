@@ -19,4 +19,12 @@ class VolunteerLoaded extends VolunteerState {
   List<Object?> get props => [volunteer];
 }
 
-class VolunteerError extends VolunteerState {}
+class VolunteerSuccess extends VolunteerState {
+  final Volunteer? volunteer;
+  VolunteerSuccess(this.volunteer);
+}
+
+class VolunteerError extends VolunteerState {
+  final String message;
+  VolunteerError(this.message);
+}
