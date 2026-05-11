@@ -14,6 +14,8 @@ class VolunteerListPage extends StatefulWidget {
 class _VolunteerListPageState extends State<VolunteerListPage> {
   final TextEditingController searchController = TextEditingController();
   bool isSearching = false;
+  String? selectedTim;
+  String? selectedGender;
 
   @override
   void initState() {
@@ -81,6 +83,100 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
       ),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    initialValue: selectedTim,
+                    hint: const Text('Filter Tim'),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'Persiapan',
+                        child: Text('Persiapan'),
+                      ),
+                      DropdownMenuItem(value: 'Masak', child: Text('Masak')),
+                      DropdownMenuItem(
+                        value: 'Distribusi',
+                        child: Text('Distribusi'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Packing',
+                        child: Text('Packing'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Pencucian',
+                        child: Text('Pencucian'),
+                      ),
+                      DropdownMenuItem(value: 'Satpam', child: Text('Satpam')),
+                      DropdownMenuItem(value: 'ASLAP', child: Text('ASLAP')),
+                    ],
+                    onChanged: (value) {
+                      setState(() => selectedTim = value);
+                      context.read<VolunteerBloc>().add(
+                        FilterVolunteer(
+                          tim: value,
+                          jenisKelamin: selectedGender,
+                        ),
+                      );
+                    },
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    initialValue: selectedGender,
+                    hint: const Text('Gender'),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'Laki-laki',
+                        child: Text('Laki-laki'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Perempuan',
+                        child: Text('Perempuan'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      setState(() => selectedGender = value);
+                      context.read<VolunteerBloc>().add(
+                        FilterVolunteer(tim: selectedTim, jenisKelamin: value),
+                      );
+                    },
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  tooltip: 'Reset Filter',
+                  onPressed: () {
+                    setState(() {
+                      selectedTim = null;
+                      selectedGender = null;
+                    });
+                    context.read<VolunteerBloc>().add(LoadVolunteer());
+                  },
+                ),
+              ],
+            ),
+          ),
           if (isSearching) const LinearProgressIndicator(minHeight: 2),
 
           Expanded(

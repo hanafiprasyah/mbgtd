@@ -21,3 +21,10 @@ class SearchVolunteer extends VolunteerEvent {
   final String query;
   SearchVolunteer(this.query);
 }
+
+class FilterVolunteer extends VolunteerEvent {
+  final String? tim;
+  final String? jenisKelamin;
+
+  FilterVolunteer({this.tim, this.jenisKelamin});
+}

@@ -78,5 +78,17 @@ class VolunteerBloc extends Bloc<VolunteerEvent, VolunteerState> {
 
       await completer.future;
     });
+
+    on<FilterVolunteer>((event, emit) async {
+      emit(VolunteerLoading());
+
+      await emit.forEach(
+        repository.filterVolunteer(
+          tim: event.tim,
+          jenisKelamin: event.jenisKelamin,
+        ),
+        onData: (data) => VolunteerLoaded(data),
+      );
+    });
   }
 }
