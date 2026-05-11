@@ -70,6 +70,7 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
       alamat: alamatController.text,
       jenisKelamin: gender,
       tim: tim,
+      namaSearch: namaController.text.toLowerCase(),
     );
 
     final bloc = context.read<VolunteerBloc>();

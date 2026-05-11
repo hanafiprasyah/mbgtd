@@ -14,6 +14,21 @@ class VolunteerRepository {
         );
   }
 
+  Stream<List<Volunteer>> searchVolunteer(String query) {
+    return firestore
+        .collection('volunteers')
+        .where('namaSearch', isGreaterThanOrEqualTo: query.toLowerCase())
+        .where(
+          'namaSearch',
+          isLessThanOrEqualTo: query.toLowerCase() + '\uf8ff',
+        )
+        .snapshots()
+        .map(
+          (snapshot) =>
+              snapshot.docs.map((doc) => Volunteer.fromFirestore(doc)).toList(),
+        );
+  }
+
   Future<void> addVolunteer(Volunteer volunteer) async {
     await firestore.collection('volunteers').add(volunteer.toMap());
   }

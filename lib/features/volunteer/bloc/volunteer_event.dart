@@ -16,3 +16,8 @@ class DeleteVolunteer extends VolunteerEvent {
   final String id;
   DeleteVolunteer(this.id);
 }
+
+class SearchVolunteer extends VolunteerEvent {
+  final String query;
+  SearchVolunteer(this.query);
+}
