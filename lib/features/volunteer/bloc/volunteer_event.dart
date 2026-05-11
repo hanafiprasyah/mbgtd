@@ -19,7 +19,10 @@ class DeleteVolunteer extends VolunteerEvent {
 
 class SearchVolunteer extends VolunteerEvent {
   final String query;
-  SearchVolunteer(this.query);
+  final String? tim;
+  final String? jenisKelamin;
+
+  SearchVolunteer(this.query, this.tim, this.jenisKelamin);
 }
 
 class FilterVolunteer extends VolunteerEvent {

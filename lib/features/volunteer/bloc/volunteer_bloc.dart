@@ -56,7 +56,12 @@ class VolunteerBloc extends Bloc<VolunteerEvent, VolunteerState> {
       _debounce = Timer(const Duration(milliseconds: 500), () async {
         if (emit.isDone) return;
 
-        if (event.query.isEmpty) {
+        // If no search text but filters exist, still perform filtered query
+        final hasFilter =
+            (event.tim != null && event.tim!.isNotEmpty) ||
+            (event.jenisKelamin != null && event.jenisKelamin!.isNotEmpty);
+
+        if (event.query.isEmpty && !hasFilter) {
           add(LoadVolunteer());
           completer.complete();
           return;
@@ -67,7 +72,11 @@ class VolunteerBloc extends Bloc<VolunteerEvent, VolunteerState> {
         }
 
         await emit.forEach(
-          repository.searchVolunteer(event.query),
+          repository.searchVolunteer(
+            event.query,
+            event.tim,
+            event.jenisKelamin,
+          ),
           onData: (data) => VolunteerLoaded(data),
         );
 

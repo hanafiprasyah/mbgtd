@@ -14,19 +14,34 @@ class VolunteerRepository {
         );
   }
 
-  Stream<List<Volunteer>> searchVolunteer(String query) {
-    return firestore
-        .collection('volunteers')
-        .where('namaSearch', isGreaterThanOrEqualTo: query.toLowerCase())
-        .where(
-          'namaSearch',
-          isLessThanOrEqualTo: query.toLowerCase() + '\uf8ff',
-        )
-        .snapshots()
-        .map(
-          (snapshot) =>
-              snapshot.docs.map((doc) => Volunteer.fromFirestore(doc)).toList(),
-        );
+  Stream<List<Volunteer>> searchVolunteer(
+    String query,
+    String? tim,
+    String? jenisKelamin,
+  ) {
+    Query q = firestore.collection('volunteers');
+
+    if (query.isNotEmpty) {
+      q = q
+          .where('namaSearch', isGreaterThanOrEqualTo: query.toLowerCase())
+          .where(
+            'namaSearch',
+            isLessThanOrEqualTo: query.toLowerCase() + '\uf8ff',
+          );
+    }
+
+    if (tim != null && tim.isNotEmpty) {
+      q = q.where('tim', isEqualTo: tim);
+    }
+
+    if (jenisKelamin != null && jenisKelamin.isNotEmpty) {
+      q = q.where('jenisKelamin', isEqualTo: jenisKelamin);
+    }
+
+    return q.snapshots().map(
+      (snapshot) =>
+          snapshot.docs.map((doc) => Volunteer.fromFirestore(doc)).toList(),
+    );
   }
 
   Stream<List<Volunteer>> filterVolunteer({String? tim, String? jenisKelamin}) {

@@ -52,7 +52,12 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                           icon: const Icon(Icons.clear),
                           onPressed: () {
                             searchController.clear();
-                            context.read<VolunteerBloc>().add(LoadVolunteer());
+
+                            // Re-trigger search with current filters (not force LoadVolunteer)
+                            context.read<VolunteerBloc>().add(
+                              SearchVolunteer('', selectedTim, selectedGender),
+                            );
+
                             setState(() => isSearching = false);
                           },
                         )
@@ -68,7 +73,9 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                 onChanged: (value) {
                   setState(() => isSearching = true);
 
-                  context.read<VolunteerBloc>().add(SearchVolunteer(value));
+                  context.read<VolunteerBloc>().add(
+                    SearchVolunteer(value, selectedTim, selectedGender),
+                  );
 
                   Future.delayed(const Duration(milliseconds: 600), () {
                     if (mounted) {
@@ -115,9 +122,10 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                     onChanged: (value) {
                       setState(() => selectedTim = value);
                       context.read<VolunteerBloc>().add(
-                        FilterVolunteer(
-                          tim: value,
-                          jenisKelamin: selectedGender,
+                        SearchVolunteer(
+                          searchController.text,
+                          value,
+                          selectedGender,
                         ),
                       );
                     },
@@ -135,7 +143,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     initialValue: selectedGender,
-                    hint: const Text('Gender'),
+                    hint: const Text('Filter Gender'),
                     items: const [
                       DropdownMenuItem(
                         value: 'Laki-laki',
@@ -149,7 +157,11 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                     onChanged: (value) {
                       setState(() => selectedGender = value);
                       context.read<VolunteerBloc>().add(
-                        FilterVolunteer(tim: selectedTim, jenisKelamin: value),
+                        SearchVolunteer(
+                          searchController.text,
+                          selectedTim,
+                          value,
+                        ),
                       );
                     },
                     decoration: InputDecoration(
