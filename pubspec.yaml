@@ -41,6 +41,8 @@ dependencies:
   flutter_secure_storage: ^10.1.0
   intl: ^0.20.2
   cloud_firestore: ^6.3.0
+  persistent_bottom_nav_bar_v2: ^6.3.2
+  flutter_platform_alert: ^0.8.0
 
 dev_dependencies:
   flutter_test:

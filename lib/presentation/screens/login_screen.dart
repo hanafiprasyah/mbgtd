@@ -73,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              "Login untuk melanjutkan",
+                              "Login to continue",
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
 
@@ -93,10 +93,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                     validator: (value) {
                                       if (value == null || value.isEmpty) {
-                                        return "Email tidak boleh kosong";
+                                        return "Email cannot be empty";
                                       }
                                       if (!value.contains('@')) {
-                                        return "Format email tidak valid";
+                                        return "Invalid email format";
                                       }
                                       return null;
                                     },
@@ -125,10 +125,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                     validator: (value) {
                                       if (value == null || value.isEmpty) {
-                                        return "Password tidak boleh kosong";
+                                        return "Password cannot be empty";
                                       }
                                       if (value.length < 6) {
-                                        return "Minimal 6 karakter";
+                                        return "Minimum 6 characters required";
                                       }
                                       return null;
                                     },
@@ -151,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                           ).showSnackBar(
                                             const SnackBar(
                                               content: Text(
-                                                "Masukkan email valid terlebih dahulu",
+                                                "Please enter a valid email first",
                                               ),
                                             ),
                                           );
@@ -169,7 +169,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                           ).showSnackBar(
                                             const SnackBar(
                                               content: Text(
-                                                "Link reset password telah dikirim ke email",
+                                                "Password reset link has been sent to your email",
                                               ),
                                             ),
                                           );
@@ -179,13 +179,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                           ).showSnackBar(
                                             SnackBar(
                                               content: Text(
-                                                "Gagal mengirim email: $e",
+                                                "Failed to send email: $e",
                                               ),
                                             ),
                                           );
                                         }
                                       },
-                                      child: const Text("Lupa Password?"),
+                                      child: const Text("Forgot Password?"),
                                     ),
                                   ),
                                 ],
