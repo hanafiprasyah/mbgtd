@@ -133,7 +133,9 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Text(
               "${_getGreeting()}, ${user?.email ?? 'User'}!",
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
@@ -176,7 +178,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 shape: BoxShape.circle,
                                 gradient: LinearGradient(
                                   colors: [
-                                    avatarColor.withOpacity(0.7),
+                                    avatarColor.withValues(alpha: 0.7),
                                     avatarColor,
                                   ],
                                   begin: Alignment.topLeft,
@@ -225,58 +227,74 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: InkWell(
                           borderRadius: BorderRadius.circular(12),
                           onTap: () {},
-                          child: Card(
-                            elevation: 3,
-                            color: Theme.of(context).cardColor,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                children: [
-                                  _buildSectionTitle("Account"),
-                                  _buildInfoRow(
-                                    icon: Icons.email,
-                                    label: "Email",
-                                    value: user.email ?? "-",
-                                    isCopyable: false,
-                                  ),
-                                  Divider(
-                                    color: Theme.of(context).dividerColor,
-                                  ),
+                          child: Builder(
+                            builder: (context) {
+                              final isDark =
+                                  Theme.of(context).brightness ==
+                                  Brightness.dark;
 
-                                  _buildSectionTitle("Activity"),
-                                  _buildInfoRow(
-                                    icon: Icons.calendar_today,
-                                    label: "Created At",
-                                    value: _formatDate(
-                                      user.metadata.creationTime,
-                                    ),
-                                  ),
-                                  Divider(
-                                    color: Theme.of(context).dividerColor,
-                                  ),
-                                  _buildInfoRow(
-                                    icon: Icons.access_time,
-                                    label: "Last Sign In",
-                                    value: _relativeTime(
-                                      user.metadata.lastSignInTime,
-                                    ),
-                                  ),
-                                  Divider(
-                                    color: Theme.of(context).dividerColor,
-                                  ),
+                              return Card(
+                                elevation: isDark ? 0 : 3,
+                                color: Theme.of(context).cardColor,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: isDark
+                                      ? BorderSide(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.8,
+                                          ),
+                                          width: 1,
+                                        )
+                                      : BorderSide.none,
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    children: [
+                                      _buildSectionTitle("Account"),
+                                      _buildInfoRow(
+                                        icon: Icons.email,
+                                        label: "Email",
+                                        value: user.email ?? "-",
+                                        isCopyable: false,
+                                      ),
+                                      Divider(
+                                        color: Theme.of(context).dividerColor,
+                                      ),
 
-                                  _buildSectionTitle("Security"),
-                                  const SizedBox(height: 4),
-                                  const Text(
-                                    "Your account is securely authenticated via Firebase.",
-                                    style: TextStyle(color: Colors.grey),
+                                      _buildSectionTitle("Activity"),
+                                      _buildInfoRow(
+                                        icon: Icons.calendar_today,
+                                        label: "Created At",
+                                        value: _formatDate(
+                                          user.metadata.creationTime,
+                                        ),
+                                      ),
+                                      Divider(
+                                        color: Theme.of(context).dividerColor,
+                                      ),
+                                      _buildInfoRow(
+                                        icon: Icons.access_time,
+                                        label: "Last Sign In",
+                                        value: _relativeTime(
+                                          user.metadata.lastSignInTime,
+                                        ),
+                                      ),
+                                      Divider(
+                                        color: Theme.of(context).dividerColor,
+                                      ),
+
+                                      _buildSectionTitle("Security"),
+                                      const SizedBox(height: 4),
+                                      const Text(
+                                        "Your account is securely authenticated via Cloudflare and Firebase.",
+                                        style: TextStyle(color: Colors.grey),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            ),
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ),
