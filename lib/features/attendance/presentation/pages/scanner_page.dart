@@ -17,6 +17,8 @@ class ScannerPage extends StatefulWidget {
 
 class _ScannerPageState extends State<ScannerPage> {
   bool isScanning = false;
+  final MobileScannerController _controller = MobileScannerController();
+  DateTime? _lastScanTime;
   final AudioPlayer _audioPlayer = AudioPlayer();
 
   @override
@@ -61,6 +63,8 @@ class _ScannerPageState extends State<ScannerPage> {
                 ),
               );
 
+              _controller.start();
+
               Future.delayed(const Duration(seconds: 1), () {
                 if (mounted) {
                   setState(() {
@@ -71,8 +75,17 @@ class _ScannerPageState extends State<ScannerPage> {
             }
           },
           child: MobileScanner(
+            controller: _controller,
             onDetect: (barcodeCapture) async {
               if (isScanning) return;
+
+              final now = DateTime.now();
+              if (_lastScanTime != null &&
+                  now.difference(_lastScanTime!) <
+                      const Duration(milliseconds: 300)) {
+                return;
+              }
+              _lastScanTime = now;
 
               final barcode = barcodeCapture.barcodes.first;
               // Prefer rawValue, fallback to displayValue (iOS safe)
@@ -83,15 +96,17 @@ class _ScannerPageState extends State<ScannerPage> {
                 return;
               }
 
-              if (await Vibration.hasVibrator()) {
-                Vibration.vibrate(duration: 200);
-              }
-
               setState(() {
                 isScanning = true;
               });
 
+              if (await Vibration.hasVibrator()) {
+                Vibration.vibrate(duration: 200);
+              }
+
               await _audioPlayer.play(AssetSource('notif.wav'));
+
+              await _controller.stop();
 
               context.read<AttendanceBloc>().add(ScanQR(raw));
             },
