@@ -2,16 +2,16 @@ String mapFirebaseError(Object e) {
   final error = e.toString();
 
   if (error.contains('permission-denied')) {
-    return 'Anda tidak memiliki akses';
+    return 'You do not have permission to perform this action';
   } else if (error.contains('network')) {
-    return 'Koneksi internet bermasalah';
+    return 'Network connection issue. Please check your internet connection';
   } else if (error.contains('not-found')) {
-    return 'Data tidak ditemukan';
+    return 'Requested data was not found';
   } else if (error.contains('already-exists')) {
-    return 'Data sudah ada';
+    return 'Data already exists';
   } else if (error.contains('unavailable')) {
-    return 'Server sedang sibuk';
+    return 'The server is currently unavailable. Please try again later';
   }
 
-  return 'Terjadi kesalahan, coba lagi';
+  return 'An unexpected error occurred. Please try again';
 }

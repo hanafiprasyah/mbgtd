@@ -17,7 +17,7 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
         emit(state.copyWith(isLoading: false));
       } catch (e) {
         emit(
-          state.copyWith(isLoading: false, error: "Email atau password salah"),
+          state.copyWith(isLoading: false, error: "Invalid email or password"),
         );
       }
     });

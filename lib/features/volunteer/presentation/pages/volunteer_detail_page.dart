@@ -56,6 +56,19 @@ class VolunteerDetailPage extends StatelessWidget {
                   icon: const Icon(Icons.edit),
                   label: const Text('Edit'),
                 ),
+
+                const SizedBox(height: 20),
+
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushNamed(
+                      context,
+                      '/qr-generator',
+                      arguments: volunteer,
+                    );
+                  },
+                  child: Text('Generate QR'),
+                ),
               ],
             ),
           ),

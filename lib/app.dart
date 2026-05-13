@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mbg_test/core/routes.dart';
+import 'package:mbg_test/features/attendance/bloc/attendance_bloc.dart';
+import 'package:mbg_test/features/attendance/data/repositories/attendance_repository.dart';
 import 'package:mbg_test/features/volunteer/bloc/volunteer_bloc.dart';
 import 'package:mbg_test/features/volunteer/data/repositories/volunteer_repository.dart';
 import 'package:mbg_test/logic/auth/auth_event.dart';
@@ -20,6 +22,7 @@ class MyApp extends StatelessWidget {
       providers: [
         RepositoryProvider(create: (_) => AuthRepository()),
         RepositoryProvider(create: (_) => VolunteerRepository()),
+        RepositoryProvider(create: (_) => AttendanceRepository()),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -29,6 +32,10 @@ class MyApp extends StatelessWidget {
           BlocProvider(
             create: (context) =>
                 VolunteerBloc(context.read<VolunteerRepository>()),
+          ),
+          BlocProvider(
+            create: (context) =>
+                AttendanceBloc(context.read<AttendanceRepository>()),
           ),
         ],
         child: MaterialApp(
