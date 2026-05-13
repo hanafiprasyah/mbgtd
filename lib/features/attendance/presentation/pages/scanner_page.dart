@@ -17,7 +17,10 @@ class ScannerPage extends StatefulWidget {
 
 class _ScannerPageState extends State<ScannerPage> {
   bool isScanning = false;
-  final MobileScannerController _controller = MobileScannerController();
+  bool isProcessing = false;
+  final MobileScannerController _controller = MobileScannerController(
+    torchEnabled: false,
+  );
   DateTime? _lastScanTime;
   final AudioPlayer _audioPlayer = AudioPlayer();
 
@@ -45,6 +48,10 @@ class _ScannerPageState extends State<ScannerPage> {
                 ),
               );
 
+              setState(() {
+                isProcessing = false;
+              });
+
               Future.delayed(const Duration(seconds: 1), () {
                 if (mounted) {
                   Navigator.of(context).popUntil((route) => route.isFirst);
@@ -69,47 +76,67 @@ class _ScannerPageState extends State<ScannerPage> {
                 if (mounted) {
                   setState(() {
                     isScanning = false;
+                    isProcessing = false;
                   });
                 }
               });
             }
           },
-          child: MobileScanner(
-            controller: _controller,
-            onDetect: (barcodeCapture) async {
-              if (isScanning) return;
+          child: Stack(
+            children: [
+              MobileScanner(
+                controller: _controller,
+                onDetect: (barcodeCapture) async {
+                  if (isScanning) return;
 
-              final now = DateTime.now();
-              if (_lastScanTime != null &&
-                  now.difference(_lastScanTime!) <
-                      const Duration(milliseconds: 300)) {
-                return;
-              }
-              _lastScanTime = now;
+                  final now = DateTime.now();
+                  if (_lastScanTime != null &&
+                      now.difference(_lastScanTime!) <
+                          const Duration(milliseconds: 300)) {
+                    return;
+                  }
+                  _lastScanTime = now;
 
-              final barcode = barcodeCapture.barcodes.first;
-              // Prefer rawValue, fallback to displayValue (iOS safe)
-              final raw = barcode.rawValue ?? barcode.displayValue;
+                  final barcode = barcodeCapture.barcodes.first;
+                  // Prefer rawValue, fallback to displayValue (iOS safe)
+                  final raw = barcode.rawValue ?? barcode.displayValue;
 
-              // Guard invalid / empty payloads (e.g. "||", null)
-              if (raw == null || raw.trim().isEmpty || raw.trim() == '||') {
-                return;
-              }
+                  // Guard invalid / empty payloads (e.g. "||", null)
+                  if (raw == null || raw.trim().isEmpty || raw.trim() == '||') {
+                    return;
+                  }
 
-              setState(() {
-                isScanning = true;
-              });
+                  setState(() {
+                    isScanning = true;
+                    isProcessing = true;
+                  });
 
-              if (await Vibration.hasVibrator()) {
-                Vibration.vibrate(duration: 200);
-              }
+                  if (await Vibration.hasVibrator()) {
+                    Vibration.vibrate(duration: 200);
+                  }
 
-              await _audioPlayer.play(AssetSource('notif.wav'));
+                  await _audioPlayer.play(AssetSource('notif.wav'));
 
-              await _controller.stop();
+                  await _controller.stop();
 
-              context.read<AttendanceBloc>().add(ScanQR(raw));
-            },
+                  context.read<AttendanceBloc>().add(ScanQR(raw));
+                },
+              ),
+              // Overlay box
+              Center(
+                child: Container(
+                  width: 250,
+                  height: 250,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.white, width: 3),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              // Loading indicator
+              if (isProcessing)
+                const Center(child: CircularProgressIndicator()),
+            ],
           ),
         );
       },
