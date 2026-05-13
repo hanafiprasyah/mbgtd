@@ -13,11 +13,10 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
       isProcessing = true;
 
       emit(AttendanceLoading());
-
       try {
         final data = event.qrData.split('|');
 
-        // Validasi format QR
+        // Validate format QR
         if (data.length < 3) {
           emit(AttendanceError('Invalid QR format'));
           isProcessing = false;
@@ -27,6 +26,13 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
         final id = data[0].trim();
         final nama = data[1].trim();
         final tim = data[2].trim();
+
+        // Validate QR value (avoid case "||")
+        if (id.isEmpty || nama.isEmpty || tim.isEmpty) {
+          emit(AttendanceError('QR data is empty / invalid'));
+          isProcessing = false;
+          return;
+        }
 
         await repository.scanAttendance(volunteerId: id, nama: nama, tim: tim);
 

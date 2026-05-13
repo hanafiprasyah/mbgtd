@@ -16,10 +16,11 @@ class AttendanceRepository {
     final today = '$yyyy-$mm-$dd';
 
     // Deterministic doc ID: one doc per volunteer per day
-    final docId = '${volunteerId}_$today';
+    final docId = volunteerId;
     final docRef = firestore.collection('attendances').doc(docId);
 
     final doc = await docRef.get();
+
     if (doc.exists) {
       throw Exception('already-scanned');
     }

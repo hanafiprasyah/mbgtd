@@ -96,6 +96,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: selectedTim,
                     hint: const Text('Filter Tim'),
                     items: const [
@@ -131,7 +132,8 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                     },
                     decoration: InputDecoration(
                       contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
+                        horizontal: 8,
+                        vertical: 12,
                       ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -142,6 +144,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: selectedGender,
                     hint: const Text('Filter Gender'),
                     items: const [
@@ -166,7 +169,8 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                     },
                     decoration: InputDecoration(
                       contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
+                        horizontal: 8,
+                        vertical: 12,
                       ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),

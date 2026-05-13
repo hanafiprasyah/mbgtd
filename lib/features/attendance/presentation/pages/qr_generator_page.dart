@@ -26,7 +26,14 @@ class QrGeneratorPage extends StatefulWidget {
 class _QrGeneratorPageState extends State<QrGeneratorPage> {
   final repaintKey = GlobalKey();
 
-  String get qrData => "${widget.id}|${widget.nama}|${widget.tim}";
+  String get qrData {
+    final id = widget.id.trim();
+    final nama = widget.nama.trim();
+    final tim = widget.tim.trim();
+    final data = "${id}|${nama}|${tim}";
+
+    return data;
+  }
 
   Future<void> saveQr() async {
     final hasPermission = await PermissionService.requestGallery();
@@ -70,7 +77,12 @@ class _QrGeneratorPageState extends State<QrGeneratorPage> {
         children: [
           RepaintBoundary(
             key: repaintKey,
-            child: PrettyQrView.data(data: qrData),
+            child: PrettyQrView.data(
+              data: qrData,
+              decoration: const PrettyQrDecoration(
+                quietZone: PrettyQrQuietZone.standard,
+              ),
+            ),
           ),
           const SizedBox(height: 20),
           ElevatedButton(

@@ -5,6 +5,7 @@ import 'package:mbg_test/features/attendance/presentation/pages/scanner_page.dar
 import 'package:mbg_test/features/volunteer/presentation/pages/volunteer_detail_page.dart';
 import 'package:mbg_test/features/volunteer/presentation/pages/volunteer_form_page.dart';
 import 'package:mbg_test/features/volunteer/presentation/pages/volunteer_list_page.dart';
+import '../features/volunteer/data/models/volunteer_model.dart';
 import '../presentation/screens/home_screen.dart';
 
 class AppRoutes {
@@ -27,8 +28,15 @@ class AppRoutes {
           settings: settings,
         );
       case '/qr-generator':
+        final volunteer = settings.arguments as Volunteer;
+
         return MaterialPageRoute(
-          builder: (_) => const QrGeneratorPage(id: '', nama: '', tim: ''),
+          builder: (_) => QrGeneratorPage(
+            id: volunteer.id,
+            nama: volunteer.namaLengkap,
+            tim: volunteer.tim,
+          ),
+          settings: settings,
         );
       case '/qr-scanner':
         return MaterialPageRoute(builder: (_) => const ScannerPage());

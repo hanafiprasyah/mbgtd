@@ -5,6 +5,8 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../bloc/attendance_bloc.dart';
 import '../../bloc/attendance_event.dart';
 import '../../bloc/attendance_state.dart';
+import 'package:vibration/vibration.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class ScannerPage extends StatefulWidget {
   const ScannerPage({super.key});
@@ -15,6 +17,7 @@ class ScannerPage extends StatefulWidget {
 
 class _ScannerPageState extends State<ScannerPage> {
   bool isScanning = false;
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +34,33 @@ class _ScannerPageState extends State<ScannerPage> {
 
         return BlocListener<AttendanceBloc, AttendanceState>(
           listener: (context, state) {
-            if (state is AttendanceSuccess || state is AttendanceError) {
+            if (state is AttendanceSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Scan successful! Attendance recorded'),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+
+              Future.delayed(const Duration(seconds: 1), () {
+                if (mounted) {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                }
+              });
+            }
+
+            if (state is AttendanceError) {
+              Navigator.of(context).popUntil((route) => route.isFirst);
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Scan failed: ${state.message}'),
+                  backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+
               Future.delayed(const Duration(seconds: 1), () {
                 if (mounted) {
                   setState(() {
@@ -42,19 +71,29 @@ class _ScannerPageState extends State<ScannerPage> {
             }
           },
           child: MobileScanner(
-            onDetect: (barcodeCapture) {
+            onDetect: (barcodeCapture) async {
               if (isScanning) return;
 
               final barcode = barcodeCapture.barcodes.first;
-              final raw = barcode.rawValue;
+              // Prefer rawValue, fallback to displayValue (iOS safe)
+              final raw = barcode.rawValue ?? barcode.displayValue;
 
-              if (raw != null) {
-                setState(() {
-                  isScanning = true;
-                });
-
-                context.read<AttendanceBloc>().add(ScanQR(raw));
+              // Guard invalid / empty payloads (e.g. "||", null)
+              if (raw == null || raw.trim().isEmpty || raw.trim() == '||') {
+                return;
               }
+
+              if (await Vibration.hasVibrator()) {
+                Vibration.vibrate(duration: 200);
+              }
+
+              setState(() {
+                isScanning = true;
+              });
+
+              await _audioPlayer.play(AssetSource('notif.wav'));
+
+              context.read<AttendanceBloc>().add(ScanQR(raw));
             },
           ),
         );
