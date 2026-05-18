@@ -48,10 +48,22 @@ class _ScannerPageState extends State<ScannerPage> {
     if (!_cameraStarted) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
-        await Future.delayed(const Duration(milliseconds: 150));
-        await _controller.start();
+
+        // Ensure widget tree (MobileScanner) is fully attached
+        await Future.delayed(const Duration(milliseconds: 300));
+
         if (!mounted) return;
-        _cameraStarted = true;
+
+        try {
+          await _controller.start();
+          _cameraStarted = true;
+        } catch (_) {
+          // Retry once if controller not yet attached
+          await Future.delayed(const Duration(milliseconds: 200));
+          if (!mounted) return;
+          await _controller.start();
+          _cameraStarted = true;
+        }
       });
     }
     return FutureBuilder<bool>(
@@ -97,7 +109,12 @@ class _ScannerPageState extends State<ScannerPage> {
 
               _handleBackAction();
 
-              _controller.start();
+              Future.microtask(() async {
+                if (!mounted) return;
+                try {
+                  await _controller.start();
+                } catch (_) {}
+              });
 
               Future.delayed(const Duration(seconds: 1), () {
                 if (mounted) {
