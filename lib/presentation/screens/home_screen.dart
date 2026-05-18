@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_platform_alert/flutter_platform_alert.dart';
+import 'package:mbg_test/features/attendance/presentation/pages/payroll_page.dart';
+import 'package:mbg_test/features/attendance/presentation/pages/scanner_page.dart';
 import 'package:persistent_bottom_nav_bar_v2/persistent_bottom_nav_bar_v2.dart';
 
 import 'package:mbg_test/features/volunteer/presentation/pages/volunteer_list_page.dart';
@@ -101,12 +103,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.pushNamed(context, '/qr-scanner');
-        },
-        child: Icon(Icons.qr_code_scanner),
-      ),
       body: PersistentTabView(
         tabs: [
           PersistentTabConfig(
@@ -148,6 +144,20 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const VolunteerListPage()),
+              ),
+            ),
+            ElevatedButton(
+              child: const Text('Go to volunteer payroll'),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PayrollPage()),
+              ),
+            ),
+            ElevatedButton(
+              child: const Text('Go to attendance scanner'),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ScannerPage()),
               ),
             ),
           ],

@@ -20,14 +20,42 @@ class _ScannerPageState extends State<ScannerPage> {
   bool isProcessing = false;
   final MobileScannerController _controller = MobileScannerController(
     torchEnabled: false,
+    autoStart: false,
+    detectionSpeed: DetectionSpeed.noDuplicates,
+    autoZoom: true,
   );
   DateTime? _lastScanTime;
   final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _cameraStarted = false;
+  late Future<bool> _permissionFuture;
+  bool _isTorchOn = false;
+  String? _lastScannedQR;
+
+  @override
+  void initState() {
+    super.initState();
+    _permissionFuture = PermissionService.requestCamera();
+  }
+
+  Future<void> _handleBackAction() async {
+    await Future.delayed(const Duration(seconds: 1));
+    if (!mounted) return;
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (!_cameraStarted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        await Future.delayed(const Duration(milliseconds: 150));
+        await _controller.start();
+        if (!mounted) return;
+        _cameraStarted = true;
+      });
+    }
     return FutureBuilder<bool>(
-      future: PermissionService.requestCamera(),
+      future: _permissionFuture,
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
@@ -40,6 +68,7 @@ class _ScannerPageState extends State<ScannerPage> {
         return BlocListener<AttendanceBloc, AttendanceState>(
           listener: (context, state) {
             if (state is AttendanceSuccess) {
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Scan successful! Attendance recorded'),
@@ -52,15 +81,11 @@ class _ScannerPageState extends State<ScannerPage> {
                 isProcessing = false;
               });
 
-              Future.delayed(const Duration(seconds: 1), () {
-                if (mounted) {
-                  Navigator.of(context).popUntil((route) => route.isFirst);
-                }
-              });
+              _handleBackAction();
             }
 
             if (state is AttendanceError) {
-              Navigator.of(context).popUntil((route) => route.isFirst);
+              if (!mounted) return;
 
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -69,6 +94,8 @@ class _ScannerPageState extends State<ScannerPage> {
                   duration: const Duration(seconds: 2),
                 ),
               );
+
+              _handleBackAction();
 
               _controller.start();
 
@@ -84,43 +111,54 @@ class _ScannerPageState extends State<ScannerPage> {
           },
           child: Stack(
             children: [
-              MobileScanner(
-                controller: _controller,
-                onDetect: (barcodeCapture) async {
-                  if (isScanning) return;
+              RepaintBoundary(
+                child: MobileScanner(
+                  controller: _controller,
+                  onDetect: (barcodeCapture) async {
+                    if (isScanning) return;
 
-                  final now = DateTime.now();
-                  if (_lastScanTime != null &&
-                      now.difference(_lastScanTime!) <
-                          const Duration(milliseconds: 300)) {
-                    return;
-                  }
-                  _lastScanTime = now;
+                    final now = DateTime.now();
+                    if (_lastScanTime != null &&
+                        now.difference(_lastScanTime!) <
+                            const Duration(milliseconds: 300)) {
+                      return;
+                    }
+                    _lastScanTime = now;
 
-                  final barcode = barcodeCapture.barcodes.first;
-                  // Prefer rawValue, fallback to displayValue (iOS safe)
-                  final raw = barcode.rawValue ?? barcode.displayValue;
+                    final barcode = barcodeCapture.barcodes.first;
+                    // Prefer rawValue, fallback to displayValue (iOS safe)
+                    final raw = barcode.rawValue ?? barcode.displayValue;
 
-                  // Guard invalid / empty payloads (e.g. "||", null)
-                  if (raw == null || raw.trim().isEmpty || raw.trim() == '||') {
-                    return;
-                  }
+                    // Guard invalid / empty payloads (e.g. "||", null)
+                    if (raw == null ||
+                        raw.trim().isEmpty ||
+                        raw.trim() == '||') {
+                      return;
+                    }
 
-                  setState(() {
-                    isScanning = true;
-                    isProcessing = true;
-                  });
+                    // 🚀 NEW: cegah scan QR yang sama
 
-                  if (await Vibration.hasVibrator()) {
-                    Vibration.vibrate(duration: 200);
-                  }
+                    if (_lastScannedQR == raw) return;
+                    _lastScannedQR = raw;
 
-                  await _audioPlayer.play(AssetSource('notif.wav'));
+                    setState(() {
+                      isScanning = true;
+                      isProcessing = true;
+                    });
 
-                  await _controller.stop();
+                    if (await Vibration.hasVibrator()) {
+                      Vibration.vibrate(duration: 200);
+                    }
 
-                  context.read<AttendanceBloc>().add(ScanQR(raw));
-                },
+                    await _audioPlayer.play(AssetSource('notif.wav'));
+
+                    if (!mounted) return;
+                    await _controller.stop();
+
+                    if (!mounted) return;
+                    context.read<AttendanceBloc>().add(ScanQR(raw));
+                  },
+                ),
               ),
               // Overlay box
               Center(
@@ -133,9 +171,42 @@ class _ScannerPageState extends State<ScannerPage> {
                   ),
                 ),
               ),
+              Positioned(
+                bottom: 32,
+                left: 0,
+                right: 0,
+                child: SafeArea(
+                  child: Center(
+                    child: Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        icon: Icon(
+                          _isTorchOn ? Icons.flash_on : Icons.flash_off,
+                          color: Colors.white,
+                        ),
+                        onPressed: () {
+                          _controller.toggleTorch();
+                          setState(() {
+                            _isTorchOn = !_isTorchOn;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
               // Loading indicator
               if (isProcessing)
-                const Center(child: CircularProgressIndicator()),
+                const Positioned.fill(
+                  child: Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
             ],
           ),
         );
