@@ -11,7 +11,8 @@ const Map<String, int> salaryPerTim = {
 };
 
 int calculateSalary(int totalScan, String tim) {
-  final salary = salaryPerTim[tim] ?? 0;
+  final normalizedTim = tim.toLowerCase().trim();
+  final salary = salaryPerTim[normalizedTim] ?? 0;
   return totalScan * salary;
 }
 
@@ -38,7 +39,8 @@ class PayrollPage extends StatelessWidget {
       final id = doc.id;
 
       final totalScan = attendanceCount[id] ?? 0;
-      final tim = data['tim'] ?? '';
+
+      final tim = (data['tim'] ?? '').toString().toLowerCase().trim();
 
       result[id] = {
         'nama': data['namaLengkap'],
