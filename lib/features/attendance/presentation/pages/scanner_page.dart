@@ -46,27 +46,6 @@ class _ScannerPageState extends State<ScannerPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_cameraStarted) {
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        if (!mounted) return;
-
-        // Ensure widget tree (MobileScanner) is fully attached
-        await Future.delayed(const Duration(milliseconds: 300));
-
-        if (!mounted) return;
-
-        try {
-          await _controller.start();
-          _cameraStarted = true;
-        } catch (_) {
-          // Retry once if controller not yet attached
-          await Future.delayed(const Duration(milliseconds: 200));
-          if (!mounted) return;
-          await _controller.start();
-          _cameraStarted = true;
-        }
-      });
-    }
     return FutureBuilder<bool>(
       future: _permissionFuture,
       builder: (context, snapshot) {
@@ -76,6 +55,28 @@ class _ScannerPageState extends State<ScannerPage> {
 
         if (!snapshot.data!) {
           return const Center(child: Text('Camera permission denied'));
+        }
+
+        if (!_cameraStarted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            if (!mounted) return;
+
+            // Ensure widget tree (MobileScanner) is fully attached
+            await Future.delayed(const Duration(milliseconds: 300));
+
+            if (!mounted) return;
+
+            try {
+              await _controller.start();
+              _cameraStarted = true;
+            } catch (_) {
+              // Retry once if controller not yet attached
+              await Future.delayed(const Duration(milliseconds: 200));
+              if (!mounted) return;
+              await _controller.start();
+              _cameraStarted = true;
+            }
+          });
         }
 
         return BlocListener<AttendanceBloc, AttendanceState>(
@@ -132,6 +133,9 @@ class _ScannerPageState extends State<ScannerPage> {
               RepaintBoundary(
                 child: MobileScanner(
                   controller: _controller,
+                  fit: BoxFit.cover,
+                  tapToFocus: true,
+                  useAppLifecycleState: true,
                   onDetect: (barcodeCapture) async {
                     if (isScanning) return;
 
