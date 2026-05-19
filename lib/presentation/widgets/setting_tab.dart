@@ -171,7 +171,7 @@ class _SettingsTabState extends State<SettingsTab> {
                                   Brightness.dark;
 
                               return Card(
-                                elevation: isDark ? 0 : 3,
+                                elevation: isDark ? 0 : AppElevation.medium,
                                 color: Theme.of(context).cardColor,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(
@@ -250,7 +250,7 @@ class _SettingsTabState extends State<SettingsTab> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(AppRadius.md),
                         ),
-                        elevation: 6,
+                        elevation: AppElevation.high,
                         backgroundColor: Colors.redAccent,
                       ),
                       child: const Row(
@@ -284,7 +284,7 @@ class _SettingsTabState extends State<SettingsTab> {
     return Row(
       children: [
         Icon(icon, size: 20, color: Colors.grey[700]),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Text(
             label,
