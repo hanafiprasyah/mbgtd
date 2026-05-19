@@ -36,7 +36,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
               child: TextField(
                 controller: searchController,
                 decoration: InputDecoration(
-                  hintText: 'Cari relawan...',
+                  hintText: 'Search...',
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: isSearching
                       ? const Padding(
@@ -98,7 +98,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                   child: DropdownButtonFormField<String>(
                     isExpanded: true,
                     initialValue: selectedTim,
-                    hint: const Text('Filter Tim'),
+                    hint: const Text('Filter by Team'),
                     items: const [
                       DropdownMenuItem(
                         value: 'Persiapan',
@@ -146,7 +146,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                   child: DropdownButtonFormField<String>(
                     isExpanded: true,
                     initialValue: selectedGender,
-                    hint: const Text('Filter Gender'),
+                    hint: const Text('Filter by Gender'),
                     items: const [
                       DropdownMenuItem(
                         value: 'Laki-laki',
@@ -202,7 +202,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                   return const Center(child: CircularProgressIndicator());
                 } else if (state is VolunteerLoaded) {
                   if (state.volunteer.isEmpty) {
-                    return const Center(child: Text('Tidak ada data relawan'));
+                    return const Center(child: Text('No volunteer found'));
                   }
 
                   return ListView.builder(

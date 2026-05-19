@@ -5,6 +5,7 @@ import '../../bloc/volunteer_bloc.dart';
 import '../../bloc/volunteer_event.dart';
 import '../../bloc/volunteer_state.dart';
 import '../../data/models/volunteer_model.dart';
+import 'package:mbg_test/core/helper/design_system.dart';
 
 class VolunteerFormPage extends StatefulWidget {
   const VolunteerFormPage({super.key});
@@ -57,9 +58,9 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
     if (!_formKey.currentState!.validate()) return;
 
     if (selectedDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tanggal lahir wajib dipilih')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Choose birth date!')));
       return;
     }
 
@@ -91,9 +92,9 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
       body: BlocConsumer<VolunteerBloc, VolunteerState>(
         listener: (context, state) {
           if (state is VolunteerSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Berhasil menyimpan data')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('Saved successfully')));
 
             Navigator.pushReplacementNamed(
               context,
@@ -114,7 +115,7 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
           return Stack(
             children: [
               SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppSpacing.md),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -125,7 +126,7 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
                           labelText: 'Full Name',
                         ),
                         validator: (value) => value == null || value.isEmpty
-                            ? 'Nama wajib diisi'
+                            ? 'Enter full name'
                             : null,
                       ),
 
@@ -133,11 +134,11 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
                         controller: alamatController,
                         decoration: const InputDecoration(labelText: 'Address'),
                         validator: (value) => value == null || value.isEmpty
-                            ? 'Alamat wajib diisi'
+                            ? 'Enter address'
                             : null,
                       ),
 
-                      const SizedBox(height: 10),
+                      const SizedBox(height: AppSpacing.sm),
 
                       ListTile(
                         title: Text(
@@ -149,7 +150,7 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
                         onTap: pickDate,
                       ),
 
-                      const SizedBox(height: 10),
+                      const SizedBox(height: AppSpacing.sm),
 
                       DropdownButtonFormField<String>(
                         initialValue: gender,
@@ -162,7 +163,7 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
                         decoration: const InputDecoration(labelText: 'Gender'),
                       ),
 
-                      const SizedBox(height: 10),
+                      const SizedBox(height: AppSpacing.sm),
 
                       DropdownButtonFormField<String>(
                         initialValue: tim,
@@ -184,10 +185,10 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
                                 )
                                 .toList(),
                         onChanged: (val) => setState(() => tim = val!),
-                        decoration: const InputDecoration(labelText: 'Tim'),
+                        decoration: const InputDecoration(labelText: 'Team'),
                       ),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: AppSpacing.md),
 
                       ElevatedButton(
                         onPressed: isLoading ? null : save,

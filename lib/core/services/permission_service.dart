@@ -1,7 +1,7 @@
 import 'package:permission_handler/permission_handler.dart';
 
 class PermissionService {
-  /// Camera (untuk QR Scanner)
+  /// Camera (for QR Scanner)
   static Future<bool> requestCamera() async {
     final status = await Permission.camera.status;
 
@@ -18,7 +18,7 @@ class PermissionService {
     return false;
   }
 
-  /// Storage / Photos (untuk save QR)
+  /// Storage / Photos (for save QR)
   static Future<bool> requestGallery() async {
     final status = await Permission.photos.status;
 

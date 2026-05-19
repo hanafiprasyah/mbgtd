@@ -7,6 +7,7 @@ import '../../bloc/attendance_event.dart';
 import '../../bloc/attendance_state.dart';
 import 'package:vibration/vibration.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:mbg_test/core/helper/design_system.dart';
 
 class ScannerPage extends StatefulWidget {
   const ScannerPage({super.key});
@@ -153,7 +154,7 @@ class _ScannerPageState extends State<ScannerPage> {
                       return;
                     }
 
-                    // 🚀 NEW: cegah scan QR yang sama
+                    // 🚀 NEW: avoid scan same QR
 
                     if (_lastScannedQR == raw) return;
                     _lastScannedQR = raw;
@@ -184,12 +185,12 @@ class _ScannerPageState extends State<ScannerPage> {
                   height: 250,
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.white, width: 3),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
                 ),
               ),
               Positioned(
-                bottom: 32,
+                bottom: AppSpacing.lg,
                 left: 0,
                 right: 0,
                 child: SafeArea(

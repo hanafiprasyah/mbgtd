@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../data/models/volunteer_model.dart';
+import 'package:mbg_test/core/helper/design_system.dart';
 
 class VolunteerDetailPage extends StatelessWidget {
   const VolunteerDetailPage({super.key});
@@ -20,11 +21,11 @@ class VolunteerDetailPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Detail Volunteer')),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Card(
-          elevation: 3,
+          elevation: AppElevation.medium,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -35,15 +36,17 @@ class VolunteerDetailPage extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 10),
-                Text("Alamat: ${volunteer.alamat}"),
-                Text("Jenis Kelamin: ${volunteer.jenisKelamin}"),
-                Text("Tim: ${volunteer.tim}"),
+
+                const SizedBox(height: AppSpacing.md),
+
+                Text("Address: ${volunteer.alamat}"),
+                Text("Gender: ${volunteer.jenisKelamin}"),
+                Text("Team: ${volunteer.tim}"),
                 Text(
-                  "Tanggal Lahir: ${DateFormat('dd MMM yyyy').format(volunteer.tanggalLahir)}",
+                  "Birth date: ${DateFormat('dd MMM yyyy').format(volunteer.tanggalLahir)}",
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.lg),
 
                 ElevatedButton.icon(
                   onPressed: () {
@@ -57,7 +60,7 @@ class VolunteerDetailPage extends StatelessWidget {
                   label: const Text('Edit'),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.lg),
 
                 ElevatedButton(
                   onPressed: () {

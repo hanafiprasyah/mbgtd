@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:mbg_test/core/helper/design_system.dart';
 
 const Map<String, int> salaryPerTim = {
   'masak': 145000,
@@ -76,14 +77,17 @@ class PayrollPage extends StatelessWidget {
               final item = data.values.elementAt(index);
 
               return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                margin: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
                 child: ListTile(
                   title: Text(item['nama']),
                   subtitle: Text(
-                    'Tim: ${item['tim']} • Hadir: ${item['totalScan']}x',
+                    'Team: ${item['tim']} • Presence: ${item['totalScan']}x',
                   ),
                   trailing: Text(
-                    'Rp ${item['totalGaji']}',
+                    'Rp. ${item['totalGaji']}',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
