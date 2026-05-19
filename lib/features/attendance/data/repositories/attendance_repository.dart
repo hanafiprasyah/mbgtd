@@ -16,9 +16,11 @@ class AttendanceRepository {
     final today = '$yyyy-$mm-$dd';
 
     // Deterministic doc ID: one doc per volunteer per day
-    final docId = volunteerId;
+    // Use composite doc ID: volunteerId + date (one scan per day per volunteer)
+    final docId = '${volunteerId}_$today';
     final docRef = firestore.collection('attendances').doc(docId);
 
+    // Prevent duplicate scan on the same day
     final doc = await docRef.get();
 
     if (doc.exists) {
