@@ -13,6 +13,8 @@ import 'data/repositories/auth_repository.dart';
 import 'presentation/screens/login_screen.dart';
 import 'presentation/screens/home_screen.dart';
 
+import "package:mbg_test/core/helper/design_system.dart";
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -39,9 +41,61 @@ class MyApp extends StatelessWidget {
           ),
         ],
         child: MaterialApp(
+          debugShowCheckedModeBanner: false,
           initialRoute: '/',
           onGenerateRoute: AppRoutes.generateRoute,
-          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.blueAccent,
+              primary: Colors.blueAccent,
+              secondary: const Color(0xFF90CAF9), // soft blue
+              surface: Colors.white,
+            ),
+            scaffoldBackgroundColor: Colors.white,
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
+              elevation: 0,
+              centerTitle: true,
+            ),
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blueAccent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+              ),
+            ),
+            inputDecorationTheme: InputDecorationTheme(
+              filled: true,
+              fillColor: Colors.blueAccent.withValues(alpha: 0.05),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                borderSide: BorderSide(
+                  color: Colors.blueAccent.withValues(alpha: 0.2),
+                ),
+              ),
+              focusedBorder: const OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(AppRadius.md)),
+                borderSide: BorderSide(color: Colors.blueAccent, width: 1.5),
+              ),
+            ),
+            textTheme: const TextTheme(
+              bodyMedium: TextStyle(color: Colors.black87),
+              titleLarge: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            cardTheme: CardThemeData(
+              elevation: AppElevation.medium,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+              ),
+            ),
+          ),
           home: const AuthGate(),
         ),
       ),
