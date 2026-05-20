@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_platform_alert/flutter_platform_alert.dart';
 import '../../logic/auth/auth_bloc.dart';
 import '../../logic/auth/auth_event.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
@@ -54,18 +53,6 @@ class _SettingsTabState extends State<SettingsTab> {
     if (diff.inDays < 7) return "${diff.inDays} days ago";
 
     return _formatDate(date);
-  }
-
-  Future<void> _confirmLogout(BuildContext context) async {
-    final result = await FlutterPlatformAlert.showAlert(
-      windowTitle: "Confirmation",
-      text: "Are you sure you want to log out?",
-      alertStyle: AlertButtonStyle.yesNo,
-    );
-
-    if (result == AlertButton.yesButton) {
-      context.read<AuthBloc>().add(AuthLoggedOut());
-    }
   }
 
   Widget _buildSectionTitle(String title) {
@@ -244,7 +231,34 @@ class _SettingsTabState extends State<SettingsTab> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () => _confirmLogout(context),
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Confirmation'),
+                            content: const Text(
+                              'Are you sure you want to log out?',
+                            ),
+                            actions: [
+                              ElevatedButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text(
+                                  'Logout',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirm == true) {
+                          context.read<AuthBloc>().add(AuthLoggedOut());
+                        }
+                      },
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(

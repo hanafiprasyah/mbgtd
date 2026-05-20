@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mbg_test/app.dart';
+import 'package:mbg_test/features/attendance/presentation/pages/payroll_history_page.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/qr_generator_page.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/scanner_page.dart';
 import 'package:mbg_test/features/volunteer/presentation/pages/volunteer_detail_page.dart';
@@ -40,6 +41,8 @@ class AppRoutes {
         );
       case '/qr-scanner':
         return MaterialPageRoute(builder: (_) => const ScannerPage());
+      case '/payroll-history':
+        return MaterialPageRoute(builder: (_) => const PayrollHistoryPage());
       default:
         return MaterialPageRoute(
           builder: (_) => const Scaffold(
