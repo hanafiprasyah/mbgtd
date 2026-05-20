@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mbg_test/app.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/payroll_history_page.dart';
+import 'package:mbg_test/features/attendance/presentation/pages/payroll_page.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/qr_generator_page.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/scanner_page.dart';
 import 'package:mbg_test/features/volunteer/presentation/pages/volunteer_detail_page.dart';
@@ -30,7 +31,6 @@ class AppRoutes {
         );
       case '/qr-generator':
         final volunteer = settings.arguments as Volunteer;
-
         return MaterialPageRoute(
           builder: (_) => QrGeneratorPage(
             id: volunteer.id,
@@ -41,6 +41,8 @@ class AppRoutes {
         );
       case '/qr-scanner':
         return MaterialPageRoute(builder: (_) => const ScannerPage());
+      case '/payroll':
+        return MaterialPageRoute(builder: (_) => const PayrollPage());
       case '/payroll-history':
         return MaterialPageRoute(builder: (_) => const PayrollHistoryPage());
       default:

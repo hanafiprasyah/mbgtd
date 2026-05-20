@@ -1,66 +1,65 @@
 import 'package:flutter/material.dart';
-import 'package:mbg_test/core/helper/design_system.dart';
-import 'package:mbg_test/features/attendance/presentation/pages/payroll_page.dart';
-import 'package:mbg_test/features/attendance/presentation/pages/scanner_page.dart';
-import 'package:mbg_test/features/volunteer/presentation/pages/volunteer_list_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:mbg_test/core/helper/design_system.dart';
+import 'package:mbg_test/presentation/widgets/menu_card.dart';
 
-class HomeTab extends StatelessWidget {
-  final User? user;
-  const HomeTab({super.key, required this.user});
+Widget buildHomeTab(BuildContext context, User? user, String greeting) {
+  return Scaffold(
+    appBar: AppBar(title: const Text('Home')),
+    body: Padding(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "$greeting, ${user?.email ?? 'User'}!",
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          Expanded(
+            child: GridView.count(
+              crossAxisCount: 2,
+              mainAxisSpacing: AppSpacing.md,
+              crossAxisSpacing: AppSpacing.md,
+              children: [
+                buildMenuCard(
+                  context,
+                  icon: Icons.people,
+                  title: "Volunteers",
+                  subtitle: "Manage Volunteer",
+                  onTap: () => Navigator.pushNamed(context, '/volunteers'),
+                ),
 
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return "Good morning";
-    if (hour < 15) return "Good afternoon";
-    if (hour < 18) return "Good evening";
-    return "Good night";
-  }
+                buildMenuCard(
+                  context,
+                  icon: Icons.payments,
+                  title: "Payroll",
+                  subtitle: "Salary & Period",
+                  onTap: () => Navigator.pushNamed(context, '/payroll'),
+                ),
 
-  @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
+                buildMenuCard(
+                  context,
+                  icon: Icons.qr_code_scanner,
+                  title: "Scan",
+                  subtitle: "Attendance",
+                  onTap: () => Navigator.pushNamed(context, '/qr-scanner'),
+                ),
 
-    return Scaffold(
-      appBar: AppBar(title: const Text("Home")),
-      body: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "${_getGreeting()}, ${user?.email ?? 'User'}!",
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
+                buildMenuCard(
+                  context,
+                  icon: Icons.bar_chart,
+                  title: "Reports",
+                  subtitle: "Coming soon",
+                  onTap: () {},
+                ),
+              ],
             ),
-            const SizedBox(height: AppSpacing.xl),
-            ElevatedButton(
-              child: const Text('Go to volunteer list'),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const VolunteerListPage()),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            ElevatedButton(
-              child: const Text('Go to volunteer payroll'),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const PayrollPage()),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            ElevatedButton(
-              child: const Text('Go to attendance scanner'),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ScannerPage()),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
 }

@@ -31,3 +31,11 @@ class FilterVolunteer extends VolunteerEvent {
 
   FilterVolunteer({this.tim, this.jenisKelamin});
 }
+
+class ToggleVolunteerStatus extends VolunteerEvent {
+  final String id;
+
+  final bool currentStatus;
+
+  ToggleVolunteerStatus(this.id, this.currentStatus);
+}

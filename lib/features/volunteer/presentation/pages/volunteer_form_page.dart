@@ -22,6 +22,7 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
 
   DateTime? selectedDate;
   Volunteer? existing;
+  bool isActive = true;
 
   String gender = 'Laki-laki';
   String tim = 'Masak';
@@ -31,6 +32,9 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
     super.didChangeDependencies();
 
     existing = ModalRoute.of(context)?.settings.arguments as Volunteer?;
+    if (existing != null) {
+      isActive = existing!.isActive;
+    }
 
     if (existing != null && namaController.text.isEmpty) {
       namaController.text = existing!.namaLengkap;
@@ -71,6 +75,7 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
       alamat: alamatController.text,
       jenisKelamin: gender,
       tim: tim,
+      isActive: isActive,
       namaSearch: namaController.text.toLowerCase(),
     );
 
@@ -96,11 +101,8 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
               context,
             ).showSnackBar(const SnackBar(content: Text('Saved successfully')));
 
-            Navigator.pushReplacementNamed(
-              context,
-              '/volunteer-detail',
-              arguments: state.volunteer,
-            );
+            // Return updated data to previous page (detail)
+            Navigator.pop(context, state.volunteer);
           }
 
           if (state is VolunteerError) {
@@ -114,96 +116,182 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
 
           return Stack(
             children: [
-              SingleChildScrollView(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      TextFormField(
-                        controller: namaController,
-                        decoration: const InputDecoration(
-                          labelText: 'Full Name',
+              GestureDetector(
+                onTap: () => FocusScope.of(context).unfocus(),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.lg,
+                  ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 500),
+                      child: Card(
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.sm),
                         ),
-                        validator: (value) => value == null || value.isEmpty
-                            ? 'Enter full name'
-                            : null,
-                      ),
-
-                      TextFormField(
-                        controller: alamatController,
-                        decoration: const InputDecoration(labelText: 'Address'),
-                        validator: (value) => value == null || value.isEmpty
-                            ? 'Enter address'
-                            : null,
-                      ),
-
-                      const SizedBox(height: AppSpacing.sm),
-
-                      ListTile(
-                        title: Text(
-                          selectedDate == null
-                              ? 'Select Birth Date'
-                              : DateFormat('dd MMM yyyy').format(selectedDate!),
-                        ),
-                        trailing: const Icon(Icons.calendar_today),
-                        onTap: pickDate,
-                      ),
-
-                      const SizedBox(height: AppSpacing.sm),
-
-                      DropdownButtonFormField<String>(
-                        initialValue: gender,
-                        items: ['Laki-laki', 'Perempuan']
-                            .map(
-                              (e) => DropdownMenuItem(value: e, child: Text(e)),
-                            )
-                            .toList(),
-                        onChanged: (val) => setState(() => gender = val!),
-                        decoration: const InputDecoration(labelText: 'Gender'),
-                      ),
-
-                      const SizedBox(height: AppSpacing.sm),
-
-                      DropdownButtonFormField<String>(
-                        initialValue: tim,
-                        items:
-                            [
-                                  'Persiapan',
-                                  'Masak',
-                                  'Distribusi',
-                                  'Packing',
-                                  'Pencucian',
-                                  'Satpam',
-                                  'ASLAP',
-                                ]
-                                .map(
-                                  (e) => DropdownMenuItem(
-                                    value: e,
-                                    child: Text(e),
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  'Personal Info',
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: AppSpacing.md),
+                                TextFormField(
+                                  controller: namaController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Full Name',
                                   ),
-                                )
-                                .toList(),
-                        onChanged: (val) => setState(() => tim = val!),
-                        decoration: const InputDecoration(labelText: 'Team'),
-                      ),
+                                  validator: (value) =>
+                                      value == null || value.isEmpty
+                                      ? 'Enter full name'
+                                      : null,
+                                ),
 
-                      const SizedBox(height: AppSpacing.md),
+                                const SizedBox(height: AppSpacing.md),
 
-                      ElevatedButton(
-                        onPressed: isLoading ? null : save,
-                        child: const Text('Save'),
+                                TextFormField(
+                                  controller: alamatController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Address',
+                                  ),
+                                  validator: (value) =>
+                                      value == null || value.isEmpty
+                                      ? 'Enter address'
+                                      : null,
+                                ),
+
+                                const SizedBox(height: AppSpacing.md),
+
+                                ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        selectedDate == null
+                                            ? 'Select Birth Date'
+                                            : DateFormat(
+                                                'dd MMM yyyy',
+                                              ).format(selectedDate!),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Tap to choose date',
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.bodySmall,
+                                      ),
+                                    ],
+                                  ),
+                                  trailing: const Icon(Icons.calendar_today),
+                                  onTap: pickDate,
+                                ),
+
+                                const SizedBox(height: AppSpacing.lg),
+                                Text(
+                                  'Work Info',
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: AppSpacing.md),
+
+                                DropdownButtonFormField<String>(
+                                  initialValue: gender,
+                                  items: ['Laki-laki', 'Perempuan']
+                                      .map(
+                                        (e) => DropdownMenuItem(
+                                          value: e,
+                                          child: Text(e),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (val) =>
+                                      setState(() => gender = val!),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Gender',
+                                  ),
+                                ),
+
+                                const SizedBox(height: AppSpacing.md),
+
+                                DropdownButtonFormField<String>(
+                                  initialValue: tim,
+                                  items:
+                                      [
+                                            'Persiapan',
+                                            'Masak',
+                                            'Distribusi',
+                                            'Packing',
+                                            'Pencucian',
+                                            'Satpam',
+                                            'ASLAP',
+                                          ]
+                                          .map(
+                                            (e) => DropdownMenuItem(
+                                              value: e,
+                                              child: Text(e),
+                                            ),
+                                          )
+                                          .toList(),
+                                  onChanged: (val) =>
+                                      setState(() => tim = val!),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Team',
+                                  ),
+                                ),
+
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text('Status'),
+                                    Switch(
+                                      value: isActive,
+                                      onChanged: (val) {
+                                        setState(() {
+                                          isActive = val;
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: AppSpacing.md),
+
+                                SizedBox(
+                                  height: 48,
+                                  child: ElevatedButton(
+                                    onPressed: isLoading ? null : save,
+                                    child: isLoading
+                                        ? const SizedBox(
+                                            height: 20,
+                                            width: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        : const Text('Save'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-
-              if (isLoading)
-                Container(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
             ],
           );
         },

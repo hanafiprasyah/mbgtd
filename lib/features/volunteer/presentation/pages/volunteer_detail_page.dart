@@ -1,10 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../bloc/volunteer_bloc.dart';
+import '../../bloc/volunteer_event.dart';
 import '../../data/models/volunteer_model.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
 
-class VolunteerDetailPage extends StatelessWidget {
+class VolunteerDetailPage extends StatefulWidget {
   const VolunteerDetailPage({super.key});
+
+  @override
+  State<VolunteerDetailPage> createState() => _VolunteerDetailPageState();
+}
+
+class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
+  Volunteer? volunteer;
 
   @override
   Widget build(BuildContext context) {
@@ -16,67 +26,337 @@ class VolunteerDetailPage extends StatelessWidget {
       );
     }
 
-    final volunteer = args;
+    volunteer ??= args;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Detail Volunteer')),
-      body: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Card(
-          elevation: AppElevation.medium,
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  volunteer.namaLengkap,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+      body: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeOut,
+        builder: (context, value, child) {
+          return Opacity(
+            opacity: value,
+            child: Transform.translate(
+              offset: Offset(0, 20 * (1 - value)),
+              child: child,
+            ),
+          );
+        },
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).colorScheme.primary,
+                      Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.7),
+                    ],
                   ),
                 ),
-
-                const SizedBox(height: AppSpacing.md),
-
-                Text("Address: ${volunteer.alamat}"),
-                Text("Gender: ${volunteer.jenisKelamin}"),
-                Text("Team: ${volunteer.tim}"),
-                Text(
-                  "Birth date: ${DateFormat('dd MMM yyyy').format(volunteer.tanggalLahir)}",
+                child: Stack(
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Hero(
+                          tag: 'volunteer-avatar-${volunteer!.namaLengkap}',
+                          child: CircleAvatar(
+                            radius: 28,
+                            backgroundColor: Colors.white.withValues(
+                              alpha: 0.2,
+                            ),
+                            child: Text(
+                              volunteer!.namaLengkap[0].toUpperCase(),
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                volunteer!.namaLengkap,
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Wrap(
+                                spacing: 8,
+                                children: [
+                                  Chip(
+                                    label: Text(volunteer!.tim),
+                                    backgroundColor: Colors.white.withValues(
+                                      alpha: 0.9,
+                                    ),
+                                    labelStyle: TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
+              ),
 
-                const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.lg),
 
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pushNamed(
-                      context,
-                      '/volunteer-add',
-                      arguments: volunteer,
-                    );
-                  },
-                  icon: const Icon(Icons.edit),
-                  label: const Text('Edit'),
+              // Info Section
+              _buildSectionTitle('Personal Information'),
+              _buildInfoCard([
+                _buildInfoItem('Address', volunteer!.alamat),
+                _buildInfoItem('Gender', volunteer!.jenisKelamin),
+                _buildInfoItem(
+                  'Birth Date',
+                  DateFormat('dd MMM yyyy').format(volunteer!.tanggalLahir),
                 ),
-
-                const SizedBox(height: AppSpacing.lg),
-
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(
-                      context,
-                      '/qr-generator',
-                      arguments: volunteer,
-                    );
-                  },
-                  child: Text('Generate QR'),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Status'),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        transitionBuilder: (child, animation) {
+                          return FadeTransition(
+                            opacity: animation,
+                            child: ScaleTransition(
+                              scale: animation,
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: Container(
+                          key: ValueKey(volunteer!.isActive),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: volunteer!.isActive
+                                ? Colors.green.withOpacity(0.15)
+                                : Colors.grey.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            volunteer!.isActive ? 'Active' : 'Inactive',
+                            style: TextStyle(
+                              color: volunteer!.isActive
+                                  ? Colors.green
+                                  : Colors.grey,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              ]),
+
+              const SizedBox(height: AppSpacing.lg),
+
+              // Actions (PRO layout)
+              Column(
+                children: [
+                  // Primary Action
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final result = await Navigator.pushNamed(
+                          context,
+                          '/volunteer-add',
+                          arguments: volunteer,
+                        );
+
+                        if (result != null) {
+                          setState(() {
+                            volunteer = result as Volunteer;
+                          });
+                        }
+                      },
+                      icon: const Icon(Icons.edit),
+                      label: const Text('Edit Volunteer'),
+                    ),
+                  ),
+
+                  const SizedBox(height: AppSpacing.md),
+
+                  // Secondary Actions
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 72,
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () {
+                              Navigator.pushNamed(
+                                context,
+                                '/qr-generator',
+                                arguments: volunteer,
+                              );
+                            },
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(Icons.qr_code, size: 22),
+                                SizedBox(height: 6),
+                                Text('QR Code'),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: SizedBox(
+                          height: 72,
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () {
+                              final newStatus = !volunteer!.isActive;
+
+                              setState(() {
+                                volunteer = volunteer!.copyWith(
+                                  isActive: newStatus,
+                                );
+                              });
+
+                              context.read<VolunteerBloc>().add(
+                                ToggleVolunteerStatus(
+                                  volunteer!.id,
+                                  !newStatus,
+                                ),
+                              );
+                            },
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 250),
+                              transitionBuilder: (child, animation) {
+                                return FadeTransition(
+                                  opacity: animation,
+                                  child: ScaleTransition(
+                                    scale: animation,
+                                    child: child,
+                                  ),
+                                );
+                              },
+                              child: Column(
+                                key: ValueKey(volunteer!.isActive),
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    volunteer!.isActive
+                                        ? Icons.power_settings_new
+                                        : Icons.power_off,
+                                    size: 22,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    volunteer!.isActive
+                                        ? 'Deactivate'
+                                        : 'Activate',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+}
+
+Widget _buildSectionTitle(String title) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+    child: Text(
+      title,
+      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+    ),
+  );
+}
+
+Widget _buildInfoCard(List<Widget> children) {
+  return Card(
+    elevation: AppElevation.low,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    child: Padding(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(children: children),
+    ),
+  );
+}
+
+Widget _buildInfoItem(String label, String value) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: const TextStyle(fontWeight: FontWeight.w500),
+          ),
+        ),
+      ],
+    ),
+  );
 }

@@ -75,4 +75,10 @@ class VolunteerRepository {
   Future<void> deleteVolunteer(String id) async {
     await firestore.collection('volunteers').doc(id).delete();
   }
+
+  Future<void> toggleVolunteerStatus(String id, bool currentStatus) async {
+    await firestore.collection('volunteers').doc(id).update({
+      'isActive': !currentStatus,
+    });
+  }
 }

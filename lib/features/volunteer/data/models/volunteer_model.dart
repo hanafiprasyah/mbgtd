@@ -8,6 +8,7 @@ class Volunteer {
   final String alamat;
   final String jenisKelamin;
   final String tim;
+  final bool isActive;
 
   Volunteer({
     required this.id,
@@ -17,6 +18,7 @@ class Volunteer {
     required this.alamat,
     required this.jenisKelamin,
     required this.tim,
+    required this.isActive,
   });
 
   factory Volunteer.fromFirestore(DocumentSnapshot doc) {
@@ -31,6 +33,7 @@ class Volunteer {
       alamat: data['alamat'],
       jenisKelamin: data['jenisKelamin'],
       tim: data['tim'],
+      isActive: data['isActive'] ?? true, // default safe
     );
   }
 
@@ -42,6 +45,7 @@ class Volunteer {
       'alamat': alamat,
       'jenisKelamin': jenisKelamin,
       'tim': tim,
+      'isActive': isActive,
       'createdAt': FieldValue.serverTimestamp(),
     };
   }
@@ -54,6 +58,7 @@ class Volunteer {
     String? alamat,
     String? jenisKelamin,
     String? tim,
+    required bool isActive,
   }) {
     return Volunteer(
       id: id ?? this.id,
@@ -63,6 +68,7 @@ class Volunteer {
       alamat: alamat ?? this.alamat,
       jenisKelamin: jenisKelamin ?? this.jenisKelamin,
       tim: tim ?? this.tim,
+      isActive: isActive,
     );
   }
 }

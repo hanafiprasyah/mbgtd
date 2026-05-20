@@ -1,13 +1,18 @@
-import 'dart:async';
+// import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mbg_test/core/helper/firebase_crud_error.dart';
 import 'volunteer_event.dart';
 import 'volunteer_state.dart';
 import '../data/repositories/volunteer_repository.dart';
+import 'package:rxdart/rxdart.dart';
 
 class VolunteerBloc extends Bloc<VolunteerEvent, VolunteerState> {
   final VolunteerRepository repository;
-  Timer? _debounce;
+
+  EventTransformer<T> debounce<T>(Duration duration) {
+    return (events, mapper) =>
+        events.distinct().debounceTime(duration).switchMap(mapper);
+  }
 
   VolunteerBloc(this.repository) : super(VolunteerInitial()) {
     on<LoadVolunteer>((event, emit) async {
@@ -49,44 +54,23 @@ class VolunteerBloc extends Bloc<VolunteerEvent, VolunteerState> {
     });
 
     on<SearchVolunteer>((event, emit) async {
-      _debounce?.cancel();
+      // If no search text and no filter → fallback to all data
+      final hasFilter =
+          (event.tim != null && event.tim!.isNotEmpty) ||
+          (event.jenisKelamin != null && event.jenisKelamin!.isNotEmpty);
 
-      final completer = Completer<void>();
+      if (event.query.isEmpty && !hasFilter) {
+        add(LoadVolunteer());
+        return;
+      }
 
-      _debounce = Timer(const Duration(milliseconds: 500), () async {
-        if (emit.isDone) return;
+      emit(VolunteerLoading());
 
-        // If no search text but filters exist, still perform filtered query
-        final hasFilter =
-            (event.tim != null && event.tim!.isNotEmpty) ||
-            (event.jenisKelamin != null && event.jenisKelamin!.isNotEmpty);
-
-        if (event.query.isEmpty && !hasFilter) {
-          add(LoadVolunteer());
-          completer.complete();
-          return;
-        }
-
-        if (!emit.isDone) {
-          emit(VolunteerLoading());
-        }
-
-        await emit.forEach(
-          repository.searchVolunteer(
-            event.query,
-            event.tim,
-            event.jenisKelamin,
-          ),
-          onData: (data) => VolunteerLoaded(data),
-        );
-
-        if (!completer.isCompleted) {
-          completer.complete();
-        }
-      });
-
-      await completer.future;
-    });
+      await emit.forEach(
+        repository.searchVolunteer(event.query, event.tim, event.jenisKelamin),
+        onData: (data) => VolunteerLoaded(data),
+      );
+    }, transformer: debounce(const Duration(milliseconds: 800)));
 
     on<FilterVolunteer>((event, emit) async {
       emit(VolunteerLoading());
@@ -98,6 +82,14 @@ class VolunteerBloc extends Bloc<VolunteerEvent, VolunteerState> {
         ),
         onData: (data) => VolunteerLoaded(data),
       );
+    });
+
+    on<ToggleVolunteerStatus>((event, emit) async {
+      try {
+        await repository.toggleVolunteerStatus(event.id, event.currentStatus);
+      } catch (e) {
+        emit(VolunteerError(e.toString()));
+      }
     });
   }
 }
