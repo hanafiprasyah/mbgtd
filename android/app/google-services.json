@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "903131753605",
-    "project_id": "mbgtd-c85fb",
-    "storage_bucket": "mbgtd-c85fb.firebasestorage.app"
+    "project_number": "747314884720",
+    "project_id": "mbgtd-fa75a",
+    "storage_bucket": "mbgtd-fa75a.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:903131753605:android:5db23a603ecbb0a71b0dec",
+        "mobilesdk_app_id": "1:747314884720:android:69b8453460864c865184b5",
         "android_client_info": {
-          "package_name": "com.example.mbg_test"
+          "package_name": "com.mbg.absensi"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCUYaeGUwMU2KHGIBXqxZO3_XCkXIPWS7g"
+          "current_key": "AIzaSyBfLFEjW-fdY1WC7RA_182alU1JssKXeck"
         }
       ],
       "services": {

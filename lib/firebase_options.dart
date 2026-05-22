@@ -50,19 +50,19 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCUYaeGUwMU2KHGIBXqxZO3_XCkXIPWS7g',
-    appId: '1:903131753605:android:5db23a603ecbb0a71b0dec',
-    messagingSenderId: '903131753605',
-    projectId: 'mbgtd-c85fb',
-    storageBucket: 'mbgtd-c85fb.firebasestorage.app',
+    apiKey: 'AIzaSyBfLFEjW-fdY1WC7RA_182alU1JssKXeck',
+    appId: '1:747314884720:android:69b8453460864c865184b5',
+    messagingSenderId: '747314884720',
+    projectId: 'mbgtd-fa75a',
+    storageBucket: 'mbgtd-fa75a.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDBweug5OeI0Ghu_DgF9pcYseXAGLDC8qg',
-    appId: '1:903131753605:ios:50ca2a835c6b70611b0dec',
-    messagingSenderId: '903131753605',
-    projectId: 'mbgtd-c85fb',
-    storageBucket: 'mbgtd-c85fb.firebasestorage.app',
-    iosBundleId: 'com.example.mbgTest',
+    apiKey: 'AIzaSyCNDh-DB5cL3FNZ8isj2nw93sL0xpJ10sc',
+    appId: '1:747314884720:ios:b647badd81109b985184b5',
+    messagingSenderId: '747314884720',
+    projectId: 'mbgtd-fa75a',
+    storageBucket: 'mbgtd-fa75a.firebasestorage.app',
+    iosBundleId: 'com.mbg.absensi',
   );
 }

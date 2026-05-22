@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:mbg_test/core/services/camera_prewarm.dart';
 import 'package:mbg_test/presentation/widgets/home_tab.dart';
 import 'package:mbg_test/presentation/widgets/setting_tab.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:persistent_bottom_nav_bar_v2/persistent_bottom_nav_bar_v2.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
@@ -29,8 +31,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     initializeDateFormatting('id_ID', null);
-
     _startLoadingSequence();
+    Future.microtask(() async {
+      await CameraPrewarmService.prewarm();
+    });
   }
 
   Future<void> _startLoadingSequence() async {
@@ -118,6 +122,16 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              Opacity(
+                opacity: 0,
+                child: SizedBox(
+                  width: 1,
+                  height: 1,
+                  child: MobileScanner(
+                    controller: CameraPrewarmService.controller,
+                  ),
+                ),
+              ),
               TweenAnimationBuilder(
                 duration: const Duration(milliseconds: 600),
                 tween: Tween(begin: 0.8, end: 1.0),
