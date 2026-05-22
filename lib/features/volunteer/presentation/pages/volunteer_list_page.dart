@@ -19,7 +19,15 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
   String? selectedGender;
   bool isUiReady = false;
   Timer? _uiDelay;
+  Timer? _debounce;
   final Set<String> _removingIds = {};
+
+  int get activeFilterCount {
+    int count = 0;
+    if (selectedTim != null) count++;
+    if (selectedGender != null) count++;
+    return count;
+  }
 
   @override
   void initState() {
@@ -31,6 +39,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
   @override
   void dispose() {
     _uiDelay?.cancel();
+    _debounce?.cancel();
     searchController.dispose();
     super.dispose();
   }
@@ -41,6 +50,184 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
       appBar: AppBar(
         title: const Text('Volunteer'),
         actions: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.list,
+                  color: activeFilterCount > 0 ? Colors.blue : null,
+                ),
+                tooltip: 'Filter',
+                onLongPress: () {
+                  if (!mounted) return;
+                  setState(() {
+                    selectedTim = null;
+                    selectedGender = null;
+                  });
+                  try {
+                    context.read<VolunteerBloc>().add(LoadVolunteer());
+                  } catch (e) {
+                    debugPrint('Bloc error: $e');
+                  }
+                },
+                onPressed: () async {
+                  String? tempTim = selectedTim;
+                  String? tempGender = selectedGender;
+
+                  final result = await showDialog<String>(
+                    context: context,
+                    builder: (ctx) {
+                      return StatefulBuilder(
+                        builder: (ctx, setStateDialog) {
+                          return AlertDialog(
+                            title: const Text('Filter Volunteer'),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                DropdownButtonFormField<String>(
+                                  isExpanded: true,
+                                  value: tempTim,
+                                  hint: const Text('Team'),
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'Persiapan',
+                                      child: Text('Persiapan'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'Masak',
+                                      child: Text('Masak'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'Distribusi',
+                                      child: Text('Distribusi'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'Packing',
+                                      child: Text('Packing'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'Pencucian',
+                                      child: Text('Pencucian'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'Satpam',
+                                      child: Text('Satpam'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'ASLAP',
+                                      child: Text('ASLAP'),
+                                    ),
+                                  ],
+                                  onChanged: (value) {
+                                    setStateDialog(() => tempTim = value);
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                DropdownButtonFormField<String>(
+                                  isExpanded: true,
+                                  value: tempGender,
+                                  hint: const Text('Gender'),
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'Laki-laki',
+                                      child: Text('Laki-laki'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'Perempuan',
+                                      child: Text('Perempuan'),
+                                    ),
+                                  ],
+                                  onChanged: (value) {
+                                    setStateDialog(() => tempGender = value);
+                                  },
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  // reset temp values inside dialog
+                                  setStateDialog(() {
+                                    tempTim = null;
+                                    tempGender = null;
+                                  });
+                                },
+                                child: const Text('Reset'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, 'cancel'),
+                                child: const Text('Cancel'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.pop(ctx, 'apply'),
+                                child: const Text('Apply'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  );
+
+                  if (result == 'apply') {
+                    if (!mounted) return;
+                    setState(() {
+                      selectedTim = tempTim;
+                      selectedGender = tempGender;
+                    });
+
+                    final isNoFilter =
+                        selectedTim == null &&
+                        selectedGender == null &&
+                        searchController.text.isEmpty;
+                    if (isNoFilter) {
+                      try {
+                        context.read<VolunteerBloc>().add(LoadVolunteer());
+                      } catch (e) {
+                        debugPrint('Bloc error: $e');
+                      }
+                    } else {
+                      try {
+                        context.read<VolunteerBloc>().add(
+                          SearchVolunteer(
+                            searchController.text,
+                            selectedTim,
+                            selectedGender,
+                          ),
+                        );
+                      } catch (e) {
+                        debugPrint('Bloc error: $e');
+                      }
+                    }
+                  } else if (result == 'cancel') {
+                    // do nothing
+                  }
+                },
+              ),
+              if (activeFilterCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      activeFilterCount.toString(),
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.add),
             tooltip: 'Add Volunteer',
@@ -76,11 +263,18 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                           icon: const Icon(Icons.clear),
                           onPressed: () {
                             searchController.clear();
-
-                            context.read<VolunteerBloc>().add(
-                              SearchVolunteer('', selectedTim, selectedGender),
-                            );
-
+                            try {
+                              context.read<VolunteerBloc>().add(
+                                SearchVolunteer(
+                                  '',
+                                  selectedTim,
+                                  selectedGender,
+                                ),
+                              );
+                            } catch (e) {
+                              debugPrint('Bloc error: $e');
+                            }
+                            if (!mounted) return;
                             setState(() => isSearching = false);
                           },
                         )
@@ -94,123 +288,74 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                   ),
                 ),
                 onChanged: (value) {
+                  if (!mounted) return;
                   setState(() => isSearching = true);
-
-                  context.read<VolunteerBloc>().add(
-                    SearchVolunteer(value, selectedTim, selectedGender),
-                  );
+                  if (_debounce?.isActive ?? false) _debounce!.cancel();
+                  _debounce = Timer(const Duration(milliseconds: 300), () {
+                    try {
+                      context.read<VolunteerBloc>().add(
+                        SearchVolunteer(value, selectedTim, selectedGender),
+                      );
+                    } catch (e) {
+                      debugPrint('Bloc error: $e');
+                    }
+                  });
                 },
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      isExpanded: true,
-                      initialValue: selectedTim,
-                      hint: const Text('Team'),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'Persiapan',
-                          child: Text('Persiapan'),
-                        ),
-                        DropdownMenuItem(value: 'Masak', child: Text('Masak')),
-                        DropdownMenuItem(
-                          value: 'Distribusi',
-                          child: Text('Distribusi'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'Packing',
-                          child: Text('Packing'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'Pencucian',
-                          child: Text('Pencucian'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'Satpam',
-                          child: Text('Satpam'),
-                        ),
-                        DropdownMenuItem(value: 'ASLAP', child: Text('ASLAP')),
-                      ],
-                      onChanged: (value) {
-                        setState(() => selectedTim = value);
-                        context.read<VolunteerBloc>().add(
-                          SearchVolunteer(
-                            searchController.text,
-                            value,
-                            selectedGender,
-                          ),
-                        );
-                      },
-                      decoration: InputDecoration(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 12,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+            if (activeFilterCount > 0)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                child: Wrap(
+                  spacing: 8,
+                  children: [
+                    if (selectedTim != null)
+                      Chip(
+                        label: Text('Tim: $selectedTim'),
+                        onDeleted: () {
+                          if (!mounted) return;
+                          setState(() => selectedTim = null);
+                          try {
+                            context.read<VolunteerBloc>().add(
+                              SearchVolunteer(
+                                searchController.text,
+                                selectedTim,
+                                selectedGender,
+                              ),
+                            );
+                          } catch (e) {
+                            debugPrint('Bloc error: $e');
+                          }
+                        },
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      isExpanded: true,
-                      initialValue: selectedGender,
-                      hint: const Text('Gender'),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'Laki-laki',
-                          child: Text('Laki-laki'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'Perempuan',
-                          child: Text('Perempuan'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        setState(() => selectedGender = value);
-                        context.read<VolunteerBloc>().add(
-                          SearchVolunteer(
-                            searchController.text,
-                            selectedTim,
-                            value,
-                          ),
-                        );
-                      },
-                      decoration: InputDecoration(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 12,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                    if (selectedGender != null)
+                      Chip(
+                        label: Text('Gender: $selectedGender'),
+                        onDeleted: () {
+                          if (!mounted) return;
+                          setState(() => selectedGender = null);
+                          try {
+                            context.read<VolunteerBloc>().add(
+                              SearchVolunteer(
+                                searchController.text,
+                                selectedTim,
+                                selectedGender,
+                              ),
+                            );
+                          } catch (e) {
+                            debugPrint('Bloc error: $e');
+                          }
+                        },
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.refresh),
-                    tooltip: 'Reset Filter',
-                    onPressed: () {
-                      setState(() {
-                        selectedTim = null;
-                        selectedGender = null;
-                      });
-                      context.read<VolunteerBloc>().add(LoadVolunteer());
-                    },
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            // if (isSearching) const LinearProgressIndicator(minHeight: 2),
             Expanded(
               child: BlocBuilder<VolunteerBloc, VolunteerState>(
+                buildWhen: (previous, current) => previous != current,
                 builder: (context, state) {
                   if (state is VolunteerLoading && !isSearching) {
                     isUiReady = false;
@@ -246,6 +391,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                     return ListView.builder(
                       keyboardDismissBehavior:
                           ScrollViewKeyboardDismissBehavior.onDrag,
+                      cacheExtent: 500,
                       itemCount: state.volunteer.length,
                       itemBuilder: (context, index) {
                         final r = state.volunteer[index];
@@ -276,7 +422,38 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                                   },
                                   child: ListTile(
                                     title: Text(r.namaLengkap),
-                                    subtitle: Text(r.tim),
+                                    subtitle: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(r.tim),
+                                        const SizedBox(height: 4),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: (r.isActive == true)
+                                                ? Colors.green
+                                                : Colors.grey,
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            (r.isActive == true)
+                                                ? 'Active Volunteer'
+                                                : 'Inactive Volunteer',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                     onTap: () {
                                       Navigator.pushNamed(
                                         context,
@@ -318,6 +495,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                                               .read<VolunteerBloc>();
 
                                           // optimistic remove
+                                          if (!mounted) return;
                                           setState(() {
                                             _removingIds.add(r.id);
                                           });
@@ -332,6 +510,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                                             action: SnackBarAction(
                                               label: 'Undo',
                                               onPressed: () {
+                                                if (!mounted) return;
                                                 setState(() {
                                                   _removingIds.remove(r.id);
                                                 });
@@ -351,16 +530,27 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                                                 }
 
                                                 // commit delete after snackbar closes
-                                                bloc.add(DeleteVolunteer(r.id));
+                                                try {
+                                                  bloc.add(
+                                                    DeleteVolunteer(r.id),
+                                                  );
+                                                } catch (e) {
+                                                  debugPrint('Bloc error: $e');
+                                                }
 
-                                                bloc.add(
-                                                  SearchVolunteer(
-                                                    searchController.text,
-                                                    selectedTim,
-                                                    selectedGender,
-                                                  ),
-                                                );
+                                                try {
+                                                  bloc.add(
+                                                    SearchVolunteer(
+                                                      searchController.text,
+                                                      selectedTim,
+                                                      selectedGender,
+                                                    ),
+                                                  );
+                                                } catch (e) {
+                                                  debugPrint('Bloc error: $e');
+                                                }
 
+                                                if (!mounted) return;
                                                 setState(() {
                                                   _removingIds.remove(r.id);
                                                 });
