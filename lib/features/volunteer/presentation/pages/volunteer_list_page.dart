@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../bloc/volunteer_bloc.dart';
 import '../../bloc/volunteer_event.dart';
@@ -91,12 +92,12 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                                   hint: const Text('Team'),
                                   items: const [
                                     DropdownMenuItem(
-                                      value: 'ASLAP',
-                                      child: Text('ASLAP'),
+                                      value: 'Chef',
+                                      child: Text('Chef'),
                                     ),
                                     DropdownMenuItem(
-                                      value: 'Chef',
-                                      child: Text('Persiapan'),
+                                      value: 'ASLAP',
+                                      child: Text('ASLAP'),
                                     ),
                                     DropdownMenuItem(
                                       value: 'Persiapan',
@@ -130,7 +131,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                                 const SizedBox(height: 12),
                                 DropdownButtonFormField<String>(
                                   isExpanded: true,
-                                  value: tempGender,
+                                  initialValue: tempGender,
                                   hint: const Text('Gender'),
                                   items: const [
                                     DropdownMenuItem(
@@ -395,7 +396,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                     return ListView.builder(
                       keyboardDismissBehavior:
                           ScrollViewKeyboardDismissBehavior.onDrag,
-                      cacheExtent: 500,
+                      scrollCacheExtent: ScrollCacheExtent.pixels(500),
                       itemCount: state.volunteer.length,
                       itemBuilder: (context, index) {
                         final r = state.volunteer[index];
