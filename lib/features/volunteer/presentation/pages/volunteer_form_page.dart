@@ -229,13 +229,14 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
                                   initialValue: tim,
                                   items:
                                       [
+                                            'Chef',
+                                            'ASLAP',
                                             'Persiapan',
                                             'Masak',
                                             'Distribusi',
                                             'Packing',
                                             'Pencucian',
                                             'Satpam',
-                                            'ASLAP',
                                           ]
                                           .map(
                                             (e) => DropdownMenuItem(

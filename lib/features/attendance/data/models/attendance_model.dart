@@ -7,6 +7,8 @@ class Attendance {
   final String tim;
   final DateTime timestamp;
   final String date;
+  final String scannedByUid;
+  final String scannedByEmail;
 
   Attendance({
     required this.id,
@@ -15,6 +17,8 @@ class Attendance {
     required this.tim,
     required this.timestamp,
     required this.date,
+    required this.scannedByUid,
+    required this.scannedByEmail,
   });
 
   Map<String, dynamic> toMap() {
@@ -24,6 +28,8 @@ class Attendance {
       'tim': tim,
       'timestamp': Timestamp.fromDate(timestamp),
       'date': date,
+      'scannedByUid': scannedByUid,
+      'scannedByEmail': scannedByEmail,
     };
   }
 }

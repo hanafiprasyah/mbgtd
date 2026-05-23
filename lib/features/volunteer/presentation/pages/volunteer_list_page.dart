@@ -87,9 +87,17 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                               children: [
                                 DropdownButtonFormField<String>(
                                   isExpanded: true,
-                                  value: tempTim,
+                                  initialValue: tempTim,
                                   hint: const Text('Team'),
                                   items: const [
+                                    DropdownMenuItem(
+                                      value: 'ASLAP',
+                                      child: Text('ASLAP'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'Chef',
+                                      child: Text('Persiapan'),
+                                    ),
                                     DropdownMenuItem(
                                       value: 'Persiapan',
                                       child: Text('Persiapan'),
@@ -113,10 +121,6 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                                     DropdownMenuItem(
                                       value: 'Satpam',
                                       child: Text('Satpam'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'ASLAP',
-                                      child: Text('ASLAP'),
                                     ),
                                   ],
                                   onChanged: (value) {

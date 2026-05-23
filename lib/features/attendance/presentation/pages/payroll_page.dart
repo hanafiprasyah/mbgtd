@@ -4,13 +4,14 @@ import 'package:mbg_test/core/helper/design_system.dart';
 import 'package:intl/intl.dart';
 
 const Map<String, int> salaryPerTim = {
+  'ASLAP': 200000,
+  'Chef': 180000,
   'Masak': 145000,
   'Persiapan': 125000,
   'Packing': 125000,
   'Pencucian': 125000,
-  'Distribusi': 130000,
-  'Satpam': 140000,
-  'ASLAP': 200000,
+  'Distribusi': 135000,
+  'Satpam': 150000,
 };
 
 int calculateSalary(int totalScan, String tim) {
@@ -41,10 +42,18 @@ class _PayrollPageState extends State<PayrollPage> {
     final attendanceSnap = await firestore.collection('attendances').get();
 
     final Map<String, int> attendanceCount = {};
+    final Map<String, String> lastScannedBy = {};
 
     for (var doc in attendanceSnap.docs) {
-      final volunteerId = doc['volunteerId'];
+      final data = doc.data();
+      final volunteerId = data['volunteerId'];
+
       attendanceCount[volunteerId] = (attendanceCount[volunteerId] ?? 0) + 1;
+
+      // store last scanner email (overwrite = latest)
+      if (data['scannedByEmail'] != null) {
+        lastScannedBy[volunteerId] = data['scannedByEmail'];
+      }
     }
 
     final Map<String, dynamic> result = {};
@@ -62,6 +71,7 @@ class _PayrollPageState extends State<PayrollPage> {
         'tim': tim,
         'totalScan': totalScan,
         'totalGaji': calculateSalary(totalScan, tim),
+        'scannedByEmail': lastScannedBy[id] ?? '-',
       };
     }
 
@@ -206,9 +216,22 @@ class _PayrollPageState extends State<PayrollPage> {
                           item['nama'],
                           style: TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        subtitle: Text(
-                          'Team: ${item['tim']} • ${item['totalScan'] > 0 ? '${item['totalScan']} days' : 'No scan'}',
-                          style: TextStyle(fontSize: 12),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Team: ${item['tim']} • ${item['totalScan'] > 0 ? '${item['totalScan']} days' : 'No scan'}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Scanned by: ${item['scannedByEmail']}',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
                         ),
                         trailing: Text(
                           currencyFormatter.format(item['totalGaji']),

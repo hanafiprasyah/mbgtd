@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/attendance_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AttendanceRepository {
   final firestore = FirebaseFirestore.instance;
@@ -27,6 +28,19 @@ class AttendanceRepository {
       throw Exception('already-scanned');
     }
 
+    // Tracker
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('user-not-logged-in');
+    }
+    print('got user detail: ${user}');
+    final scannedByUid = user.uid;
+    final scannedByEmail = user.email ?? 'unknown';
+
+    print('got scanned by uid: ${user.uid}');
+    print('got scanned by email: ${user.email}');
+
+    // attendance object
     final attendance = Attendance(
       id: docId,
       volunteerId: volunteerId,
@@ -34,6 +48,8 @@ class AttendanceRepository {
       tim: tim,
       timestamp: now,
       date: today,
+      scannedByUid: scannedByUid,
+      scannedByEmail: scannedByEmail,
     );
 
     await docRef.set(attendance.toMap());
