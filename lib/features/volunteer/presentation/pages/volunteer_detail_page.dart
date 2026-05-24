@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/services.dart';
 import '../../bloc/volunteer_bloc.dart';
 import '../../bloc/volunteer_event.dart';
 import '../../data/models/volunteer_model.dart';
@@ -136,6 +137,17 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
                   'Birth Date',
                   DateFormat('dd MMM yyyy').format(volunteer!.tanggalLahir),
                 ),
+
+                // Bank Info (new)
+                const SizedBox(height: AppSpacing.sm),
+                const Divider(),
+                const SizedBox(height: AppSpacing.sm),
+                _buildBankInfoItem(
+                  context,
+                  volunteer!.namaBank ?? '',
+                  volunteer!.noRek ?? '',
+                ),
+
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                   child: Row(
@@ -355,6 +367,103 @@ Widget _buildInfoItem(String label, String value) {
             textAlign: TextAlign.right,
             style: const TextStyle(fontWeight: FontWeight.w500),
           ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildBankInfoItem(BuildContext context, String bank, String noRek) {
+  String getBankAsset(String bank) {
+    switch (bank.toUpperCase()) {
+      case 'BCA':
+        return 'assets/bca.png';
+
+      case 'BNI':
+        return 'assets/bni.png';
+
+      case 'BRI':
+        return 'assets/bri.png';
+
+      case 'Mandiri':
+        return 'assets/mandiri.png';
+
+      case 'CIMB':
+        return 'assets/cimb.png';
+
+      case 'OCBC NISP':
+        return 'assets/ocbc_nisp.png';
+
+      case 'Maybank':
+        return 'assets/maybank.png';
+
+      default:
+        return 'assets/default_bank.png';
+    }
+  }
+
+  String assetPath = getBankAsset(bank);
+
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Bank Logo
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: Image.asset(
+            assetPath,
+            width: 40,
+            height: 40,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              debugPrint('❌ Logo not found: $assetPath');
+              return Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(Icons.account_balance, size: 20),
+              );
+            },
+          ),
+        ),
+
+        const SizedBox(width: AppSpacing.md),
+
+        // Bank + Account Info
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                bank.isEmpty ? 'Unregistered' : bank,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                noRek.isEmpty ? 'Unknown' : noRek,
+                style: const TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+
+        // Copy Button
+        IconButton(
+          onPressed: noRek.isEmpty
+              ? null
+              : () async {
+                  await Clipboard.setData(ClipboardData(text: noRek));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Account number copied')),
+                  );
+                },
+          icon: const Icon(Icons.copy, size: 18),
         ),
       ],
     ),

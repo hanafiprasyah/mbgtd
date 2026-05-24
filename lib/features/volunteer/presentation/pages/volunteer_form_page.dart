@@ -19,6 +19,7 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
 
   final namaController = TextEditingController();
   final alamatController = TextEditingController();
+  final noRekController = TextEditingController();
 
   DateTime? selectedDate;
   Volunteer? existing;
@@ -26,6 +27,7 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
 
   String gender = 'Laki-laki';
   String tim = 'Masak';
+  String namaBank = 'BNI';
 
   @override
   void didChangeDependencies() {
@@ -42,6 +44,8 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
       gender = existing!.jenisKelamin;
       tim = existing!.tim;
       selectedDate = existing!.tanggalLahir;
+      noRekController.text = existing!.noRek ?? '';
+      namaBank = (existing!.namaBank ?? 'BCA').toUpperCase().trim();
     }
   }
 
@@ -77,6 +81,8 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
       tim: tim,
       isActive: isActive,
       namaSearch: namaController.text.toLowerCase(),
+      noRek: noRekController.text,
+      namaBank: namaBank,
     );
 
     final bloc = context.read<VolunteerBloc>();
@@ -121,7 +127,7 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.md,
-                    vertical: AppSpacing.lg,
+                    vertical: AppSpacing.md,
                   ),
                   child: Center(
                     child: ConstrainedBox(
@@ -170,6 +176,29 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
                                 ),
 
                                 const SizedBox(height: AppSpacing.md),
+                                DropdownButtonFormField<String>(
+                                  initialValue:
+                                      [
+                                        'Laki-laki',
+                                        'Perempuan',
+                                      ].contains(gender)
+                                      ? gender
+                                      : null,
+                                  items: ['Laki-laki', 'Perempuan']
+                                      .map(
+                                        (e) => DropdownMenuItem(
+                                          value: e,
+                                          child: Text(e),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (val) =>
+                                      setState(() => gender = val!),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Gender',
+                                  ),
+                                ),
+                                const SizedBox(height: AppSpacing.md),
 
                                 ListTile(
                                   contentPadding: EdgeInsets.zero,
@@ -206,27 +235,78 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
                                 ),
                                 const SizedBox(height: AppSpacing.md),
 
-                                DropdownButtonFormField<String>(
-                                  initialValue: gender,
-                                  items: ['Laki-laki', 'Perempuan']
-                                      .map(
-                                        (e) => DropdownMenuItem(
-                                          value: e,
-                                          child: Text(e),
-                                        ),
-                                      )
-                                      .toList(),
-                                  onChanged: (val) =>
-                                      setState(() => gender = val!),
+                                TextFormField(
+                                  controller: noRekController,
+                                  keyboardType: TextInputType.number,
                                   decoration: const InputDecoration(
-                                    labelText: 'Gender',
+                                    labelText: 'Account Number',
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Enter account number';
+                                    }
+                                    if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                                      return 'Account number must be numbers only';
+                                    }
+                                    return null;
+                                  },
+                                ),
+
+                                const SizedBox(height: AppSpacing.md),
+
+                                DropdownButtonFormField<String>(
+                                  initialValue:
+                                      [
+                                        'BCA',
+                                        'BRI',
+                                        'BNI',
+                                        'Mandiri',
+                                        'CIMB Niaga',
+                                        'OCBC NISP',
+                                        'Maybank',
+                                      ].contains(namaBank)
+                                      ? namaBank
+                                      : null,
+                                  items:
+                                      [
+                                            'BCA',
+                                            'BRI',
+                                            'BNI',
+                                            'Mandiri',
+                                            'CIMB Niaga',
+                                            'OCBC NISP',
+                                            'Maybank',
+                                          ]
+                                          .map(
+                                            (e) => DropdownMenuItem(
+                                              value: e,
+                                              child: Text(e),
+                                            ),
+                                          )
+                                          .toList(),
+                                  onChanged: (val) =>
+                                      setState(() => namaBank = val!),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Bank Name',
                                   ),
                                 ),
 
                                 const SizedBox(height: AppSpacing.md),
 
                                 DropdownButtonFormField<String>(
-                                  initialValue: tim,
+                                  initialValue:
+                                      [
+                                        'Chef',
+                                        'ASLAP',
+                                        'Persiapan',
+                                        'Masak',
+                                        'Distribusi',
+                                        'Packing',
+                                        'Pencucian',
+                                        'Satpam',
+                                      ].contains(tim)
+                                      ? tim
+                                      : null,
                                   items:
                                       [
                                             'Chef',
