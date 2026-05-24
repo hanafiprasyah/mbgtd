@@ -28,3 +28,8 @@ class VolunteerError extends VolunteerState {
   final String message;
   VolunteerError(this.message);
 }
+
+class VolunteerDetailLoaded extends VolunteerState {
+  final Volunteer volunteer;
+  VolunteerDetailLoaded(this.volunteer);
+}

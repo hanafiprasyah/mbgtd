@@ -91,5 +91,30 @@ class VolunteerBloc extends Bloc<VolunteerEvent, VolunteerState> {
         emit(VolunteerError(e.toString()));
       }
     });
+
+    on<GetVolunteerById>((event, emit) async {
+      emit(VolunteerLoading());
+      try {
+        final volunteer = await repository.getVolunteerById(event.id);
+        emit(VolunteerDetailLoaded(volunteer));
+      } catch (e) {
+        emit(VolunteerError(mapFirebaseError(e)));
+      }
+    });
+
+    on<ToggleVolunteerPIC>((event, emit) async {
+      try {
+        await repository.toggleVolunteerPIC(
+          event.id,
+          event.currentStatus,
+          event.tim,
+        );
+
+        final updated = await repository.getVolunteerById(event.id);
+        emit(VolunteerDetailLoaded(updated));
+      } catch (e) {
+        emit(VolunteerError(e.toString()));
+      }
+    });
   }
 }

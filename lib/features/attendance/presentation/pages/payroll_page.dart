@@ -384,7 +384,7 @@ class _PayrollPageState extends State<PayrollPage>
                                               BoxShadow(
                                                 color: Theme.of(context)
                                                     .primaryColor
-                                                    .withOpacity(0.35),
+                                                    .withValues(alpha: 0.35),
                                                 blurRadius: 16,
                                                 spreadRadius: 1,
                                               ),
@@ -393,8 +393,8 @@ class _PayrollPageState extends State<PayrollPage>
                                     ),
                                     child: Card(
                                       elevation: isHighlighted ? 6 : 3,
-                                      shadowColor: Colors.black.withOpacity(
-                                        0.1,
+                                      shadowColor: Colors.black.withValues(
+                                        alpha: 0.1,
                                       ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(16),
@@ -411,15 +411,21 @@ class _PayrollPageState extends State<PayrollPage>
                                           gradient: LinearGradient(
                                             colors: [
                                               Theme.of(context).cardColor,
-                                              Theme.of(
-                                                context,
-                                              ).cardColor.withOpacity(0.95),
+                                              Theme.of(context).cardColor
+                                                  .withValues(alpha: 0.95),
                                             ],
                                             begin: Alignment.topLeft,
                                             end: Alignment.bottomRight,
                                           ),
                                         ),
                                         child: ListTile(
+                                          onTap: () {
+                                            Navigator.pushNamed(
+                                              context,
+                                              '/payroll-detail-page',
+                                              arguments: item['id'],
+                                            );
+                                          },
                                           contentPadding:
                                               const EdgeInsets.symmetric(
                                                 horizontal: 16,
@@ -428,8 +434,10 @@ class _PayrollPageState extends State<PayrollPage>
                                           leading: CircleAvatar(
                                             backgroundColor: Theme.of(context)
                                                 .primaryColor
-                                                .withOpacity(
-                                                  isHighlighted ? 0.25 : 0.1,
+                                                .withValues(
+                                                  alpha: isHighlighted
+                                                      ? 0.25
+                                                      : 0.1,
                                                 ),
                                             child: Text(
                                               (item['nama'] ?? '?')[0],
@@ -441,12 +449,47 @@ class _PayrollPageState extends State<PayrollPage>
                                               ),
                                             ),
                                           ),
-                                          title: Text(
-                                            item['nama'] ?? '-',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 14,
-                                            ),
+                                          title: Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  item['nama'] ?? '-',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                              ),
+                                              if ((item['isPIC'] ?? false) ==
+                                                  true)
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.orange
+                                                        .withValues(
+                                                          alpha: 0.15,
+                                                        ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          6,
+                                                        ),
+                                                  ),
+
+                                                  child: const Text(
+                                                    'PIC',
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: Colors.orange,
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
                                           ),
                                           subtitle: Column(
                                             crossAxisAlignment:

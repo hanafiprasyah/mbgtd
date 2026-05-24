@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mbg_test/app.dart';
+import 'package:mbg_test/features/attendance/presentation/pages/payroll_detail_page.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/payroll_history_page.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/payroll_page.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/qr_generator_page.dart';
@@ -43,6 +44,12 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const ScannerPage());
       case '/payroll':
         return MaterialPageRoute(builder: (_) => const PayrollPage());
+      case '/payroll-detail-page':
+        final id = settings.arguments as String;
+        return MaterialPageRoute(
+          builder: (_) => PayrollDetailPage(id: id),
+          settings: settings,
+        );
       case '/payroll-history':
         return MaterialPageRoute(builder: (_) => const PayrollHistoryPage());
       default:

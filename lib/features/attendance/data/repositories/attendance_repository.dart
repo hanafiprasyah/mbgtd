@@ -52,7 +52,17 @@ class AttendanceRepository {
       scannedByEmail: scannedByEmail,
     );
 
-    await docRef.set(attendance.toMap());
+    final volunteerDoc = await firestore
+        .collection('volunteers')
+        .doc(volunteerId)
+        .get();
+    final isPIC = (volunteerDoc.data()?['isPIC'] ?? false) == true;
+
+    await docRef.set({
+      ...attendance.toMap(),
+      'isPIC': isPIC,
+      'bonus': isPIC ? 10000 : 0,
+    });
   }
 
   Stream<int> getTotalAttendance(String volunteerId) {

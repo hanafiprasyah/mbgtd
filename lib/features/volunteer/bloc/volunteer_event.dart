@@ -39,3 +39,17 @@ class ToggleVolunteerStatus extends VolunteerEvent {
 
   ToggleVolunteerStatus(this.id, this.currentStatus);
 }
+
+class GetVolunteerById extends VolunteerEvent {
+  final String id;
+
+  GetVolunteerById(this.id);
+}
+
+class ToggleVolunteerPIC extends VolunteerEvent {
+  final String id;
+  final bool currentStatus;
+  final String tim;
+
+  ToggleVolunteerPIC(this.id, this.currentStatus, this.tim);
+}

@@ -32,15 +32,25 @@ class AttendancePayrollRepository {
       for (var doc in volunteersSnap.docs) {
         final data = doc.data() as Map<String, dynamic>;
         final id = doc.id;
+        final isPIC = (data['isPIC'] ?? false) == true;
 
         final totalScan = attendanceCount[id] ?? 0;
         final tim = (data['tim'] ?? '').toString().trim();
 
+        const picBonusPerScan = 10000;
+        final baseSalary = calculateSalary(totalScan, tim);
+        final totalGaji = isPIC
+            ? baseSalary + (totalScan * picBonusPerScan)
+            : baseSalary;
+
         result[id] = {
+          'id': id,
+          ...data,
           'nama': data['namaLengkap'],
           'tim': tim,
           'totalScan': totalScan,
-          'totalGaji': calculateSalary(totalScan, tim),
+          'totalGaji': totalGaji,
+          'isPIC': isPIC,
           'scannedByEmail': lastScannedBy[id] ?? '-',
         };
       }

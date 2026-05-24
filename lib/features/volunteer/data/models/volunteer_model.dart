@@ -11,6 +11,7 @@ class Volunteer {
   final bool isActive;
   final String? noRek;
   final String? namaBank;
+  final bool isPIC;
 
   Volunteer({
     required this.id,
@@ -23,6 +24,7 @@ class Volunteer {
     required this.isActive,
     this.noRek = '',
     this.namaBank = '',
+    this.isPIC = false,
   });
 
   factory Volunteer.fromFirestore(DocumentSnapshot doc) {
@@ -40,6 +42,7 @@ class Volunteer {
       isActive: data['isActive'] ?? true,
       noRek: data['noRek'] ?? '',
       namaBank: data['namaBank'] ?? '',
+      isPIC: data['isPIC'] ?? false,
     );
   }
 
@@ -54,6 +57,7 @@ class Volunteer {
       'isActive': isActive,
       'noRek': noRek,
       'namaBank': namaBank,
+      'isPIC': isPIC,
       'createdAt': FieldValue.serverTimestamp(),
     };
   }
@@ -69,6 +73,7 @@ class Volunteer {
     required bool isActive,
     String? noRek,
     String? namaBank,
+    bool? isPIC,
   }) {
     return Volunteer(
       id: id ?? this.id,
@@ -81,6 +86,7 @@ class Volunteer {
       isActive: isActive,
       noRek: noRek,
       namaBank: namaBank,
+      isPIC: isPIC ?? this.isPIC,
     );
   }
 }

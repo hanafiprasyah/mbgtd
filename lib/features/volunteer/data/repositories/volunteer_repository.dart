@@ -81,4 +81,40 @@ class VolunteerRepository {
       'isActive': !currentStatus,
     });
   }
+
+  Future<Volunteer> getVolunteerById(String id) async {
+    final doc = await firestore.collection('volunteers').doc(id).get();
+
+    if (!doc.exists) {
+      throw Exception('Volunteer not found');
+    }
+
+    return Volunteer.fromFirestore(doc);
+  }
+
+  Future<void> toggleVolunteerPIC(
+    String id,
+    bool currentStatus,
+    String tim,
+  ) async {
+    if (!currentStatus) {
+      final batch = firestore.batch();
+
+      final query = await firestore
+          .collection('volunteers')
+          .where('tim', isEqualTo: tim)
+          .get();
+
+      for (var doc in query.docs) {
+        batch.update(doc.reference, {'isPIC': false});
+      }
+
+      final selectedRef = firestore.collection('volunteers').doc(id);
+      batch.update(selectedRef, {'isPIC': true});
+
+      await batch.commit();
+    } else {
+      await firestore.collection('volunteers').doc(id).update({'isPIC': false});
+    }
+  }
 }

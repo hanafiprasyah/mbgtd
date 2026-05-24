@@ -20,12 +20,6 @@ class ScannerPage extends StatefulWidget {
 }
 
 class _ScannerPageState extends State<ScannerPage> with WidgetsBindingObserver {
-  // late final MobileScannerController _controller = MobileScannerController(
-  //   torchEnabled: false,
-  //   autoStart: false,
-  //   detectionSpeed: DetectionSpeed.noDuplicates,
-  //   autoZoom: true,
-  // );
   late final MobileScannerController _controller =
       CameraPrewarmService.controller;
   bool isScanning = false;
