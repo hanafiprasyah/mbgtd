@@ -30,7 +30,7 @@ class _QrGeneratorPageState extends State<QrGeneratorPage> {
     final id = widget.id.trim();
     final nama = widget.nama.trim();
     final tim = widget.tim.trim();
-    final data = "${id}|${nama}|${tim}";
+    final data = "$id|$nama|$tim";
 
     return data;
   }

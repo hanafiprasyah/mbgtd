@@ -26,7 +26,7 @@ class VolunteerRepository {
           .where('namaSearch', isGreaterThanOrEqualTo: query.toLowerCase())
           .where(
             'namaSearch',
-            isLessThanOrEqualTo: query.toLowerCase() + '\uf8ff',
+            isLessThanOrEqualTo: '${query.toLowerCase()}\uf8ff',
           );
     }
 

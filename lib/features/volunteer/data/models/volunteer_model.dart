@@ -70,7 +70,7 @@ class Volunteer {
     String? alamat,
     String? jenisKelamin,
     String? tim,
-    required bool isActive,
+    bool? isActive,
     String? noRek,
     String? namaBank,
     bool? isPIC,
@@ -83,9 +83,9 @@ class Volunteer {
       alamat: alamat ?? this.alamat,
       jenisKelamin: jenisKelamin ?? this.jenisKelamin,
       tim: tim ?? this.tim,
-      isActive: isActive,
-      noRek: noRek,
-      namaBank: namaBank,
+      isActive: isActive ?? this.isActive,
+      noRek: noRek ?? this.noRek,
+      namaBank: namaBank ?? this.namaBank,
       isPIC: isPIC ?? this.isPIC,
     );
   }

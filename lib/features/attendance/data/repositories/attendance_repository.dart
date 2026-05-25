@@ -33,12 +33,9 @@ class AttendanceRepository {
     if (user == null) {
       throw Exception('user-not-logged-in');
     }
-    print('got user detail: ${user}');
+
     final scannedByUid = user.uid;
     final scannedByEmail = user.email ?? 'unknown';
-
-    print('got scanned by uid: ${user.uid}');
-    print('got scanned by email: ${user.email}');
 
     // attendance object
     final attendance = Attendance(

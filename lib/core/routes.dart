@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mbg_test/app.dart';
+// import 'package:mbg_test/features/attendance/presentation/pages/attendance_edit.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/payroll_detail_page.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/payroll_history_page.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/payroll_page.dart';
@@ -52,6 +53,11 @@ class AppRoutes {
         );
       case '/payroll-history':
         return MaterialPageRoute(builder: (_) => const PayrollHistoryPage());
+      // case '/edit-attendance-page':
+      //   return MaterialPageRoute(
+      //     builder: (_) => EditAttendancePage(),
+      //     settings: settings,
+      //   );
       default:
         return MaterialPageRoute(
           builder: (_) => const Scaffold(

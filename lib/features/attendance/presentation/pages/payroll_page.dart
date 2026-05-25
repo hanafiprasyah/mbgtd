@@ -4,6 +4,10 @@ import 'package:mbg_test/core/helper/design_system.dart';
 import 'package:intl/intl.dart';
 import 'package:mbg_test/core/helper/salary_calculator.dart';
 import 'package:mbg_test/features/attendance/data/repositories/attendance_payroll_repository.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+// import 'package:mbg_test/features/attendance/presentation/pages/attendance_edit.dart';
+import 'package:mbg_test/features/volunteer/bloc/volunteer_bloc.dart';
+import 'package:mbg_test/features/volunteer/bloc/volunteer_event.dart';
 import 'package:rxdart/rxdart.dart';
 
 class PayrollPage extends StatefulWidget {
@@ -26,6 +30,351 @@ class _PayrollPageState extends State<PayrollPage>
     symbol: 'Rp. ',
     decimalDigits: 0,
   );
+
+  // set PIC function with Bloc event
+  void _handleSetPIC(BuildContext context, Map<String, dynamic> item) {
+    final volunteerId = item['id'];
+    final isPIC = item['isPIC'] ?? false;
+    final tim = item['tim'];
+    if (volunteerId == null) return;
+
+    context.read<VolunteerBloc>().add(
+      ToggleVolunteerPIC(volunteerId, isPIC, tim),
+    );
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('PIC status updated')));
+  }
+
+  void _showScanHistory(BuildContext context, Map<String, dynamic> item) {
+    final volunteerId = item['id'];
+    final volunteerName = item['nama'] ?? '-';
+
+    if (volunteerId == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          builder: (_, controller) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+
+                  // HANDLE BAR
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade400,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // TITLE
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).primaryColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            Icons.history,
+                            size: 18,
+                            color: Theme.of(context).primaryColor,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            volunteerName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // LIST
+                  Expanded(
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('attendances')
+                          .where('volunteerId', isEqualTo: volunteerId)
+                          .orderBy('timestamp', descending: true)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        // 🔴 HANDLE ERROR
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Text(
+                              'Error while fetching history. Please try again.',
+                            ),
+                          );
+                        }
+
+                        // ⏳ LOADING STATE
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Center(child: CircularProgressIndicator());
+                        }
+
+                        // 🚨 DATA NULL GUARD
+                        if (!snapshot.hasData || snapshot.data == null) {
+                          return Center(child: Text('No data available'));
+                        }
+
+                        final docs = snapshot.data!.docs;
+
+                        // 📭 EMPTY STATE
+                        if (docs.isEmpty) {
+                          return Center(child: Text('No scan history'));
+                        }
+
+                        // ✅ DATA exist
+                        return ListView.builder(
+                          itemCount: docs.length,
+                          itemBuilder: (context, index) {
+                            final data =
+                                docs[index].data() as Map<String, dynamic>;
+
+                            final ts = data['timestamp'];
+                            DateTime? dateTime;
+                            if (ts is Timestamp) {
+                              dateTime = ts.toDate();
+                            }
+
+                            final formattedDate = dateTime != null
+                                ? DateFormat(
+                                    'dd MMM yyyy • HH:mm',
+                                  ).format(dateTime)
+                                : (data['date'] ?? '-');
+
+                            final isLatest = index == 0;
+
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // TIMELINE
+                                  Column(
+                                    children: [
+                                      Container(
+                                        width: 2,
+                                        height: 12,
+                                        color: Colors.grey.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                      ),
+                                      Container(
+                                        width: 10,
+                                        height: 10,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: isLatest
+                                              ? Theme.of(context).primaryColor
+                                              : Colors.grey.withValues(
+                                                  alpha: 0.4,
+                                                ),
+                                        ),
+                                      ),
+                                      Container(
+                                        width: 2,
+                                        height: 60,
+                                        color: Colors.grey.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  const SizedBox(width: 10),
+
+                                  // CARD CONTENT
+                                  Expanded(
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(14),
+                                        color: Theme.of(context).cardColor,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: isLatest
+                                                ? Theme.of(context).primaryColor
+                                                      .withValues(alpha: 0.5)
+                                                : Colors.black.withValues(
+                                                    alpha: 0.05,
+                                                  ),
+                                            blurRadius: isLatest ? 16 : 8,
+                                            spreadRadius: isLatest ? 2 : 0,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                        border: isLatest
+                                            ? Border.all(
+                                                color: Theme.of(
+                                                  context,
+                                                ).primaryColor,
+                                                width: 1.5,
+                                              )
+                                            : null,
+                                      ),
+                                      child: ListTile(
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              horizontal: 14,
+                                              vertical: 10,
+                                            ),
+                                        leading: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context)
+                                                .primaryColor
+                                                .withValues(alpha: 0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            Icons.qr_code_scanner,
+                                            size: 16,
+                                            color: Theme.of(
+                                              context,
+                                            ).primaryColor,
+                                          ),
+                                        ),
+                                        title: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                'Scanned by ${data['scannedByEmail'] ?? '-'}',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 11,
+                                                ),
+                                              ),
+                                            ),
+                                            // Single conditional badge for Scan/Latest Scan
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 4,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: isLatest
+                                                    ? Colors.amber.withValues(
+                                                        alpha: 0.15,
+                                                      )
+                                                    : Theme.of(
+                                                        context,
+                                                      ).primaryColor.withValues(
+                                                        alpha: 0.1,
+                                                      ),
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                              ),
+                                              child: Text(
+                                                isLatest
+                                                    ? 'Latest Scan'
+                                                    : 'Scanned',
+                                                style: TextStyle(
+                                                  fontSize: 8,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isLatest
+                                                      ? Colors.amber.shade800
+                                                      : Theme.of(
+                                                          context,
+                                                        ).primaryColor,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        subtitle: Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 4,
+                                          ),
+                                          child: Text(
+                                            formattedDate,
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ),
+                                        trailing: IconButton(
+                                          icon: Icon(
+                                            Icons.edit,
+                                            color: Colors.orange,
+                                          ),
+                                          onPressed: () {
+                                            // Navigator.push(
+                                            //   context,
+                                            //   MaterialPageRoute(
+                                            //     builder: (_) =>
+                                            //         EditAttendancePage(
+                                            //           attendanceId: data['id'],
+                                            //           data: data,
+                                            //         ),
+                                            //   ),
+                                            // );
+                                            // Navigator.pushNamed(
+                                            //   context,
+                                            //   '/edit-attendance',
+                                            //   arguments: {
+                                            //     'attendanceId': data['id'],
+                                            //     'data': data,
+                                            //   },
+                                            // );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   Future<void> _resetPeriod() async {
     final firestore = FirebaseFirestore.instance;
@@ -57,7 +406,10 @@ class _PayrollPageState extends State<PayrollPage>
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Reset gagal: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Reset failed: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -175,7 +527,7 @@ class _PayrollPageState extends State<PayrollPage>
                 if (snapshot.hasError) {
                   return Center(
                     child: Text(
-                      'Terjadi error: ${snapshot.error}',
+                      'Error encountered: ${snapshot.error}',
                       style: const TextStyle(color: Colors.red),
                     ),
                   );
@@ -495,9 +847,47 @@ class _PayrollPageState extends State<PayrollPage>
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              const SizedBox(height: 4),
+                                              const SizedBox(
+                                                height: AppSpacing.sm,
+                                              ),
+                                              // SALARY (moved here for better layout)
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 6,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: Theme.of(context)
+                                                      .primaryColor
+                                                      .withValues(
+                                                        alpha: isHighlighted
+                                                            ? 0.2
+                                                            : 0.1,
+                                                      ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                                child: Text(
+                                                  currencyFormatter.format(
+                                                    item['totalGaji'] ?? 0,
+                                                  ),
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 12,
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).primaryColor,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(
+                                                height: AppSpacing.sm,
+                                              ),
                                               Text(
-                                                '${(item['totalScan'] ?? 0) > 0 ? '${item['totalScan']} days' : 'No scan'}',
+                                                (item['totalScan'] ?? 0) > 0
+                                                    ? '${item['totalScan']} days'
+                                                    : 'No scan',
                                                 style: const TextStyle(
                                                   fontSize: 12,
                                                 ),
@@ -527,33 +917,30 @@ class _PayrollPageState extends State<PayrollPage>
                                               ),
                                             ],
                                           ),
-                                          trailing: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 6,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Theme.of(context)
-                                                  .primaryColor
-                                                  .withValues(
-                                                    alpha: isHighlighted
-                                                        ? 0.2
-                                                        : 0.1,
-                                                  ),
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                            ),
-                                            child: Text(
-                                              currencyFormatter.format(
-                                                item['totalGaji'] ?? 0,
+                                          trailing: PopupMenuButton<String>(
+                                            onSelected: (value) {
+                                              if (value == 'set_pic') {
+                                                _handleSetPIC(context, item);
+                                              } else if (value == 'history') {
+                                                _showScanHistory(context, item);
+                                              }
+                                            },
+                                            itemBuilder: (context) => [
+                                              const PopupMenuItem(
+                                                value: 'history',
+                                                child: Text(
+                                                  'View Scan History',
+                                                ),
                                               ),
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                color: Theme.of(
-                                                  context,
-                                                ).primaryColor,
+                                              PopupMenuItem(
+                                                value: 'set_pic',
+                                                child: Text(
+                                                  item['isPIC'] == true
+                                                      ? 'Remove PIC'
+                                                      : 'Set as PIC',
+                                                ),
                                               ),
-                                            ),
+                                            ],
                                           ),
                                         ),
                                       ),

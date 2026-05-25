@@ -137,17 +137,6 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
                   'Birth Date',
                   DateFormat('dd MMM yyyy').format(volunteer!.tanggalLahir),
                 ),
-
-                // Bank Info (new)
-                const SizedBox(height: AppSpacing.sm),
-                const Divider(),
-                const SizedBox(height: AppSpacing.sm),
-                _buildBankInfoItem(
-                  context,
-                  volunteer!.namaBank ?? '',
-                  volunteer!.noRek ?? '',
-                ),
-
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                   child: Row(
@@ -173,8 +162,8 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
                           ),
                           decoration: BoxDecoration(
                             color: volunteer!.isActive
-                                ? Colors.green.withOpacity(0.15)
-                                : Colors.grey.withOpacity(0.15),
+                                ? Colors.green.withValues(alpha: 0.15)
+                                : Colors.grey.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -191,6 +180,15 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
                       ),
                     ],
                   ),
+                ),
+                // Bank Info (new)
+                const SizedBox(height: AppSpacing.sm),
+                const Divider(),
+                const SizedBox(height: AppSpacing.sm),
+                _buildBankInfoItem(
+                  context,
+                  volunteer!.namaBank ?? '',
+                  volunteer!.noRek ?? '',
                 ),
               ]),
 
