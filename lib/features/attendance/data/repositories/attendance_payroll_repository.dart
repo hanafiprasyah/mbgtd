@@ -54,13 +54,15 @@ class AttendancePayrollRepository {
 
         const picBonusPerScan = 10000;
 
-        // Salary now based on effectiveScan (converted to int for compatibility)
-        final baseSalary = calculateSalary(totalEffectiveScan.toInt(), tim);
+        // Base salary should ONLY depend on attendance logic
+        final baseSalary = getBaseSalary(tim);
+        final attendancePay = (baseSalary * totalEffectiveScan).toInt();
 
-        // PIC bonus should also follow effectiveScan (not totalScan)
-        final totalGaji = isPIC
-            ? baseSalary + (totalEffectiveScan * picBonusPerScan).toInt()
-            : baseSalary;
+        // Scan bonus separated clearly
+        final scanBonus = (totalEffectiveScan * picBonusPerScan).toInt();
+
+        // Final salary
+        final totalGaji = isPIC ? attendancePay + scanBonus : attendancePay;
 
         result[id] = {
           'id': id,

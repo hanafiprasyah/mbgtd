@@ -16,14 +16,14 @@ class PayrollDetailPage extends StatefulWidget {
 }
 
 class _PayrollDetailPageState extends State<PayrollDetailPage> {
+  final AttendancePayrollRepository payrollRepository =
+      AttendancePayrollRepository();
+
   final currencyFormatter = NumberFormat.currency(
     locale: 'id_ID',
     symbol: 'Rp. ',
     decimalDigits: 0,
   );
-
-  final AttendancePayrollRepository payrollRepository =
-      AttendancePayrollRepository();
 
   String getBankAsset(String bank) {
     switch (bank.toUpperCase()) {
@@ -107,16 +107,14 @@ class _PayrollDetailPageState extends State<PayrollDetailPage> {
               const picBonusPerScan = 10000;
 
               // Salary now based on effective scan
-              final baseSalary = calculateSalary(
-                totalEffectiveScan.toInt(),
-                tim,
-              );
+              final baseSalary = getBaseSalary(tim);
+              final attendancePay = (baseSalary * totalEffectiveScan).toInt();
+              final scanBonus =
+                  (totalEffectiveScan.toDouble() * picBonusPerScan).toInt();
 
               final totalGaji = isPIC
-                  ? baseSalary +
-                        (totalEffectiveScan.toDouble() * picBonusPerScan)
-                            .toInt()
-                  : baseSalary;
+                  ? attendancePay + scanBonus
+                  : attendancePay;
 
               return Column(
                 children: [

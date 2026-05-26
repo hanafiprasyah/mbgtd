@@ -13,3 +13,7 @@ int calculateSalary(int totalScan, String tim) {
   final salary = salaryPerTim[tim] ?? 0;
   return totalScan * salary;
 }
+
+int getBaseSalary(String tim) {
+  return salaryPerTim[tim] ?? 0;
+}
