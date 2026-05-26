@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:mbg_test/core/helper/salary_calculator.dart';
 import 'package:mbg_test/features/attendance/data/repositories/attendance_payroll_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-// import 'package:mbg_test/features/attendance/presentation/pages/attendance_edit.dart';
+import 'package:mbg_test/features/attendance/presentation/pages/attendance_edit.dart';
 import 'package:mbg_test/features/volunteer/bloc/volunteer_bloc.dart';
 import 'package:mbg_test/features/volunteer/bloc/volunteer_event.dart';
 import 'package:rxdart/rxdart.dart';
@@ -164,6 +164,9 @@ class _PayrollPageState extends State<PayrollPage>
                             final data =
                                 docs[index].data() as Map<String, dynamic>;
 
+                            String docID = docs[index].id;
+                            data['id'] = docID; // add document ID to data map
+
                             final ts = data['timestamp'];
                             DateTime? dateTime;
                             if (ts is Timestamp) {
@@ -281,53 +284,106 @@ class _PayrollPageState extends State<PayrollPage>
                                                 ),
                                               ),
                                             ),
-                                            // Single conditional badge for Scan/Latest Scan
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 10,
-                                                    vertical: 4,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: isLatest
-                                                    ? Colors.amber.withValues(
-                                                        alpha: 0.15,
-                                                      )
-                                                    : Theme.of(
-                                                        context,
-                                                      ).primaryColor.withValues(
-                                                        alpha: 0.1,
-                                                      ),
-                                                borderRadius:
-                                                    BorderRadius.circular(20),
-                                              ),
-                                              child: Text(
-                                                isLatest
-                                                    ? 'Latest Scan'
-                                                    : 'Scanned',
-                                                style: TextStyle(
-                                                  fontSize: 8,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: isLatest
-                                                      ? Colors.amber.shade800
-                                                      : Theme.of(
-                                                          context,
-                                                        ).primaryColor,
+                                            // Safer attendanceType handling
+                                            (() {
+                                              final attendanceType =
+                                                  data['attendanceType'];
+                                              return Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 4,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: attendanceType == null
+                                                      ? Colors.grey.withValues(
+                                                          alpha: 0.15,
+                                                        )
+                                                      : attendanceType != 'full'
+                                                      ? Colors.amber.withValues(
+                                                          alpha: 0.15,
+                                                        )
+                                                      : Theme.of(context)
+                                                            .primaryColor
+                                                            .withValues(
+                                                              alpha: 0.1,
+                                                            ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(20),
                                                 ),
-                                              ),
-                                            ),
+                                                child: Text(
+                                                  attendanceType == null
+                                                      ? 'Not Set'
+                                                      : attendanceType != 'full'
+                                                      ? 'Half Day'
+                                                      : 'Full Day',
+                                                  style: TextStyle(
+                                                    fontSize: 8,
+                                                    fontWeight: FontWeight.w600,
+                                                    color:
+                                                        attendanceType == null
+                                                        ? Colors.grey
+                                                        : attendanceType !=
+                                                              'full'
+                                                        ? Colors.amber.shade800
+                                                        : Theme.of(
+                                                            context,
+                                                          ).primaryColor,
+                                                  ),
+                                                ),
+                                              );
+                                            })(),
                                           ],
                                         ),
                                         subtitle: Padding(
                                           padding: const EdgeInsets.only(
                                             top: 4,
                                           ),
-                                          child: Text(
-                                            formattedDate,
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              color: Colors.grey,
-                                            ),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                formattedDate,
+                                                style: const TextStyle(
+                                                  fontSize: 11,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 4,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: isLatest
+                                                      ? Colors.amber.withValues(
+                                                          alpha: 0.15,
+                                                        )
+                                                      : Theme.of(context)
+                                                            .primaryColor
+                                                            .withValues(
+                                                              alpha: 0.1,
+                                                            ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(20),
+                                                ),
+                                                child: Text(
+                                                  isLatest ? 'Latest' : 'Past',
+                                                  style: TextStyle(
+                                                    fontSize: 8,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: isLatest
+                                                        ? Colors.amber.shade800
+                                                        : Theme.of(
+                                                            context,
+                                                          ).primaryColor,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                         trailing: IconButton(
@@ -336,16 +392,17 @@ class _PayrollPageState extends State<PayrollPage>
                                             color: Colors.orange,
                                           ),
                                           onPressed: () {
-                                            // Navigator.push(
-                                            //   context,
-                                            //   MaterialPageRoute(
-                                            //     builder: (_) =>
-                                            //         EditAttendancePage(
-                                            //           attendanceId: data['id'],
-                                            //           data: data,
-                                            //         ),
-                                            //   ),
-                                            // );
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    EditAttendancePage(
+                                                      attendanceId:
+                                                          data['id'] ?? '',
+                                                      data: data,
+                                                    ),
+                                              ),
+                                            );
                                             // Navigator.pushNamed(
                                             //   context,
                                             //   '/edit-attendance',

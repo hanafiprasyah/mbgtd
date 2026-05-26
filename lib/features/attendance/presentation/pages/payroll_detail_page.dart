@@ -21,8 +21,10 @@ class _PayrollDetailPageState extends State<PayrollDetailPage> {
     symbol: 'Rp. ',
     decimalDigits: 0,
   );
+
   final AttendancePayrollRepository payrollRepository =
       AttendancePayrollRepository();
+
   String getBankAsset(String bank) {
     switch (bank.toUpperCase()) {
       case 'BCA':
@@ -42,6 +44,12 @@ class _PayrollDetailPageState extends State<PayrollDetailPage> {
       default:
         return 'assets/default_bank.png';
     }
+  }
+
+  String formatDate(String raw) {
+    final date = DateTime.tryParse(raw);
+    if (date == null) return raw;
+    return DateFormat('dd MMM yyyy').format(date);
   }
 
   @override
@@ -86,20 +94,153 @@ class _PayrollDetailPageState extends State<PayrollDetailPage> {
 
               final payrollMap = snapshot.data!;
               final payrollData = payrollMap[id];
+              final List<dynamic> halfDayDates =
+                  payrollData?['halfDayDates'] ?? [];
 
               final totalScan = payrollData?['totalScan'] ?? 0;
+              final totalEffectiveScan =
+                  (payrollData?['effectiveScan'] ?? 0.0) as num;
+
               final tim = (volunteer.tim).toString().trim();
               final isPIC = volunteer.isPIC == true;
 
               const picBonusPerScan = 10000;
-              final baseSalary = calculateSalary(totalScan, tim);
+
+              // Salary now based on effective scan
+              final baseSalary = calculateSalary(
+                totalEffectiveScan.toInt(),
+                tim,
+              );
+
               final totalGaji = isPIC
-                  ? baseSalary + (totalScan * picBonusPerScan)
+                  ? baseSalary +
+                        (totalEffectiveScan.toDouble() * picBonusPerScan)
+                            .toInt()
                   : baseSalary;
 
               return Column(
                 children: [
                   _buildHeader(context, nama, namaBank, noRek, logo),
+
+                  const SizedBox(height: 16),
+
+                  // ATTENDANCE DETAIL INFO
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                        border: Border.all(
+                          color: Theme.of(
+                            context,
+                          ).primaryColor.withValues(alpha: 0.1),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.fact_check_rounded,
+                                color: Theme.of(context).primaryColor,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Attendance Detail',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+
+                          // EFFECTIVE SCAN
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Effective Attendance',
+                                style: TextStyle(fontSize: 13),
+                              ),
+                              Text(
+                                ((totalEffectiveScan))
+                                    .toDouble()
+                                    .toStringAsFixed(2),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          if (halfDayDates.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+
+                            const Text(
+                              'Half Day Attendance Dates',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: halfDayDates.map((date) {
+                                final formatted = formatDate(date);
+
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: Colors.orange.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text("📅 "),
+
+                                      Text(
+                                        formatted,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.orange.shade800,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
 
                   const SizedBox(height: 16),
 
@@ -194,7 +335,10 @@ class _PayrollDetailPageState extends State<PayrollDetailPage> {
                                   style: TextStyle(fontSize: 13),
                                 ),
                                 Text(
-                                  currencyFormatter.format(totalScan * 10000),
+                                  currencyFormatter.format(
+                                    (totalEffectiveScan.toDouble() * 10000)
+                                        .toInt(),
+                                  ),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w600,
                                     fontSize: 13,
@@ -204,7 +348,7 @@ class _PayrollDetailPageState extends State<PayrollDetailPage> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Calculated from total scans × Rp 10.000',
+                              'Calculated from effective scans × Rp 10.000',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: Colors.grey[600],

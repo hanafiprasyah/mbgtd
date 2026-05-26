@@ -9,6 +9,9 @@ class Attendance {
   final String date;
   final String scannedByUid;
   final String scannedByEmail;
+  final String attendanceType;
+  final double multiplier;
+  final String note;
 
   Attendance({
     required this.id,
@@ -19,6 +22,9 @@ class Attendance {
     required this.date,
     required this.scannedByUid,
     required this.scannedByEmail,
+    this.attendanceType = "full",
+    this.multiplier = 1.0,
+    this.note = "",
   });
 
   Map<String, dynamic> toMap() {
@@ -30,6 +36,9 @@ class Attendance {
       'date': date,
       'scannedByUid': scannedByUid,
       'scannedByEmail': scannedByEmail,
+      'attendanceType': attendanceType,
+      'multiplier': multiplier,
+      'note': note,
     };
   }
 }

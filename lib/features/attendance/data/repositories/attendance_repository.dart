@@ -47,6 +47,9 @@ class AttendanceRepository {
       date: today,
       scannedByUid: scannedByUid,
       scannedByEmail: scannedByEmail,
+      attendanceType: "full",
+      multiplier: 1.0,
+      note: "Full attendance",
     );
 
     final volunteerDoc = await firestore
