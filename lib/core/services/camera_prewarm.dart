@@ -6,6 +6,10 @@ class CameraPrewarmService {
     autoStart: false,
     detectionSpeed: DetectionSpeed.noDuplicates,
     autoZoom: true,
+    facing: CameraFacing.back,
+    // Khusus OPPO
+    // facing: CameraFacing.front,
+    lensType: CameraLensType.normal,
   );
 
   static bool _isPrewarmed = false;
@@ -16,7 +20,7 @@ class CameraPrewarmService {
       await Future.delayed(const Duration(milliseconds: 50));
       if (!controller.value.isRunning) {
         await controller.start();
-        await Future.delayed(const Duration(milliseconds: 150));
+        await Future.delayed(const Duration(milliseconds: 200));
         await controller.stop();
       }
       _isPrewarmed = true;

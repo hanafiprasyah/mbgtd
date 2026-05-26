@@ -67,11 +67,25 @@ class _ScannerPageState extends State<ScannerPage> with WidgetsBindingObserver {
       if (mounted && !_controller.value.isRunning) {
         await _controller.start();
       }
+
+      // Khusus OPPO
+      // if (mounted && !_controller.value.isRunning) {
+      //   try {
+      //     await _controller.start();
+      //   } catch (_) {}
+      // }
     } catch (_) {}
   }
 
   Future<void> _handleBackAction() async {
     if (!mounted) return;
+
+    // Khusus OPPO: stop camera immediately to free up resources for next page (avoid black screen)
+    // try {
+    //   await _controller.stop();
+    //   if (!mounted) return;
+    //   Navigator.of(context).pop();
+    // } catch (_) {}
 
     // Do NOT stop camera here → keep it alive for next page
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -157,6 +171,8 @@ class _ScannerPageState extends State<ScannerPage> with WidgetsBindingObserver {
                       controller: _controller,
                       fit: BoxFit.cover,
                       tapToFocus: true,
+                      // Khusus OPPO
+                      // useAppLifecycleState: true,
                       useAppLifecycleState: false,
                       onDetect: (barcodeCapture) async {
                         _resetIdleTimer();
