@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mbg_test/logic/login/login_bloc.dart';
+import 'package:mbg_test/logic/login/login_event.dart';
+import 'package:mbg_test/logic/login/login_state.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
 import 'package:mbg_test/presentation/widgets/login_form.dart';
-import '../../logic/login/login_bloc.dart';
-import '../../logic/login/login_event.dart';
-import '../../logic/login/login_state.dart';
-import '../../data/repositories/auth_repository.dart';
+import 'package:mbg_test/data/repositories/auth_repository.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,16 +15,16 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  bool _showContent = false;
+  bool _isPasswordHidden = true;
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isPasswordHidden = true;
-  bool _showContent = false;
 
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 2000), () {
+    Future.delayed(const Duration(milliseconds: 1500), () {
       if (mounted) {
         setState(() {
           _showContent = true;

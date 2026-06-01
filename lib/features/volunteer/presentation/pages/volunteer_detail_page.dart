@@ -383,7 +383,7 @@ Widget _buildBankInfoItem(BuildContext context, String bank, String noRek) {
       case 'BRI':
         return 'assets/bri.png';
 
-      case 'Mandiri':
+      case 'MANDIRI':
         return 'assets/mandiri.png';
 
       case 'CIMB':
@@ -392,7 +392,7 @@ Widget _buildBankInfoItem(BuildContext context, String bank, String noRek) {
       case 'OCBC NISP':
         return 'assets/ocbc_nisp.png';
 
-      case 'Maybank':
+      case 'MAYBANK':
         return 'assets/maybank.png';
 
       default:

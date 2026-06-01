@@ -114,6 +114,7 @@ class LoginFormWidget extends StatelessWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text("Please enter a valid email first"),
+                          duration: Duration(seconds: 1),
                         ),
                       );
                       return;
@@ -129,11 +130,15 @@ class LoginFormWidget extends StatelessWidget {
                           content: Text(
                             "Password reset link has been sent to your email",
                           ),
+                          duration: Duration(seconds: 1),
                         ),
                       );
                     } catch (e) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Failed to send email: $e")),
+                        SnackBar(
+                          content: Text("Failed to send email: $e"),
+                          duration: Duration(seconds: 1),
+                        ),
                       );
                     }
                   },

@@ -260,10 +260,10 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
                                         'BCA',
                                         'BRI',
                                         'BNI',
-                                        'Mandiri',
+                                        'MANDIRI',
                                         'CIMB Niaga',
                                         'OCBC NISP',
-                                        'Maybank',
+                                        'MAYBANK',
                                       ].contains(namaBank)
                                       ? namaBank
                                       : null,
@@ -272,10 +272,10 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
                                             'BCA',
                                             'BRI',
                                             'BNI',
-                                            'Mandiri',
+                                            'MANDIRI',
                                             'CIMB Niaga',
                                             'OCBC NISP',
-                                            'Maybank',
+                                            'MAYBANK',
                                           ]
                                           .map(
                                             (e) => DropdownMenuItem(

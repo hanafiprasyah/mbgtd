@@ -425,143 +425,220 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                                       ),
                                     );
                                   },
-                                  child: ListTile(
-                                    title: Text(r.namaLengkap),
-                                    subtitle: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(r.tim),
-                                        const SizedBox(height: 4),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: (r.isActive == true)
-                                                ? Colors.green
-                                                : Colors.grey,
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            (r.isActive == true)
-                                                ? 'Active Volunteer'
-                                                : 'Inactive Volunteer',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
+                                  child: Card(
+                                    margin: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
                                     ),
-                                    onTap: () {
-                                      Navigator.pushNamed(
-                                        context,
-                                        '/volunteer-detail',
-                                        arguments: r,
-                                      );
-                                    },
-                                    trailing: IconButton(
-                                      icon: const Icon(Icons.delete),
-                                      onPressed: () async {
-                                        final confirm = await showDialog<bool>(
-                                          context: context,
-                                          builder: (ctx) {
-                                            return AlertDialog(
-                                              title: const Text(
-                                                'Confirm Delete',
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      side: BorderSide(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.outlineVariant,
+                                      ),
+                                    ),
+                                    child: Hero(
+                                      tag: 'volunteer_card_${r.id}',
+                                      child: Material(
+                                        type: MaterialType.transparency,
+                                        child: ListTile(
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                horizontal: 16,
+                                                vertical: 12,
                                               ),
-                                              content: Text(
-                                                'Are you sure you want to delete ${r.namaLengkap}?',
+                                          leading: CircleAvatar(
+                                            radius: 24,
+                                            backgroundColor: Theme.of(
+                                              context,
+                                            ).colorScheme.primaryContainer,
+                                            child: Text(
+                                              r.namaLengkap.isNotEmpty
+                                                  ? r.namaLengkap[0]
+                                                        .toUpperCase()
+                                                  : '?',
+                                              style: TextStyle(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onPrimaryContainer,
+                                                fontWeight: FontWeight.bold,
                                               ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.pop(ctx, false),
-                                                  child: const Text('Cancel'),
+                                            ),
+                                          ),
+                                          title: Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  r.namaLengkap,
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .titleMedium
+                                                      ?.copyWith(
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
-                                                ElevatedButton(
-                                                  onPressed: () =>
-                                                      Navigator.pop(ctx, true),
-                                                  child: const Text('Delete'),
+                                              ),
+                                              const SizedBox(width: 16),
+                                              Tooltip(
+                                                message: (r.isActive == true)
+                                                    ? 'Active Volunteer'
+                                                    : 'Inactive Volunteer',
+                                                child: Icon(
+                                                  Icons.verified,
+                                                  size: 18,
+                                                  color: (r.isActive == true)
+                                                      ? Theme.of(
+                                                          context,
+                                                        ).colorScheme.primary
+                                                      : Theme.of(
+                                                          context,
+                                                        ).colorScheme.outline,
                                                 ),
-                                              ],
+                                              ),
+                                            ],
+                                          ),
+                                          subtitle: Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 6,
+                                            ),
+                                            child: Text(
+                                              r.tim,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodySmall
+                                                  ?.copyWith(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurfaceVariant,
+                                                  ),
+                                            ),
+                                          ),
+                                          onTap: () {
+                                            Navigator.pushNamed(
+                                              context,
+                                              '/volunteer-detail',
+                                              arguments: r,
                                             );
                                           },
-                                        );
-
-                                        if (confirm == true) {
-                                          final bloc = context
-                                              .read<VolunteerBloc>();
-
-                                          // optimistic remove
-                                          if (!mounted) return;
-                                          setState(() {
-                                            _removingIds.add(r.id);
-                                          });
-
-                                          final messenger =
-                                              ScaffoldMessenger.of(context);
-
-                                          final snackBar = SnackBar(
-                                            content: Text(
-                                              '${r.namaLengkap} deleted',
+                                          trailing: IconButton(
+                                            icon: Icon(
+                                              Icons.delete,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.error,
                                             ),
-                                            action: SnackBarAction(
-                                              label: 'Undo',
-                                              onPressed: () {
+                                            tooltip: 'Delete',
+                                            onPressed: () async {
+                                              final confirm =
+                                                  await showDialog<bool>(
+                                                    context: context,
+                                                    builder: (ctx) {
+                                                      return AlertDialog(
+                                                        title: const Text(
+                                                          'Confirm Delete',
+                                                        ),
+                                                        content: Text(
+                                                          'Are you sure you want to delete ${r.namaLengkap}?',
+                                                        ),
+                                                        actions: [
+                                                          TextButton(
+                                                            onPressed: () =>
+                                                                Navigator.pop(
+                                                                  ctx,
+                                                                  false,
+                                                                ),
+                                                            child: const Text(
+                                                              'Cancel',
+                                                            ),
+                                                          ),
+                                                          FilledButton(
+                                                            onPressed: () =>
+                                                                Navigator.pop(
+                                                                  ctx,
+                                                                  true,
+                                                                ),
+                                                            child: const Text(
+                                                              'Delete',
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      );
+                                                    },
+                                                  );
+                                              if (confirm == true) {
+                                                final bloc = context
+                                                    .read<VolunteerBloc>();
                                                 if (!mounted) return;
                                                 setState(() {
-                                                  _removingIds.remove(r.id);
+                                                  _removingIds.add(r.id);
                                                 });
-                                              },
-                                            ),
-                                          );
-
-                                          messenger
-                                              .showSnackBar(snackBar)
-                                              .closed
-                                              .then((reason) {
-                                                if (!_removingIds.contains(
-                                                  r.id,
-                                                )) {
-                                                  // undone
-                                                  return;
-                                                }
-
-                                                // commit delete after snackbar closes
-                                                try {
-                                                  bloc.add(
-                                                    DeleteVolunteer(r.id),
-                                                  );
-                                                } catch (e) {
-                                                  debugPrint('Bloc error: $e');
-                                                }
-
-                                                try {
-                                                  bloc.add(
-                                                    SearchVolunteer(
-                                                      searchController.text,
-                                                      selectedTim,
-                                                      selectedGender,
-                                                    ),
-                                                  );
-                                                } catch (e) {
-                                                  debugPrint('Bloc error: $e');
-                                                }
-
-                                                if (!mounted) return;
-                                                setState(() {
-                                                  _removingIds.remove(r.id);
-                                                });
-                                              });
-                                        }
-                                      },
+                                                final messenger =
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    );
+                                                final snackBar = SnackBar(
+                                                  content: Text(
+                                                    '${r.namaLengkap} deleted',
+                                                  ),
+                                                  action: SnackBarAction(
+                                                    label: 'Undo',
+                                                    onPressed: () {
+                                                      if (!mounted) return;
+                                                      setState(() {
+                                                        _removingIds.remove(
+                                                          r.id,
+                                                        );
+                                                      });
+                                                    },
+                                                  ),
+                                                );
+                                                messenger
+                                                    .showSnackBar(snackBar)
+                                                    .closed
+                                                    .then((reason) {
+                                                      if (!_removingIds
+                                                          .contains(r.id))
+                                                        return;
+                                                      try {
+                                                        bloc.add(
+                                                          DeleteVolunteer(r.id),
+                                                        );
+                                                      } catch (e) {
+                                                        debugPrint(
+                                                          'Bloc error: $e',
+                                                        );
+                                                      }
+                                                      try {
+                                                        bloc.add(
+                                                          SearchVolunteer(
+                                                            searchController
+                                                                .text,
+                                                            selectedTim,
+                                                            selectedGender,
+                                                          ),
+                                                        );
+                                                      } catch (e) {
+                                                        debugPrint(
+                                                          'Bloc error: $e',
+                                                        );
+                                                      }
+                                                      if (!mounted) return;
+                                                      setState(() {
+                                                        _removingIds.remove(
+                                                          r.id,
+                                                        );
+                                                      });
+                                                    });
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),

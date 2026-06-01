@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:mbg_test/app.dart';
-// import 'package:mbg_test/features/attendance/presentation/pages/attendance_edit.dart';
-import 'package:mbg_test/features/attendance/presentation/pages/payroll_detail_page.dart';
-import 'package:mbg_test/features/attendance/presentation/pages/payroll_history_page.dart';
+import 'package:mbg_test/auth_gate.dart';
+import '../presentation/screens/home_screen.dart';
+import '../features/volunteer/data/models/volunteer_model.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/payroll_page.dart';
-import 'package:mbg_test/features/attendance/presentation/pages/qr_generator_page.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/scanner_page.dart';
-import 'package:mbg_test/features/volunteer/presentation/pages/volunteer_detail_page.dart';
+import 'package:mbg_test/features/attendance/presentation/pages/qr_generator_page.dart';
 import 'package:mbg_test/features/volunteer/presentation/pages/volunteer_form_page.dart';
 import 'package:mbg_test/features/volunteer/presentation/pages/volunteer_list_page.dart';
-import '../features/volunteer/data/models/volunteer_model.dart';
-import '../presentation/screens/home_screen.dart';
+import 'package:mbg_test/features/attendance/presentation/pages/payroll_detail_page.dart';
+import 'package:mbg_test/features/attendance/presentation/pages/payroll_history_page.dart';
+import 'package:mbg_test/features/volunteer/presentation/pages/volunteer_detail_page.dart';
 
 class AppRoutes {
   static Route generateRoute(RouteSettings settings) {
@@ -53,11 +52,6 @@ class AppRoutes {
         );
       case '/payroll-history':
         return MaterialPageRoute(builder: (_) => const PayrollHistoryPage());
-      // case '/edit-attendance-page':
-      //   return MaterialPageRoute(
-      //     builder: (_) => EditAttendancePage(),
-      //     settings: settings,
-      //   );
       default:
         return MaterialPageRoute(
           builder: (_) => const Scaffold(
