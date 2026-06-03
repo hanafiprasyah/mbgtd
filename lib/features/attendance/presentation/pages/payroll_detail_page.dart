@@ -6,6 +6,7 @@ import 'package:mbg_test/features/volunteer/bloc/volunteer_state.dart';
 import 'package:intl/intl.dart';
 import 'package:mbg_test/features/attendance/data/repositories/attendance_payroll_repository.dart';
 import 'package:mbg_test/core/helper/salary_calculator.dart';
+import 'package:rxdart/rxdart.dart';
 
 class PayrollDetailPage extends StatefulWidget {
   final String id;
@@ -52,6 +53,215 @@ class _PayrollDetailPageState extends State<PayrollDetailPage> {
     return DateFormat('dd MMM yyyy').format(date);
   }
 
+  Map<String, dynamic> _calculatePoolInfo(
+    String volunteerTeam,
+    Map<String, Map<String, dynamic>> teamDaySummary,
+  ) {
+    double totalPool = 0.0;
+    final List<Map<String, dynamic>> poolEntries = [];
+
+    // Filter for this volunteer's team and find pool contributions
+    teamDaySummary.forEach((key, summary) {
+      final tim = summary['tim'] as String;
+      final date = summary['date'] as String;
+
+      // Check if this entry is for the volunteer's team
+      if (tim.toLowerCase() == volunteerTeam.toLowerCase()) {
+        // Use generic poolExtra field (supports Chef→Masak, ASLAP→ASLAP, shared teams, etc.)
+        final poolExtra = summary['poolExtra'] as double? ?? 0.0;
+        if (poolExtra > 0) {
+          // Add pool for this date (poolExtra is per fulltime worker)
+          totalPool += poolExtra;
+          poolEntries.add({'date': date, 'amount': poolExtra});
+        }
+      }
+    });
+
+    // Determine pool source based on volunteer's team
+    String poolSource = '';
+    if (volunteerTeam.toLowerCase() == 'masak') {
+      poolSource = 'Chef'; // Masak receives from Chef
+    } else if (volunteerTeam.toLowerCase() == 'aslap') {
+      poolSource = 'ASLAP'; // ASLAP receives from itself
+    } else {
+      poolSource = volunteerTeam; // Other teams show their own team as source
+    }
+
+    return {'total': totalPool, 'entries': poolEntries, 'source': poolSource};
+  }
+
+  Widget _buildPoolSection(
+    BuildContext context,
+    Map<String, dynamic> poolInfo,
+    String volunteerTeam,
+  ) {
+    final totalPool = poolInfo['total'] as double;
+    final entries = poolInfo['entries'] as List<Map<String, dynamic>>;
+    final poolSource = poolInfo['source'] as String;
+
+    final poolTitle = '$poolSource Pool Distribution';
+    final infoMessage = totalPool > 0
+        ? '$poolSource halfday/absent allocation from shared payroll pool'
+        : 'This team does not receive $poolSource pool contributions';
+    final noPoolMessage = 'No $poolSource pool allocation for this period';
+    final totalLabel = 'Total $poolSource Pool';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: totalPool > 0
+              ? Colors.purple.withValues(alpha: 0.05)
+              : Colors.grey.withValues(alpha: 0.05),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(
+            color: totalPool > 0
+                ? Colors.purple.withValues(alpha: 0.2)
+                : Colors.grey.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.trending_up_rounded,
+                  color: totalPool > 0 ? Colors.purple : Colors.grey,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  poolTitle,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: totalPool > 0
+                    ? Colors.purple.withValues(alpha: 0.1)
+                    : Colors.grey.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 16,
+                    color: totalPool > 0 ? Colors.purple : Colors.grey,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      infoMessage,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: totalPool > 0
+                            ? Colors.purple.shade700
+                            : Colors.grey.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (totalPool > 0) ...[
+              const SizedBox(height: 12),
+              // Pool entries
+              ...entries.map((entry) {
+                final date = entry['date'] as String;
+                final amount = entry['amount'] as double;
+                final formatted = formatDate(date);
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.calendar_today,
+                            size: 14,
+                            color: Colors.purple,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            formatted,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        currencyFormatter.format(amount.toInt()),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.purple.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              const Divider(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    totalLabel,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    currencyFormatter.format(totalPool.toInt()),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.purple.shade700,
+                    ),
+                  ),
+                ],
+              ),
+            ] else ...[
+              const SizedBox(height: 8),
+              Center(
+                child: Text(
+                  noPoolMessage,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final args = ModalRoute.of(context)?.settings.arguments;
@@ -86,13 +296,30 @@ class _PayrollDetailPageState extends State<PayrollDetailPage> {
           final logo = getBankAsset(namaBank);
 
           return StreamBuilder<Map<String, dynamic>>(
-            stream: payrollRepository.getPayrollStream(),
+            stream: Rx.combineLatest2(
+              payrollRepository.getPayrollStream(),
+              payrollRepository.getTeamDaySummaryStream(),
+              (
+                Map<String, dynamic> payrollMap,
+                Map<String, Map<String, dynamic>> teamDaySummary,
+              ) {
+                return {
+                  'payroll': payrollMap,
+                  'teamDaySummary': teamDaySummary,
+                };
+              },
+            ),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              final payrollMap = snapshot.data!;
+              final combined = snapshot.data!;
+              final payrollMap = combined['payroll'] as Map<String, dynamic>;
+              final teamDaySummary =
+                  combined['teamDaySummary']
+                      as Map<String, Map<String, dynamic>>;
+
               final payrollData = payrollMap[id];
               final List<dynamic> halfDayDates =
                   payrollData?['halfDayDates'] ?? [];
@@ -107,297 +334,82 @@ class _PayrollDetailPageState extends State<PayrollDetailPage> {
               final isPIC = volunteer.isPIC == true;
 
               const picBonusPerScan = 10000;
-
-              // Salary now based on effective scan
               final baseSalary = getBaseSalary(tim);
-              final attendancePay = (baseSalary * totalEffectiveScan).toInt();
-              final scanBonus =
-                  (totalEffectiveScan.toDouble() * picBonusPerScan).toInt();
 
-              final totalGaji = isPIC
-                  ? attendancePay + scanBonus
-                  : attendancePay;
+              // Prefer repository-calculated totalGaji if available
+              int totalGaji = (payrollData?['totalGaji'] ?? 0) as int;
+              if (totalGaji == 0) {
+                final attendancePay = (baseSalary * totalEffectiveScan).toInt();
+                final scanBonus =
+                    (totalEffectiveScan.toDouble() * picBonusPerScan).toInt();
+                totalGaji = isPIC ? attendancePay + scanBonus : attendancePay;
+              }
 
-              return Column(
-                children: [
-                  _buildHeader(context, nama, namaBank, noRek, logo),
+              // Calculate pool distribution for this volunteer's team
+              final poolInfo = _calculatePoolInfo(tim, teamDaySummary);
+              final isPoolProvider =
+                  tim.toLowerCase() == 'chef' || tim.toLowerCase() == 'aslap';
 
-                  const SizedBox(height: 16),
-
-                  // ATTENDANCE DETAIL INFO
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        color: Colors.white,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                        border: Border.all(
-                          color: Theme.of(
-                            context,
-                          ).primaryColor.withValues(alpha: 0.1),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.fact_check_rounded,
-                                color: Theme.of(context).primaryColor,
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Attendance Detail',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-
-                          // EFFECTIVE SCAN
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Effective Attendance',
-                                style: TextStyle(fontSize: 13),
-                              ),
-                              Text(
-                                ((totalEffectiveScan))
-                                    .toDouble()
-                                    .toStringAsFixed(2),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          if (halfDayDates.isNotEmpty) ...[
-                            const SizedBox(height: 12),
-
-                            const Text(
-                              'Half Day Attendance Dates',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              width: double.infinity,
-                              child: Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: halfDayDates.map((date) {
-                                  final formatted = formatDate(date);
-
-                                  return Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.orange.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: Colors.orange.withValues(
-                                          alpha: 0.3,
-                                        ),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Text("📅 "),
-
-                                        Text(
-                                          formatted,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.orange.shade800,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
+              return SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _buildHeader(context, nama, namaBank, noRek, logo),
+                    const SizedBox(height: 8),
+                    // ATTENDANCE DETAIL INFO
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          color: Colors.white,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
                           ],
-
-                          if (absentDates.isNotEmpty) ...[
-                            const SizedBox(height: 12),
-
-                            const Text(
-                              'Absent Attendance Dates',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              width: double.infinity,
-                              child: Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: absentDates.map((date) {
-                                  final formatted = formatDate(date);
-
-                                  return Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: Colors.red.withValues(
-                                          alpha: 0.3,
-                                        ),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Text("📅 "),
-
-                                        Text(
-                                          formatted,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.red.shade700,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // SALARY INFO
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        color: Colors.white,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                          border: Border.all(
+                            color: Theme.of(
+                              context,
+                            ).primaryColor.withValues(alpha: 0.1),
                           ),
-                        ],
-                        border: Border.all(
-                          color: Theme.of(
-                            context,
-                          ).primaryColor.withValues(alpha: 0.1),
                         ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.payments_rounded,
-                                color: Theme.of(context).primaryColor,
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Salary Information',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.fact_check_rounded,
+                                  color: Theme.of(context).primaryColor,
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          // STATUS BADGE
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isPIC
-                                  ? Colors.green.withValues(alpha: 0.1)
-                                  : Colors.grey.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              isPIC ? 'PIC (+Rp 10.000 / scan)' : 'Non-PIC',
-                              style: TextStyle(
-                                color: isPIC ? Colors.green : Colors.grey[700],
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          // TOTAL SCAN
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Total Scan',
-                                style: TextStyle(fontSize: 13),
-                              ),
-                              Text(
-                                '$totalScan time(s)',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Attendance Detail',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          if (isPIC) ...[
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+
+                            // EFFECTIVE SCAN
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 const Text(
-                                  'Total Bonus (PIC)',
+                                  'Effective Attendance',
                                   style: TextStyle(fontSize: 13),
                                 ),
                                 Text(
-                                  currencyFormatter.format(
-                                    (totalEffectiveScan.toDouble() * 10000)
-                                        .toInt(),
-                                  ),
+                                  ((totalEffectiveScan))
+                                      .toDouble()
+                                      .toStringAsFixed(2),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w600,
                                     fontSize: 13,
@@ -405,60 +417,293 @@ class _PayrollDetailPageState extends State<PayrollDetailPage> {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Calculated from effective scans × Rp 10.000',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                          ],
-                          // BASE SALARY
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
+
+                            if (halfDayDates.isNotEmpty) ...[
+                              const SizedBox(height: 12),
+
                               const Text(
-                                'Base Salary',
-                                style: TextStyle(fontSize: 13),
-                              ),
-                              Text(
-                                currencyFormatter.format(baseSalary),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
+                                'Half Day Attendance Dates',
+                                style: TextStyle(
                                   fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                width: double.infinity,
+                                child: Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: halfDayDates.map((date) {
+                                    final formatted = formatDate(date);
+
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: Colors.orange.withValues(
+                                            alpha: 0.3,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Text("📅 "),
+
+                                          Text(
+                                            formatted,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.orange.shade800,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
                                 ),
                               ),
                             ],
-                          ),
-                          const Divider(height: 24),
-                          // TOTAL GAJI
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
+
+                            if (absentDates.isNotEmpty) ...[
+                              const SizedBox(height: 12),
+
                               const Text(
-                                'Total Salary',
+                                'Absent Attendance Dates',
                                 style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              Text(
-                                currencyFormatter.format(totalGaji),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: Theme.of(context).primaryColor,
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                width: double.infinity,
+                                child: Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: absentDates.map((date) {
+                                    final formatted = formatDate(date);
+
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: Colors.red.withValues(
+                                            alpha: 0.3,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Text("📅 "),
+
+                                          Text(
+                                            formatted,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.red.shade700,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
                                 ),
                               ),
                             ],
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+
+                    const SizedBox(height: 16),
+
+                    // POOL DISTRIBUTION (show for all teams except pool providers like Chef & ASLAP)
+                    if (!isPoolProvider)
+                      _buildPoolSection(context, poolInfo, tim),
+
+                    if (!isPoolProvider) const SizedBox(height: 16),
+
+                    // SALARY INFO
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          color: Colors.white,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                          border: Border.all(
+                            color: Theme.of(
+                              context,
+                            ).primaryColor.withValues(alpha: 0.1),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.payments_rounded,
+                                  color: Theme.of(context).primaryColor,
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Salary Information',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            // STATUS BADGE
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isPIC
+                                    ? Colors.green.withValues(alpha: 0.1)
+                                    : Colors.grey.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                isPIC ? 'PIC (+Rp 10.000 / scan)' : 'Non-PIC',
+                                style: TextStyle(
+                                  color: isPIC
+                                      ? Colors.green
+                                      : Colors.grey[700],
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            // TOTAL SCAN
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Total Scan',
+                                  style: TextStyle(fontSize: 13),
+                                ),
+                                Text(
+                                  '$totalScan time(s)',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            if (isPIC) ...[
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    'Total Bonus (PIC)',
+                                    style: TextStyle(fontSize: 13),
+                                  ),
+                                  Text(
+                                    currencyFormatter.format(
+                                      (totalEffectiveScan.toDouble() * 10000)
+                                          .toInt(),
+                                    ),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Calculated from effective scans × Rp 10.000',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                            // BASE SALARY
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Base Salary',
+                                  style: TextStyle(fontSize: 13),
+                                ),
+                                Text(
+                                  currencyFormatter.format(baseSalary),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Divider(height: 24),
+                            // TOTAL GAJI
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Total Salary',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  currencyFormatter.format(totalGaji),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: Theme.of(context).primaryColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+                  ],
+                ),
               );
             },
           );
@@ -512,7 +757,7 @@ class _PayrollDetailPageState extends State<PayrollDetailPage> {
               width: 50,
               height: 50,
               fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => Container(
+              errorBuilder: (_, _, _) => Container(
                 width: 50,
                 height: 50,
                 color: Colors.white24,

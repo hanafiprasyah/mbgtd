@@ -608,7 +608,7 @@ class _PayrollPageState extends State<PayrollPage>
               ),
               items: [
                 const DropdownMenuItem(value: 'all', child: Text('All')),
-                ...salaryPerTim.keys.map(
+                ...payrollRules.keys.map(
                   (tim) => DropdownMenuItem(
                     value: tim,
                     child: Text(tim.toString().trim()),
@@ -624,9 +624,19 @@ class _PayrollPageState extends State<PayrollPage>
           ),
           Expanded(
             child: StreamBuilder<Map<String, dynamic>>(
-              stream: AttendancePayrollRepository()
-                  .getPayrollStream()
-                  .debounceTime(const Duration(milliseconds: 300)),
+              stream: Rx.combineLatest2(
+                AttendancePayrollRepository().getPayrollStream(),
+                AttendancePayrollRepository().getTeamDaySummaryStream(),
+                (
+                  Map<String, dynamic> volunteersMap,
+                  Map<String, Map<String, dynamic>> teamDaySummary,
+                ) {
+                  return {
+                    'volunteers': volunteersMap,
+                    'teamDaySummary': teamDaySummary,
+                  };
+                },
+              ).debounceTime(const Duration(milliseconds: 300)),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
@@ -657,7 +667,16 @@ class _PayrollPageState extends State<PayrollPage>
                   return const Center(child: Text('No payroll data'));
                 }
 
-                final rawData = snapshot.data!;
+                final combined = snapshot.data!;
+                final rawData = combined.containsKey('volunteers')
+                    ? (combined['volunteers'] as Map<String, dynamic>)
+                    : combined;
+                final Map<String, Map<String, dynamic>> teamDaySummary =
+                    combined.containsKey('teamDaySummary')
+                    ? Map<String, Map<String, dynamic>>.from(
+                        combined['teamDaySummary'] as Map,
+                      )
+                    : {};
 
                 // Safe latest scan detection
                 DateTime latestTime = DateTime.fromMillisecondsSinceEpoch(0);
@@ -718,6 +737,13 @@ class _PayrollPageState extends State<PayrollPage>
                 }
 
                 final teams = groupedData.keys.toList();
+
+                // Prepare per-team per-day summaries mapping: team -> List<summary>
+                final Map<String, List<Map<String, dynamic>>> teamDayMap = {};
+                teamDaySummary.forEach((key, summary) {
+                  final tim = summary['tim'] ?? 'Unknown';
+                  teamDayMap.putIfAbsent(tim, () => []).add(summary);
+                });
 
                 return CustomScrollView(
                   physics: const BouncingScrollPhysics(),
@@ -819,6 +845,79 @@ class _PayrollPageState extends State<PayrollPage>
                             delegate: _TeamHeaderDelegate(
                               title:
                                   '$team (Total: ${currencyFormatter.format(totalTeam)})',
+                            ),
+                          ),
+
+                          // TEAM-DAY SUMMARY (chips)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              child: Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: (teamDayMap[team] ?? []).map((
+                                  summary,
+                                ) {
+                                  final date = summary['date'] ?? '-';
+                                  final full = summary['fullCount'] ?? 0;
+                                  final half = summary['halfCount'] ?? 0;
+                                  final absent = summary['absentCount'] ?? 0;
+                                  final share = summary['sharePerFull'] ?? 0.0;
+
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(
+                                        context,
+                                      ).primaryColor.withValues(alpha: 0.06),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Theme.of(
+                                          context,
+                                        ).primaryColor.withValues(alpha: 0.12),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          date,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: Theme.of(
+                                              context,
+                                            ).primaryColor,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          'F:$full • H:$half • A:$absent',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey.shade700,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Share: ${currencyFormatter.format((share).toInt())}',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
                             ),
                           ),
 
