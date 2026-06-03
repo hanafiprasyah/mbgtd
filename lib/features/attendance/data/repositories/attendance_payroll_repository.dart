@@ -34,9 +34,11 @@ class AttendancePayrollRepository {
       final memberEffectiveScan =
           memberPayrolls['memberEffectiveScan'] as Map<String, double>;
       final halfDayDatesMap =
-          memberPayrolls['halfDayDatesMap'] as Map<String, List<String>>;
+          memberPayrolls['halfDayDatesMap']
+              as Map<String, List<Map<String, dynamic>>>;
       final absentDatesMap =
-          memberPayrolls['absentDatesMap'] as Map<String, List<String>>;
+          memberPayrolls['absentDatesMap']
+              as Map<String, List<Map<String, dynamic>>>;
       final lastScannedBy =
           memberPayrolls['lastScannedBy'] as Map<String, String>;
 
@@ -277,8 +279,8 @@ class AttendancePayrollRepository {
     final Map<String, double> memberTotalPay = {};
     final Map<String, int> memberTotalScan = {};
     final Map<String, double> memberEffectiveScan = {};
-    final Map<String, List<String>> halfDayDatesMap = {};
-    final Map<String, List<String>> absentDatesMap = {};
+    final Map<String, List<Map<String, dynamic>>> halfDayDatesMap = {};
+    final Map<String, List<Map<String, dynamic>>> absentDatesMap = {};
     final Map<String, String> lastScannedBy = {};
 
     for (var doc in attendanceSnap.docs) {
@@ -292,9 +294,15 @@ class AttendancePayrollRepository {
           (memberEffectiveScan[volunteerId] ?? 0) + multiplier;
 
       final date = (data['date'] ?? '').toString();
+      final note = _getAttendanceNote(data);
       final tim = (data['tim'] ?? '').toString().trim();
       final key = '${date}_$tim';
       final attendanceType = (data['attendanceType'] ?? 'full') as String;
+      final attendanceItem = {
+        'date': date,
+        'note': note,
+        'attendanceType': attendanceType,
+      };
 
       final teamSummary = teamDaySummary[key];
       final baseSalary = getBaseSalary(tim);
@@ -315,12 +323,12 @@ class AttendancePayrollRepository {
       if (attendanceType == 'absent' || multiplier == 0.0) {
         absentDatesMap[volunteerId] = [
           ...(absentDatesMap[volunteerId] ?? []),
-          date,
+          attendanceItem,
         ];
       } else if (multiplier < 1.0) {
         halfDayDatesMap[volunteerId] = [
           ...(halfDayDatesMap[volunteerId] ?? []),
-          date,
+          attendanceItem,
         ];
       }
 
@@ -337,5 +345,15 @@ class AttendancePayrollRepository {
       'absentDatesMap': absentDatesMap,
       'lastScannedBy': lastScannedBy,
     };
+  }
+
+  String _getAttendanceNote(Map<String, dynamic> data) {
+    return (data['note'] ??
+            data['notes'] ??
+            data['reason'] ??
+            data['keterangan'] ??
+            '')
+        .toString()
+        .trim();
   }
 }

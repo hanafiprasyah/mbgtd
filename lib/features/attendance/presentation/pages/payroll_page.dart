@@ -855,68 +855,187 @@ class _PayrollPageState extends State<PayrollPage>
                                 horizontal: 16,
                                 vertical: 8,
                               ),
-                              child: Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: (teamDayMap[team] ?? []).map((
-                                  summary,
-                                ) {
-                                  final date = summary['date'] ?? '-';
-                                  final full = summary['fullCount'] ?? 0;
-                                  final half = summary['halfCount'] ?? 0;
-                                  final absent = summary['absentCount'] ?? 0;
-                                  final share = summary['sharePerFull'] ?? 0.0;
+                              child: SizedBox(
+                                height: 100,
+                                child: Stack(
+                                  children: [
+                                    ListView.separated(
+                                      scrollDirection: Axis.horizontal,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                      ),
+                                      itemCount:
+                                          (teamDayMap[team] ?? []).length,
+                                      separatorBuilder: (_, __) =>
+                                          const SizedBox(width: 8),
+                                      physics: const BouncingScrollPhysics(),
+                                      itemBuilder: (context, index) {
+                                        final summary =
+                                            (teamDayMap[team] ?? [])[index];
 
-                                  return Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 8,
+                                        final date = summary['date'] ?? '-';
+                                        final full = summary['fullCount'] ?? 0;
+                                        final half = summary['halfCount'] ?? 0;
+                                        final absent =
+                                            summary['absentCount'] ?? 0;
+                                        final share =
+                                            summary['sharePerFull'] ?? 0.0;
+
+                                        // Highlight today logic
+                                        final today = DateFormat(
+                                          'yyyy-MM-dd',
+                                        ).format(DateTime.now());
+                                        final isToday = date == today;
+
+                                        return Container(
+                                          width: 140,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: isToday
+                                                ? Theme.of(context).primaryColor
+                                                      .withValues(alpha: 0.15)
+                                                : Theme.of(context).primaryColor
+                                                      .withValues(alpha: 0.06),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            border: Border.all(
+                                              color: isToday
+                                                  ? Theme.of(
+                                                      context,
+                                                    ).primaryColor
+                                                  : Theme.of(
+                                                      context,
+                                                    ).primaryColor.withValues(
+                                                      alpha: 0.12,
+                                                    ),
+                                              width: isToday ? 1.5 : 1,
+                                            ),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Text(
+                                                date,
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).primaryColor,
+                                                ),
+                                              ),
+                                              if (isToday)
+                                                Container(
+                                                  margin: const EdgeInsets.only(
+                                                    top: 4,
+                                                  ),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 4,
+                                                        vertical: 2,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.green
+                                                        .withValues(
+                                                          alpha: 0.15,
+                                                        ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          6,
+                                                        ),
+                                                  ),
+                                                  child: const Text(
+                                                    'Today',
+                                                    style: TextStyle(
+                                                      fontSize: 6,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: Colors.green,
+                                                    ),
+                                                  ),
+                                                ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                'F:$full • H:$half • A:$absent',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: Colors.grey.shade700,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                'Share: ${currencyFormatter.format((share).toInt())}',
+                                                style: const TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
                                     ),
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(
-                                        context,
-                                      ).primaryColor.withValues(alpha: 0.06),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: Theme.of(
-                                          context,
-                                        ).primaryColor.withValues(alpha: 0.12),
+
+                                    // LEFT FADE
+                                    Positioned(
+                                      left: 0,
+                                      top: 0,
+                                      bottom: 0,
+                                      child: IgnorePointer(
+                                        child: Container(
+                                          width: 16,
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              begin: Alignment.centerLeft,
+                                              end: Alignment.centerRight,
+                                              colors: [
+                                                Theme.of(
+                                                  context,
+                                                ).scaffoldBackgroundColor,
+                                                Theme.of(context)
+                                                    .scaffoldBackgroundColor
+                                                    .withValues(alpha: 0),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          date,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            color: Theme.of(
-                                              context,
-                                            ).primaryColor,
+
+                                    // RIGHT FADE
+                                    Positioned(
+                                      right: 0,
+                                      top: 0,
+                                      bottom: 0,
+                                      child: IgnorePointer(
+                                        child: Container(
+                                          width: 16,
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              begin: Alignment.centerRight,
+                                              end: Alignment.centerLeft,
+                                              colors: [
+                                                Theme.of(
+                                                  context,
+                                                ).scaffoldBackgroundColor,
+                                                Theme.of(context)
+                                                    .scaffoldBackgroundColor
+                                                    .withValues(alpha: 0),
+                                              ],
+                                            ),
                                           ),
                                         ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          'F:$full • H:$half • A:$absent',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: Colors.grey.shade700,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'Share: ${currencyFormatter.format((share).toInt())}',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
+                                      ),
                                     ),
-                                  );
-                                }).toList(),
+                                  ],
+                                ),
                               ),
                             ),
                           ),

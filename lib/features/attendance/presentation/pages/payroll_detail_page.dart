@@ -19,6 +19,7 @@ class PayrollDetailPage extends StatefulWidget {
 class _PayrollDetailPageState extends State<PayrollDetailPage> {
   final AttendancePayrollRepository payrollRepository =
       AttendancePayrollRepository();
+  bool _hasRequestedVolunteer = false;
 
   final currencyFormatter = NumberFormat.currency(
     locale: 'id_ID',
@@ -51,6 +52,38 @@ class _PayrollDetailPageState extends State<PayrollDetailPage> {
     final date = DateTime.tryParse(raw);
     if (date == null) return raw;
     return DateFormat('dd MMM yyyy').format(date);
+  }
+
+  String _getAttendanceNote(dynamic item) {
+    if (item is! Map) return '';
+
+    return (item['note'] ??
+            item['notes'] ??
+            item['reason'] ??
+            item['keterangan'] ??
+            '')
+        .toString()
+        .trim();
+  }
+
+  String _resolveVolunteerId(BuildContext context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is String && args.isNotEmpty) return args;
+
+    return widget.id;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_hasRequestedVolunteer) return;
+
+    final volunteerId = _resolveVolunteerId(context);
+    if (volunteerId.isEmpty) return;
+
+    _hasRequestedVolunteer = true;
+    context.read<VolunteerBloc>().add(GetVolunteerById(volunteerId));
   }
 
   Map<String, dynamic> _calculatePoolInfo(
@@ -264,15 +297,13 @@ class _PayrollDetailPageState extends State<PayrollDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final args = ModalRoute.of(context)?.settings.arguments;
-    if (args == null || args is! String) {
+    final volunteerId = _resolveVolunteerId(context);
+    if (volunteerId.isEmpty) {
       return const Scaffold(
         body: Center(child: Text('Volunteer ID not found')),
       );
     }
 
-    final volunteerId = args;
-    context.read<VolunteerBloc>().add(GetVolunteerById(volunteerId));
     return Scaffold(
       appBar: AppBar(title: const Text('Payroll Detail')),
       body: _buildBody(volunteerId),
@@ -428,45 +459,73 @@ class _PayrollDetailPageState extends State<PayrollDetailPage> {
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
+
                               const SizedBox(height: 8),
+
                               SizedBox(
                                 width: double.infinity,
                                 child: Wrap(
                                   spacing: 8,
                                   runSpacing: 8,
-                                  children: halfDayDates.map((date) {
+                                  children: halfDayDates.map((item) {
+                                    final date = item is Map
+                                        ? item['date']
+                                        : item;
+                                    final note = _getAttendanceNote(item);
                                     final formatted = formatDate(date);
 
-                                    return Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.orange.withValues(
-                                          alpha: 0.1,
+                                    return InkWell(
+                                      borderRadius: BorderRadius.circular(20),
+                                      splashColor: Colors.transparent,
+                                      highlightColor: Colors.transparent,
+                                      onTap: () {
+                                        if (!mounted) return;
+                                        _showModalAttendance(
+                                          context,
+                                          note,
+                                          formatted,
+                                        );
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
                                         ),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(
+                                        decoration: BoxDecoration(
                                           color: Colors.orange.withValues(
-                                            alpha: 0.3,
+                                            alpha: 0.1,
                                           ),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Text("📅 "),
-
-                                          Text(
-                                            formatted,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.orange.shade800,
-                                              fontWeight: FontWeight.w500,
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.orange.withValues(
+                                              alpha: 0.3,
                                             ),
                                           ),
-                                        ],
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Text("📅 "),
+                                            Text(
+                                              formatted,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.orange.shade800,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            if (note.toString().isNotEmpty) ...[
+                                              const SizedBox(width: 4),
+                                              Icon(
+                                                Icons.touch_app,
+                                                size: 12,
+                                                color: Colors.grey,
+                                              ),
+                                            ],
+                                          ],
+                                        ),
                                       ),
                                     );
                                   }).toList(),
@@ -484,45 +543,73 @@ class _PayrollDetailPageState extends State<PayrollDetailPage> {
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
+
                               const SizedBox(height: 8),
+
                               SizedBox(
                                 width: double.infinity,
                                 child: Wrap(
                                   spacing: 8,
                                   runSpacing: 8,
-                                  children: absentDates.map((date) {
+                                  children: absentDates.map((item) {
+                                    final date = item is Map
+                                        ? item['date']
+                                        : item;
+                                    final note = _getAttendanceNote(item);
                                     final formatted = formatDate(date);
 
-                                    return Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.red.withValues(
-                                          alpha: 0.1,
+                                    return InkWell(
+                                      borderRadius: BorderRadius.circular(20),
+                                      splashColor: Colors.transparent,
+                                      highlightColor: Colors.transparent,
+                                      onTap: () {
+                                        if (!mounted) return;
+                                        _showModalAttendance(
+                                          context,
+                                          note,
+                                          formatted,
+                                        );
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
                                         ),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(
+                                        decoration: BoxDecoration(
                                           color: Colors.red.withValues(
-                                            alpha: 0.3,
+                                            alpha: 0.1,
                                           ),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Text("📅 "),
-
-                                          Text(
-                                            formatted,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.red.shade700,
-                                              fontWeight: FontWeight.w500,
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.red.withValues(
+                                              alpha: 0.3,
                                             ),
                                           ),
-                                        ],
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Text("📅 "),
+                                            Text(
+                                              formatted,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.red.shade700,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            if (note.toString().isNotEmpty) ...[
+                                              const SizedBox(width: 4),
+                                              Icon(
+                                                Icons.touch_app,
+                                                size: 12,
+                                                color: Colors.grey,
+                                              ),
+                                            ],
+                                          ],
+                                        ),
                                       ),
                                     );
                                   }).toList(),
@@ -795,6 +882,45 @@ class _PayrollDetailPageState extends State<PayrollDetailPage> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showModalAttendance(BuildContext context, String note, String date) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: const [
+                  Icon(Icons.info_outline, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Text(
+                    'Attendance Note',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(date, style: TextStyle(fontSize: 12, color: Colors.grey)),
+              const SizedBox(height: 8),
+              SingleChildScrollView(
+                child: Text(note.isNotEmpty ? note : 'No note available'),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
     );
   }
 }
