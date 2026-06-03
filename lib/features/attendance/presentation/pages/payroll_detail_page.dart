@@ -96,6 +96,8 @@ class _PayrollDetailPageState extends State<PayrollDetailPage> {
               final payrollData = payrollMap[id];
               final List<dynamic> halfDayDates =
                   payrollData?['halfDayDates'] ?? [];
+              final List<dynamic> absentDates =
+                  payrollData?['absentDates'] ?? [];
 
               final totalScan = payrollData?['totalScan'] ?? 0;
               final totalEffectiveScan =
@@ -196,43 +198,102 @@ class _PayrollDetailPageState extends State<PayrollDetailPage> {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: halfDayDates.map((date) {
-                                final formatted = formatDate(date);
+                            SizedBox(
+                              width: double.infinity,
+                              child: Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: halfDayDates.map((date) {
+                                  final formatted = formatDate(date);
 
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 6),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: Colors.orange.withValues(
-                                        alpha: 0.3,
-                                      ),
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
                                     ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Text("📅 "),
-
-                                      Text(
-                                        formatted,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.orange.shade800,
-                                          fontWeight: FontWeight.w500,
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: Colors.orange.withValues(
+                                          alpha: 0.3,
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Text("📅 "),
+
+                                        Text(
+                                          formatted,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.orange.shade800,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          ],
+
+                          if (absentDates.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+
+                            const Text(
+                              'Absent Attendance Dates',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              width: double.infinity,
+                              child: Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: absentDates.map((date) {
+                                  final formatted = formatDate(date);
+
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: Colors.red.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Text("📅 "),
+
+                                        Text(
+                                          formatted,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.red.shade700,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
                             ),
                           ],
                         ],

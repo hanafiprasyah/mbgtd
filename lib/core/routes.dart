@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mbg_test/auth_gate.dart';
-import '../presentation/screens/home_screen.dart';
-import '../features/volunteer/data/models/volunteer_model.dart';
+import 'package:mbg_test/presentation/screens/home_screen.dart';
+import 'package:mbg_test/presentation/screens/not_found_screen.dart';
+import 'package:mbg_test/features/volunteer/data/models/volunteer_model.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/payroll_page.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/scanner_page.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/qr_generator_page.dart';
@@ -53,11 +54,7 @@ class AppRoutes {
       case '/payroll-history':
         return MaterialPageRoute(builder: (_) => const PayrollHistoryPage());
       default:
-        return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(child: Text('404. Route not found!')),
-          ),
-        );
+        return MaterialPageRoute(builder: (_) => const NotFoundPage());
     }
   }
 }

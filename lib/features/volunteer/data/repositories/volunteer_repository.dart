@@ -1,9 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/volunteer_model.dart';
+import 'package:mbg_test/features/volunteer/data/models/volunteer_model.dart';
 
 class VolunteerRepository {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
+  // Fetch all volunteers
   Stream<List<Volunteer>> getVolunteer() {
     return firestore
         .collection('volunteers')
@@ -14,6 +15,72 @@ class VolunteerRepository {
         );
   }
 
+  // Add a new volunteer
+  Future<void> addVolunteer(Volunteer volunteer) async {
+    await firestore.collection('volunteers').add(volunteer.toMap());
+  }
+
+  // Update an existing volunteer
+  Future<void> updateVolunteer(Volunteer volunteer) async {
+    await firestore
+        .collection('volunteers')
+        .doc(volunteer.id)
+        .update(volunteer.toMap());
+  }
+
+  // Delete a volunteer
+  Future<void> deleteVolunteer(String id) async {
+    await firestore.collection('volunteers').doc(id).delete();
+  }
+
+  // Toggle volunteer's active status
+  Future<void> toggleVolunteerStatus(String id, bool currentStatus) async {
+    await firestore.collection('volunteers').doc(id).update({
+      'isActive': !currentStatus,
+    });
+  }
+
+  // Get volunteer by ID
+  Future<Volunteer> getVolunteerById(String id) async {
+    final doc = await firestore.collection('volunteers').doc(id).get();
+
+    if (!doc.exists) {
+      throw Exception('Volunteer not found');
+    }
+
+    return Volunteer.fromFirestore(doc);
+  }
+
+  // Toggle volunteer's PIC status
+  Future<void> toggleVolunteerPIC(
+    String id,
+    bool currentStatus,
+    String tim,
+  ) async {
+    if (!currentStatus) {
+      final batch = firestore.batch();
+
+      // Set all volunteers in the same tim to isPIC: false
+      final query = await firestore
+          .collection('volunteers')
+          .where('tim', isEqualTo: tim)
+          .get();
+
+      for (var doc in query.docs) {
+        batch.update(doc.reference, {'isPIC': false});
+      }
+
+      // Set the selected volunteer to isPIC: true
+      final selectedRef = firestore.collection('volunteers').doc(id);
+      batch.update(selectedRef, {'isPIC': true});
+
+      await batch.commit();
+    } else {
+      await firestore.collection('volunteers').doc(id).update({'isPIC': false});
+    }
+  }
+
+  // Search volunteers
   Stream<List<Volunteer>> searchVolunteer(
     String query,
     String? tim,
@@ -22,6 +89,7 @@ class VolunteerRepository {
     Query q = firestore.collection('volunteers');
 
     if (query.isNotEmpty) {
+      // Assuming 'namaSearch' is a field in Firestore that contains the lowercase version of the volunteer's name for search purposes
       q = q
           .where('namaSearch', isGreaterThanOrEqualTo: query.toLowerCase())
           .where(
@@ -30,10 +98,12 @@ class VolunteerRepository {
           );
     }
 
+    // Filter by tim if provided
     if (tim != null && tim.isNotEmpty) {
       q = q.where('tim', isEqualTo: tim);
     }
 
+    // Filter by jenisKelamin if provided
     if (jenisKelamin != null && jenisKelamin.isNotEmpty) {
       q = q.where('jenisKelamin', isEqualTo: jenisKelamin);
     }
@@ -44,6 +114,7 @@ class VolunteerRepository {
     );
   }
 
+  // Filter volunteers by tim and jenisKelamin
   Stream<List<Volunteer>> filterVolunteer({String? tim, String? jenisKelamin}) {
     Query query = firestore.collection('volunteers');
 
@@ -59,62 +130,5 @@ class VolunteerRepository {
       (snapshot) =>
           snapshot.docs.map((doc) => Volunteer.fromFirestore(doc)).toList(),
     );
-  }
-
-  Future<void> addVolunteer(Volunteer volunteer) async {
-    await firestore.collection('volunteers').add(volunteer.toMap());
-  }
-
-  Future<void> updateVolunteer(Volunteer volunteer) async {
-    await firestore
-        .collection('volunteers')
-        .doc(volunteer.id)
-        .update(volunteer.toMap());
-  }
-
-  Future<void> deleteVolunteer(String id) async {
-    await firestore.collection('volunteers').doc(id).delete();
-  }
-
-  Future<void> toggleVolunteerStatus(String id, bool currentStatus) async {
-    await firestore.collection('volunteers').doc(id).update({
-      'isActive': !currentStatus,
-    });
-  }
-
-  Future<Volunteer> getVolunteerById(String id) async {
-    final doc = await firestore.collection('volunteers').doc(id).get();
-
-    if (!doc.exists) {
-      throw Exception('Volunteer not found');
-    }
-
-    return Volunteer.fromFirestore(doc);
-  }
-
-  Future<void> toggleVolunteerPIC(
-    String id,
-    bool currentStatus,
-    String tim,
-  ) async {
-    if (!currentStatus) {
-      final batch = firestore.batch();
-
-      final query = await firestore
-          .collection('volunteers')
-          .where('tim', isEqualTo: tim)
-          .get();
-
-      for (var doc in query.docs) {
-        batch.update(doc.reference, {'isPIC': false});
-      }
-
-      final selectedRef = firestore.collection('volunteers').doc(id);
-      batch.update(selectedRef, {'isPIC': true});
-
-      await batch.commit();
-    } else {
-      await firestore.collection('volunteers').doc(id).update({'isPIC': false});
-    }
   }
 }

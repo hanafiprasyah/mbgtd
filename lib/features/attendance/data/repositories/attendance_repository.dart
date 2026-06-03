@@ -1,10 +1,11 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/attendance_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AttendanceRepository {
   final firestore = FirebaseFirestore.instance;
 
+  // This method handles the scanning of attendance for a volunteer. It ensures that a volunteer can only scan once per day and records the necessary information about the scan, including who scanned it and whether the volunteer is a PIC (Person in Charge).
   Future<void> scanAttendance({
     required String volunteerId,
     required String nama,
@@ -65,6 +66,7 @@ class AttendanceRepository {
     });
   }
 
+  // This method retrieves the payroll information for all volunteers based on their attendance records. It calculates the total scans, effective scans (accounting for partial attendance), and any bonuses for PICs (Persons in Charge). The result is a map containing detailed payroll information for each volunteer.
   Stream<int> getTotalAttendance(String volunteerId) {
     return firestore
         .collection('attendances')

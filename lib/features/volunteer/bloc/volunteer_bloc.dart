@@ -1,20 +1,22 @@
 // import 'dart:async';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mbg_test/core/helper/firebase_crud_error.dart';
 import 'volunteer_event.dart';
 import 'volunteer_state.dart';
-import '../data/repositories/volunteer_repository.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mbg_test/core/helper/firebase_crud_error.dart';
+import 'package:mbg_test/features/volunteer/data/repositories/volunteer_repository.dart';
 
 class VolunteerBloc extends Bloc<VolunteerEvent, VolunteerState> {
   final VolunteerRepository repository;
 
+  // Debounce transformer for search events to prevent excessive calls
   EventTransformer<T> debounce<T>(Duration duration) {
     return (events, mapper) =>
         events.distinct().debounceTime(duration).switchMap(mapper);
   }
 
   VolunteerBloc(this.repository) : super(VolunteerInitial()) {
+    // Load all volunteers
     on<LoadVolunteer>((event, emit) async {
       emit(VolunteerLoading());
       await emit.forEach(
@@ -23,6 +25,7 @@ class VolunteerBloc extends Bloc<VolunteerEvent, VolunteerState> {
       );
     });
 
+    // Add a new volunteer
     on<AddVolunteer>((event, emit) async {
       emit(VolunteerLoading());
       try {
@@ -33,6 +36,7 @@ class VolunteerBloc extends Bloc<VolunteerEvent, VolunteerState> {
       }
     });
 
+    // Update an existing volunteer
     on<UpdateVolunteer>((event, emit) async {
       emit(VolunteerLoading());
       try {
@@ -43,6 +47,7 @@ class VolunteerBloc extends Bloc<VolunteerEvent, VolunteerState> {
       }
     });
 
+    // Delete a volunteer
     on<DeleteVolunteer>((event, emit) async {
       emit(VolunteerLoading());
       try {
@@ -53,6 +58,7 @@ class VolunteerBloc extends Bloc<VolunteerEvent, VolunteerState> {
       }
     });
 
+    // Search volunteers with optional filters (debounced)
     on<SearchVolunteer>((event, emit) async {
       // If no search text and no filter → fallback to all data
       final hasFilter =
@@ -72,6 +78,7 @@ class VolunteerBloc extends Bloc<VolunteerEvent, VolunteerState> {
       );
     }, transformer: debounce(const Duration(milliseconds: 800)));
 
+    // Filter volunteers
     on<FilterVolunteer>((event, emit) async {
       emit(VolunteerLoading());
 
@@ -84,6 +91,7 @@ class VolunteerBloc extends Bloc<VolunteerEvent, VolunteerState> {
       );
     });
 
+    // Toggle volunteer active status
     on<ToggleVolunteerStatus>((event, emit) async {
       try {
         await repository.toggleVolunteerStatus(event.id, event.currentStatus);
@@ -92,6 +100,7 @@ class VolunteerBloc extends Bloc<VolunteerEvent, VolunteerState> {
       }
     });
 
+    // Get volunteer details by ID
     on<GetVolunteerById>((event, emit) async {
       emit(VolunteerLoading());
       try {
@@ -102,6 +111,7 @@ class VolunteerBloc extends Bloc<VolunteerEvent, VolunteerState> {
       }
     });
 
+    // Toggle volunteer PIC status
     on<ToggleVolunteerPIC>((event, emit) async {
       try {
         await repository.toggleVolunteerPIC(

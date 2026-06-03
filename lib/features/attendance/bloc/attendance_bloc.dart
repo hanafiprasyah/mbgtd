@@ -1,13 +1,14 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mbg_test/features/attendance/data/repositories/attendance_repository.dart';
 import 'attendance_event.dart';
 import 'attendance_state.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mbg_test/features/attendance/data/repositories/attendance_repository.dart';
 
 class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
   final AttendanceRepository repository;
   bool isProcessing = false;
 
   AttendanceBloc(this.repository) : super(AttendanceInitial()) {
+    // Event handler for scanning QR code
     on<ScanQR>((event, emit) async {
       if (isProcessing) return;
       isProcessing = true;
@@ -34,6 +35,7 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
           return;
         }
 
+        // Call repository to scan attendance
         await repository.scanAttendance(volunteerId: id, nama: nama, tim: tim);
 
         emit(AttendanceSuccess('Attendance recorded successfully'));

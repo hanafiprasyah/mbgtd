@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../data/datasources/local/secure_storage_service.dart';
+import 'package:mbg_test/data/datasources/local/secure_storage_service.dart';
 
 class TokenService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final SecureStorageService _storage = SecureStorageService();
 
-  /// refresh count
+  /// calculates the duration until the next token refresh is needed
   Future<Duration> getNextRefreshDuration() async {
     final user = _auth.currentUser;
     if (user == null) return const Duration(minutes: 1);
@@ -35,6 +35,7 @@ class TokenService {
     int attempt = 0;
     int delaySeconds = 5;
 
+    // retry loop with exponential backoff
     while (attempt < maxRetry) {
       try {
         final user = _auth.currentUser;
@@ -47,7 +48,7 @@ class TokenService {
           return true;
         }
       } catch (_) {
-        // retry
+        // retry on any error (network, server, etc.)
       }
 
       await Future.delayed(Duration(seconds: delaySeconds));

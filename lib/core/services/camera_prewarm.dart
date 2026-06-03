@@ -7,11 +7,10 @@ class CameraPrewarmService {
     detectionSpeed: DetectionSpeed.noDuplicates,
     autoZoom: true,
     facing: CameraFacing.back,
-    // Khusus OPPO
-    // facing: CameraFacing.front,
     lensType: CameraLensType.normal,
   );
 
+  /// Prewarms the camera to reduce the delay when starting the scanner for the first time.
   static bool _isPrewarmed = false;
 
   static Future<void> prewarm() async {
@@ -24,6 +23,8 @@ class CameraPrewarmService {
         await controller.stop();
       }
       _isPrewarmed = true;
-    } catch (_) {}
+    } catch (_) {
+      // Ignore any errors during prewarming, as it's not critical.
+    }
   }
 }

@@ -31,8 +31,52 @@ class _PayrollPageState extends State<PayrollPage>
     decimalDigits: 0,
   );
 
+  String _formatEffectiveAttendance(dynamic value) {
+    final effectiveAttendance = value is num ? value.toDouble() : 0.0;
+    final formatted = effectiveAttendance.toStringAsFixed(2);
+
+    return formatted.endsWith('.00')
+        ? effectiveAttendance.toStringAsFixed(0)
+        : formatted;
+  }
+
   // set PIC function with Bloc event
-  void _handleSetPIC(BuildContext context, Map<String, dynamic> item) {
+  void _handleSetPIC(BuildContext context, Map<String, dynamic> item) async {
+    // Confirmation dialog before any logic
+    final volunteer = item;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Confirm PIC Assignment',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            'Are you sure you want to assign ${volunteer['nama']} as the PIC of ${volunteer['tim']} team?\n\n'
+            'The current PIC will lose their payroll bonus, and it will be reassigned to ${volunteer['nama']}.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Yes, Assign'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) {
+      return;
+    }
+
     final volunteerId = item['id'];
     final isPIC = item['isPIC'] ?? false;
     final tim = item['tim'];
@@ -288,6 +332,18 @@ class _PayrollPageState extends State<PayrollPage>
                                             (() {
                                               final attendanceType =
                                                   data['attendanceType'];
+                                              final multiplier =
+                                                  (data['multiplier'] is num)
+                                                  ? (data['multiplier'] as num)
+                                                        .toDouble()
+                                                  : null;
+                                              final isAbsent =
+                                                  attendanceType == 'absent' ||
+                                                  multiplier == 0;
+                                              final isHalfDay =
+                                                  !isAbsent &&
+                                                  attendanceType != null &&
+                                                  attendanceType != 'full';
                                               return Container(
                                                 padding:
                                                     const EdgeInsets.symmetric(
@@ -299,7 +355,11 @@ class _PayrollPageState extends State<PayrollPage>
                                                       ? Colors.grey.withValues(
                                                           alpha: 0.15,
                                                         )
-                                                      : attendanceType != 'full'
+                                                      : isAbsent
+                                                      ? Colors.red.withValues(
+                                                          alpha: 0.15,
+                                                        )
+                                                      : isHalfDay
                                                       ? Colors.amber.withValues(
                                                           alpha: 0.15,
                                                         )
@@ -314,7 +374,9 @@ class _PayrollPageState extends State<PayrollPage>
                                                 child: Text(
                                                   attendanceType == null
                                                       ? 'Not Set'
-                                                      : attendanceType != 'full'
+                                                      : isAbsent
+                                                      ? 'Absent'
+                                                      : isHalfDay
                                                       ? 'Half Day'
                                                       : 'Full Day',
                                                   style: TextStyle(
@@ -323,8 +385,9 @@ class _PayrollPageState extends State<PayrollPage>
                                                     color:
                                                         attendanceType == null
                                                         ? Colors.grey
-                                                        : attendanceType !=
-                                                              'full'
+                                                        : isAbsent
+                                                        ? Colors.red.shade700
+                                                        : isHalfDay
                                                         ? Colors.amber.shade800
                                                         : Theme.of(
                                                             context,
@@ -941,13 +1004,30 @@ class _PayrollPageState extends State<PayrollPage>
                                               const SizedBox(
                                                 height: AppSpacing.sm,
                                               ),
-                                              Text(
-                                                (item['totalScan'] ?? 0) > 0
-                                                    ? '${item['totalScan']} days'
-                                                    : 'No scan',
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                ),
+                                              Wrap(
+                                                spacing: 6,
+                                                runSpacing: 2,
+                                                crossAxisAlignment:
+                                                    WrapCrossAlignment.center,
+                                                children: [
+                                                  Text(
+                                                    (item['totalScan'] ?? 0) > 0
+                                                        ? '${item['totalScan']} scan'
+                                                        : 'No scan',
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    '/ ${_formatEffectiveAttendance(item['effectiveScan'])} day(s)',
+                                                    style: const TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: Colors.teal,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                               const SizedBox(height: 4),
                                               Row(
@@ -1009,7 +1089,7 @@ class _PayrollPageState extends State<PayrollPage>
                           ),
                         ],
                       );
-                    }).toList(),
+                    }),
                   ],
                 );
               },

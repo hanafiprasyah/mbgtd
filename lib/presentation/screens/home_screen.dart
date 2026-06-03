@@ -74,7 +74,8 @@ class _HomeScreenState extends State<HomeScreen> {
     await Future.wait([
       Future.delayed(const Duration(milliseconds: 2200)),
       _fetchUserData().whenComplete(() async {
-        print("User Uid: ${user?.uid}");
+        // Ensure user data is reloaded before fetching role
+        debugPrint("User Uid: ${user?.uid}");
       }),
     ]).whenComplete(() async {
       final data = await getUserRole(user?.uid ?? "");

@@ -2,9 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../bloc/volunteer_bloc.dart';
-import '../../bloc/volunteer_event.dart';
-import '../../bloc/volunteer_state.dart';
+import 'package:mbg_test/core/helper/design_system.dart';
+import 'package:mbg_test/features/volunteer/bloc/volunteer_bloc.dart';
+import 'package:mbg_test/features/volunteer/bloc/volunteer_event.dart';
+import 'package:mbg_test/features/volunteer/bloc/volunteer_state.dart';
 
 class VolunteerListPage extends StatefulWidget {
   const VolunteerListPage({super.key});
@@ -47,17 +48,23 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
+      backgroundColor: colorScheme.surfaceContainerLowest,
       appBar: AppBar(
         title: const Text('Volunteer'),
+        backgroundColor: colorScheme.surfaceContainerLowest,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
         actions: [
           Stack(
             alignment: Alignment.center,
             children: [
               IconButton(
                 icon: Icon(
-                  Icons.list,
-                  color: activeFilterCount > 0 ? Colors.blue : null,
+                  Icons.tune_rounded,
+                  color: activeFilterCount > 0 ? colorScheme.primary : null,
                 ),
                 tooltip: 'Filter',
                 onLongPress: () {
@@ -69,10 +76,11 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                   try {
                     context.read<VolunteerBloc>().add(LoadVolunteer());
                   } catch (e) {
-                    debugPrint('Bloc error: $e');
+                    debugPrint('BLOC error on volunteer list page: $e');
                   }
                 },
                 onPressed: () async {
+                  final bloc = context.read<VolunteerBloc>();
                   String? tempTim = selectedTim;
                   String? tempGender = selectedGender;
 
@@ -188,13 +196,13 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                         searchController.text.isEmpty;
                     if (isNoFilter) {
                       try {
-                        context.read<VolunteerBloc>().add(LoadVolunteer());
+                        bloc.add(LoadVolunteer());
                       } catch (e) {
-                        debugPrint('Bloc error: $e');
+                        debugPrint('BLOC error on volunteer list page: $e');
                       }
                     } else {
                       try {
-                        context.read<VolunteerBloc>().add(
+                        bloc.add(
                           SearchVolunteer(
                             searchController.text,
                             selectedTim,
@@ -202,7 +210,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                           ),
                         );
                       } catch (e) {
-                        debugPrint('Bloc error: $e');
+                        debugPrint('BLOC error on volunteer list page: $e');
                       }
                     }
                   } else if (result == 'cancel') {
@@ -217,7 +225,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                   child: Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: Colors.blue,
+                      color: colorScheme.primary,
                       shape: BoxShape.circle,
                     ),
                     constraints: const BoxConstraints(
@@ -249,77 +257,137 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-              child: TextField(
-                controller: searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search...',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: isSearching
-                      ? const Padding(
-                          padding: EdgeInsets.all(12),
-                          child: SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        )
-                      : searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            searchController.clear();
-                            try {
-                              context.read<VolunteerBloc>().add(
-                                SearchVolunteer(
-                                  '',
-                                  selectedTim,
-                                  selectedGender,
-                                ),
-                              );
-                            } catch (e) {
-                              debugPrint('Bloc error: $e');
-                            }
-                            if (!mounted) return;
-                            setState(() => isSearching = false);
-                          },
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
+              child: Container(
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: colorScheme.primary.withValues(alpha: 0.06),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                onChanged: (value) {
-                  if (!mounted) return;
-                  setState(() => isSearching = true);
-                  if (_debounce?.isActive ?? false) _debounce!.cancel();
-                  _debounce = Timer(const Duration(milliseconds: 300), () {
-                    try {
-                      context.read<VolunteerBloc>().add(
-                        SearchVolunteer(value, selectedTim, selectedGender),
-                      );
-                    } catch (e) {
-                      debugPrint('Bloc error: $e');
-                    }
-                  });
-                },
+                child: TextField(
+                  controller: searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search volunteer...',
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.search_rounded,
+                          color: colorScheme.primary,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                    suffixIcon: isSearching
+                        ? const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.close_rounded),
+                            onPressed: () {
+                              searchController.clear();
+
+                              final bloc = context.read<VolunteerBloc>();
+
+                              final isNoFilter =
+                                  selectedTim == null && selectedGender == null;
+
+                              try {
+                                if (isNoFilter) {
+                                  bloc.add(LoadVolunteer());
+                                } else {
+                                  bloc.add(
+                                    SearchVolunteer(
+                                      '',
+                                      selectedTim,
+                                      selectedGender,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                debugPrint(
+                                  'BLOC error on volunteer list page: $e',
+                                );
+                              }
+
+                              if (!mounted) return;
+                              setState(() => isSearching = false);
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 16,
+                      horizontal: 12,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: colorScheme.primary.withValues(alpha: 0.15),
+                        width: 1,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: colorScheme.primary,
+                        width: 1.5,
+                      ),
+                    ),
+                  ),
+                  onChanged: (value) {
+                    if (!mounted) return;
+                    setState(() => isSearching = true);
+                    if (_debounce?.isActive ?? false) _debounce!.cancel();
+                    _debounce = Timer(const Duration(milliseconds: 300), () {
+                      try {
+                        context.read<VolunteerBloc>().add(
+                          SearchVolunteer(value, selectedTim, selectedGender),
+                        );
+                      } catch (e) {
+                        debugPrint('BLOC error on volunteer list page: $e');
+                      }
+                    });
+                  },
+                ),
               ),
             ),
             if (activeFilterCount > 0)
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
                 child: Wrap(
                   spacing: 8,
+                  runSpacing: 8,
                   children: [
                     if (selectedTim != null)
                       Chip(
                         label: Text('Tim: $selectedTim'),
+                        deleteIcon: const Icon(Icons.close_rounded, size: 18),
+                        backgroundColor: colorScheme.primaryContainer,
+                        labelStyle: TextStyle(
+                          color: colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        side: BorderSide.none,
                         onDeleted: () {
                           if (!mounted) return;
                           setState(() => selectedTim = null);
@@ -332,13 +400,20 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                               ),
                             );
                           } catch (e) {
-                            debugPrint('Bloc error: $e');
+                            debugPrint('BLOC error on volunteer list page: $e');
                           }
                         },
                       ),
                     if (selectedGender != null)
                       Chip(
                         label: Text('Gender: $selectedGender'),
+                        deleteIcon: const Icon(Icons.close_rounded, size: 18),
+                        backgroundColor: colorScheme.secondaryContainer,
+                        labelStyle: TextStyle(
+                          color: colorScheme.onSecondaryContainer,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        side: BorderSide.none,
                         onDeleted: () {
                           if (!mounted) return;
                           setState(() => selectedGender = null);
@@ -351,7 +426,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                               ),
                             );
                           } catch (e) {
-                            debugPrint('Bloc error: $e');
+                            debugPrint('BLOC error on volunteer list page: $e');
                           }
                         },
                       ),
@@ -364,7 +439,9 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                 builder: (context, state) {
                   if (state is VolunteerLoading && !isSearching) {
                     isUiReady = false;
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(
+                      child: CircularProgressIndicator(strokeWidth: 3),
+                    );
                   } else if (state is VolunteerLoaded) {
                     if (!isUiReady) {
                       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -380,7 +457,9 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                         );
                       });
 
-                      return const Center(child: CircularProgressIndicator());
+                      return const Center(
+                        child: CircularProgressIndicator(strokeWidth: 3),
+                      );
                     }
                     if (isSearching) {
                       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -390,13 +469,53 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                       });
                     }
                     if (state.volunteer.isEmpty) {
-                      return const Center(child: Text('No volunteer found'));
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppSpacing.xl),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 72,
+                                height: 72,
+                                decoration: BoxDecoration(
+                                  color: colorScheme.primaryContainer,
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.xl,
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.people_outline_rounded,
+                                  size: 36,
+                                  color: colorScheme.onPrimaryContainer,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              Text(
+                                'No volunteer found',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(height: AppSpacing.xs),
+                              Text(
+                                'Try a different keyword or filter.',
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
                     }
 
                     return ListView.builder(
                       keyboardDismissBehavior:
                           ScrollViewKeyboardDismissBehavior.onDrag,
                       scrollCacheExtent: ScrollCacheExtent.pixels(500),
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
                       itemCount: state.volunteer.length,
                       itemBuilder: (context, index) {
                         final r = state.volunteer[index];
@@ -425,98 +544,17 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                                       ),
                                     );
                                   },
-                                  child: Card(
-                                    margin: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                      side: BorderSide(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.outlineVariant,
-                                      ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: AppSpacing.sm,
                                     ),
                                     child: Hero(
                                       tag: 'volunteer_card_${r.id}',
                                       child: Material(
                                         type: MaterialType.transparency,
-                                        child: ListTile(
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                horizontal: 16,
-                                                vertical: 12,
-                                              ),
-                                          leading: CircleAvatar(
-                                            radius: 24,
-                                            backgroundColor: Theme.of(
-                                              context,
-                                            ).colorScheme.primaryContainer,
-                                            child: Text(
-                                              r.namaLengkap.isNotEmpty
-                                                  ? r.namaLengkap[0]
-                                                        .toUpperCase()
-                                                  : '?',
-                                              style: TextStyle(
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .onPrimaryContainer,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                          title: Row(
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  r.namaLengkap,
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .titleMedium
-                                                      ?.copyWith(
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 16),
-                                              Tooltip(
-                                                message: (r.isActive == true)
-                                                    ? 'Active Volunteer'
-                                                    : 'Inactive Volunteer',
-                                                child: Icon(
-                                                  Icons.verified,
-                                                  size: 18,
-                                                  color: (r.isActive == true)
-                                                      ? Theme.of(
-                                                          context,
-                                                        ).colorScheme.primary
-                                                      : Theme.of(
-                                                          context,
-                                                        ).colorScheme.outline,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          subtitle: Padding(
-                                            padding: const EdgeInsets.only(
-                                              top: 6,
-                                            ),
-                                            child: Text(
-                                              r.tim,
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .bodySmall
-                                                  ?.copyWith(
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .onSurfaceVariant,
-                                                  ),
-                                            ),
+                                        child: InkWell(
+                                          borderRadius: BorderRadius.circular(
+                                            AppRadius.md,
                                           ),
                                           onTap: () {
                                             Navigator.pushNamed(
@@ -525,117 +563,301 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                                               arguments: r,
                                             );
                                           },
-                                          trailing: IconButton(
-                                            icon: Icon(
-                                              Icons.delete,
-                                              color: Theme.of(
-                                                context,
-                                              ).colorScheme.error,
+                                          child: Ink(
+                                            decoration: BoxDecoration(
+                                              color: colorScheme.surface,
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    AppRadius.lg,
+                                                  ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: colorScheme.shadow
+                                                      .withValues(alpha: 0.08),
+                                                  blurRadius: 20,
+                                                  offset: const Offset(0, 10),
+                                                ),
+                                              ],
                                             ),
-                                            tooltip: 'Delete',
-                                            onPressed: () async {
-                                              final confirm =
-                                                  await showDialog<bool>(
-                                                    context: context,
-                                                    builder: (ctx) {
-                                                      return AlertDialog(
-                                                        title: const Text(
-                                                          'Confirm Delete',
-                                                        ),
-                                                        content: Text(
-                                                          'Are you sure you want to delete ${r.namaLengkap}?',
-                                                        ),
-                                                        actions: [
-                                                          TextButton(
-                                                            onPressed: () =>
-                                                                Navigator.pop(
-                                                                  ctx,
-                                                                  false,
-                                                                ),
-                                                            child: const Text(
-                                                              'Cancel',
-                                                            ),
-                                                          ),
-                                                          FilledButton(
-                                                            onPressed: () =>
-                                                                Navigator.pop(
-                                                                  ctx,
-                                                                  true,
-                                                                ),
-                                                            child: const Text(
-                                                              'Delete',
-                                                            ),
-                                                          ),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(
+                                                AppSpacing.sm,
+                                              ),
+                                              child: Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.center,
+                                                children: [
+                                                  Container(
+                                                    width: 42,
+                                                    height: 42,
+                                                    decoration: BoxDecoration(
+                                                      gradient: LinearGradient(
+                                                        colors: [
+                                                          colorScheme.primary,
+                                                          colorScheme.primary
+                                                              .withValues(
+                                                                alpha: 0.68,
+                                                              ),
                                                         ],
+                                                        begin:
+                                                            Alignment.topLeft,
+                                                        end: Alignment
+                                                            .bottomRight,
+                                                      ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            AppRadius.lg,
+                                                          ),
+                                                    ),
+                                                    child: Center(
+                                                      child: Text(
+                                                        r.namaLengkap.isNotEmpty
+                                                            ? r.namaLengkap[0]
+                                                                  .toUpperCase()
+                                                            : '?',
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 20,
+                                                          fontWeight:
+                                                              FontWeight.w800,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(
+                                                    width: AppSpacing.md,
+                                                  ),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Row(
+                                                          children: [
+                                                            Expanded(
+                                                              child: Text(
+                                                                r.namaLengkap,
+                                                                maxLines: 1,
+                                                                overflow:
+                                                                    TextOverflow
+                                                                        .ellipsis,
+                                                                style: Theme.of(context)
+                                                                    .textTheme
+                                                                    .labelLarge
+                                                                    ?.copyWith(
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w700,
+                                                                    ),
+                                                              ),
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 8,
+                                                            ),
+                                                            Container(
+                                                              padding:
+                                                                  const EdgeInsets.symmetric(
+                                                                    horizontal:
+                                                                        10,
+                                                                    vertical: 4,
+                                                                  ),
+                                                              decoration: BoxDecoration(
+                                                                color:
+                                                                    (r.isActive ==
+                                                                        true)
+                                                                    ? Colors
+                                                                          .green
+                                                                          .withValues(
+                                                                            alpha:
+                                                                                0.14,
+                                                                          )
+                                                                    : colorScheme
+                                                                          .surfaceContainerHighest,
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      999,
+                                                                    ),
+                                                              ),
+                                                              child: Text(
+                                                                (r.isActive ==
+                                                                        true)
+                                                                    ? 'Active'
+                                                                    : 'Inactive',
+                                                                style: TextStyle(
+                                                                  color:
+                                                                      (r.isActive ==
+                                                                          true)
+                                                                      ? Colors
+                                                                            .green
+                                                                            .shade700
+                                                                      : colorScheme
+                                                                            .onSurfaceVariant,
+                                                                  fontSize: 8,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w700,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 10,
+                                                        ),
+                                                        Wrap(
+                                                          spacing: 4,
+                                                          runSpacing: 4,
+                                                          children: [
+                                                            _VolunteerMetaChip(
+                                                              icon: Icons
+                                                                  .groups_rounded,
+                                                              label: r.tim,
+                                                            ),
+                                                            _VolunteerMetaChip(
+                                                              icon: Icons
+                                                                  .badge_outlined,
+                                                              label: r
+                                                                  .jenisKelamin,
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  IconButton(
+                                                    icon: Icon(
+                                                      Icons
+                                                          .delete_outline_rounded,
+                                                      color: colorScheme.error,
+                                                    ),
+                                                    tooltip: 'Delete',
+                                                    onPressed: () async {
+                                                      final bloc = context
+                                                          .read<
+                                                            VolunteerBloc
+                                                          >();
+                                                      final messenger =
+                                                          ScaffoldMessenger.of(
+                                                            context,
+                                                          );
+                                                      final confirm = await showDialog<bool>(
+                                                        context: context,
+                                                        builder: (ctx) {
+                                                          return AlertDialog(
+                                                            title: const Text(
+                                                              'Confirm Delete',
+                                                            ),
+                                                            content: Text(
+                                                              'Are you sure you want to delete ${r.namaLengkap}?',
+                                                            ),
+                                                            actions: [
+                                                              TextButton(
+                                                                onPressed: () =>
+                                                                    Navigator.pop(
+                                                                      ctx,
+                                                                      false,
+                                                                    ),
+                                                                child:
+                                                                    const Text(
+                                                                      'Cancel',
+                                                                    ),
+                                                              ),
+                                                              FilledButton(
+                                                                onPressed: () =>
+                                                                    Navigator.pop(
+                                                                      ctx,
+                                                                      true,
+                                                                    ),
+                                                                child:
+                                                                    const Text(
+                                                                      'Delete',
+                                                                    ),
+                                                              ),
+                                                            ],
+                                                          );
+                                                        },
                                                       );
-                                                    },
-                                                  );
-                                              if (confirm == true) {
-                                                final bloc = context
-                                                    .read<VolunteerBloc>();
-                                                if (!mounted) return;
-                                                setState(() {
-                                                  _removingIds.add(r.id);
-                                                });
-                                                final messenger =
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    );
-                                                final snackBar = SnackBar(
-                                                  content: Text(
-                                                    '${r.namaLengkap} deleted',
-                                                  ),
-                                                  action: SnackBarAction(
-                                                    label: 'Undo',
-                                                    onPressed: () {
-                                                      if (!mounted) return;
-                                                      setState(() {
-                                                        _removingIds.remove(
-                                                          r.id,
-                                                        );
-                                                      });
-                                                    },
-                                                  ),
-                                                );
-                                                messenger
-                                                    .showSnackBar(snackBar)
-                                                    .closed
-                                                    .then((reason) {
-                                                      if (!_removingIds
-                                                          .contains(r.id))
-                                                        return;
-                                                      try {
-                                                        bloc.add(
-                                                          DeleteVolunteer(r.id),
-                                                        );
-                                                      } catch (e) {
-                                                        debugPrint(
-                                                          'Bloc error: $e',
-                                                        );
-                                                      }
-                                                      try {
-                                                        bloc.add(
-                                                          SearchVolunteer(
-                                                            searchController
-                                                                .text,
-                                                            selectedTim,
-                                                            selectedGender,
+                                                      if (confirm == true) {
+                                                        if (!mounted) return;
+                                                        setState(() {
+                                                          _removingIds.add(
+                                                            r.id,
+                                                          );
+                                                        });
+                                                        final snackBar = SnackBar(
+                                                          content: Text(
+                                                            '${r.namaLengkap} deleted',
+                                                          ),
+                                                          action: SnackBarAction(
+                                                            label: 'Undo',
+                                                            onPressed: () {
+                                                              if (!mounted) {
+                                                                return;
+                                                              }
+                                                              setState(() {
+                                                                _removingIds
+                                                                    .remove(
+                                                                      r.id,
+                                                                    );
+                                                              });
+                                                            },
                                                           ),
                                                         );
-                                                      } catch (e) {
-                                                        debugPrint(
-                                                          'Bloc error: $e',
-                                                        );
+                                                        messenger
+                                                            .showSnackBar(
+                                                              snackBar,
+                                                            )
+                                                            .closed
+                                                            .then((reason) {
+                                                              if (!_removingIds
+                                                                  .contains(
+                                                                    r.id,
+                                                                  )) {
+                                                                return;
+                                                              }
+                                                              try {
+                                                                bloc.add(
+                                                                  DeleteVolunteer(
+                                                                    r.id,
+                                                                  ),
+                                                                );
+                                                              } catch (e) {
+                                                                debugPrint(
+                                                                  'BLOC error on volunteer list page: $e',
+                                                                );
+                                                              }
+                                                              try {
+                                                                bloc.add(
+                                                                  SearchVolunteer(
+                                                                    searchController
+                                                                        .text,
+                                                                    selectedTim,
+                                                                    selectedGender,
+                                                                  ),
+                                                                );
+                                                              } catch (e) {
+                                                                debugPrint(
+                                                                  'BLOC error on volunteer list page: $e',
+                                                                );
+                                                              }
+                                                              if (!mounted) {
+                                                                return;
+                                                              }
+                                                              setState(() {
+                                                                _removingIds
+                                                                    .remove(
+                                                                      r.id,
+                                                                    );
+                                                              });
+                                                            });
                                                       }
-                                                      if (!mounted) return;
-                                                      setState(() {
-                                                        _removingIds.remove(
-                                                          r.id,
-                                                        );
-                                                      });
-                                                    });
-                                              }
-                                            },
+                                                    },
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -646,7 +868,27 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                       },
                     );
                   } else if (state is VolunteerError) {
-                    return Center(child: Text(state.message));
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.xl),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.error_outline_rounded,
+                              size: 44,
+                              color: colorScheme.error,
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            Text(
+                              state.message,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodyLarge,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
                   }
 
                   return const SizedBox();
@@ -657,6 +899,40 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
         ),
       ),
       // floatingActionButton removed
+    );
+  }
+}
+
+class _VolunteerMetaChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _VolunteerMetaChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: colorScheme.onSurfaceVariant),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

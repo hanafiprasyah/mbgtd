@@ -23,8 +23,34 @@ class QrGeneratorPage extends StatefulWidget {
   State<QrGeneratorPage> createState() => _QrGeneratorPageState();
 }
 
-class _QrGeneratorPageState extends State<QrGeneratorPage> {
+class _QrGeneratorPageState extends State<QrGeneratorPage>
+    with SingleTickerProviderStateMixin {
   final repaintKey = GlobalKey();
+
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+
+    _scaleAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutBack,
+    );
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   String get qrData {
     final id = widget.id.trim();
@@ -55,9 +81,10 @@ class _QrGeneratorPageState extends State<QrGeneratorPage> {
       quality: 100,
     );
 
-    if (context.mounted) {
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
+          duration: const Duration(seconds: 1),
           content: Text(
             result['isSuccess'] == true
                 ? 'QR saved to gallery'
@@ -72,24 +99,84 @@ class _QrGeneratorPageState extends State<QrGeneratorPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('QR Code')),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          RepaintBoundary(
-            key: repaintKey,
-            child: PrettyQrView.data(
-              data: qrData,
-              decoration: const PrettyQrDecoration(
-                quietZone: PrettyQrQuietZone.standard,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              const SizedBox(height: 20),
+
+              // Header Info
+              Column(
+                children: [
+                  Text(
+                    widget.nama,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.tim,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                  ),
+                ],
               ),
-            ),
+
+              const Spacer(),
+
+              // Animated QR Card
+              ScaleTransition(
+                scale: _scaleAnimation,
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: RepaintBoundary(
+                    key: repaintKey,
+                    child: PrettyQrView.data(
+                      data: qrData,
+                      decoration: const PrettyQrDecoration(
+                        quietZone: PrettyQrQuietZone.standard,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              const Spacer(),
+
+              // Save Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: saveQr,
+                  icon: const Icon(Icons.download_rounded),
+                  label: const Text('Save QR to Gallery'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 10),
+            ],
           ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: saveQr,
-            child: const Text('Save to Gallery'),
-          ),
-        ],
+        ),
       ),
     );
   }

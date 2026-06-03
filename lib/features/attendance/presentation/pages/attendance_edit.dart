@@ -54,6 +54,7 @@ class _EditAttendancePageState extends State<EditAttendancePage> {
           "note": noteController.text,
         });
 
+    if (!mounted) return;
     Navigator.pop(context);
   }
 
@@ -133,12 +134,14 @@ class _EditAttendancePageState extends State<EditAttendancePage> {
                     items: const [
                       DropdownMenuItem(value: "full", child: Text("Full Day")),
                       DropdownMenuItem(value: "half", child: Text("Half Day")),
+                      DropdownMenuItem(value: "absent", child: Text("Absent")),
                     ],
                     onChanged: (value) {
                       setState(() {
                         attendanceType = value!;
                         if (value == "full") multiplier = 1.0;
                         if (value == "half") multiplier = 0.5;
+                        if (value == "absent") multiplier = 0;
                       });
                     },
                   ),
