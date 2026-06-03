@@ -16,16 +16,76 @@ class PayrollDetailPage extends StatefulWidget {
   State<PayrollDetailPage> createState() => _PayrollDetailPageState();
 }
 
-class _PayrollDetailPageState extends State<PayrollDetailPage> {
+class _PayrollDetailPageState extends State<PayrollDetailPage>
+    with SingleTickerProviderStateMixin {
   final AttendancePayrollRepository payrollRepository =
       AttendancePayrollRepository();
   bool _hasRequestedVolunteer = false;
+  // Animation fields
+  late AnimationController _animController;
+  late Animation<double> _fadeAttendance;
+  late Animation<Offset> _slideAttendance;
+  late Animation<double> _fadePool;
+  late Animation<Offset> _slidePool;
+  late Animation<double> _fadeSalary;
+  late Animation<Offset> _slideSalary;
 
   final currencyFormatter = NumberFormat.currency(
     locale: 'id_ID',
     symbol: 'Rp. ',
     decimalDigits: 0,
   );
+
+  @override
+  void initState() {
+    super.initState();
+
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+
+    // Attendance (muncul duluan)
+    _fadeAttendance = CurvedAnimation(
+      parent: _animController,
+      curve: const Interval(0.0, 0.4, curve: Curves.easeOutCubic),
+    );
+
+    _slideAttendance = Tween<Offset>(
+      begin: const Offset(0, 0.15),
+      end: Offset.zero,
+    ).animate(_fadeAttendance);
+
+    // Pool
+    _fadePool = CurvedAnimation(
+      parent: _animController,
+      curve: const Interval(0.2, 0.7, curve: Curves.easeOutCubic),
+    );
+
+    _slidePool = Tween<Offset>(
+      begin: const Offset(0, 0.15),
+      end: Offset.zero,
+    ).animate(_fadePool);
+
+    // Salary
+    _fadeSalary = CurvedAnimation(
+      parent: _animController,
+      curve: const Interval(0.4, 1.0, curve: Curves.easeOutCubic),
+    );
+
+    _slideSalary = Tween<Offset>(
+      begin: const Offset(0, 0.15),
+      end: Offset.zero,
+    ).animate(_fadeSalary);
+
+    _animController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
 
   String getBankAsset(String bank) {
     switch (bank.toUpperCase()) {
@@ -139,157 +199,166 @@ class _PayrollDetailPageState extends State<PayrollDetailPage> {
     final noPoolMessage = 'No $poolSource pool allocation for this period';
     final totalLabel = 'Total $poolSource Pool';
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          color: totalPool > 0
-              ? Colors.purple.withValues(alpha: 0.05)
-              : Colors.grey.withValues(alpha: 0.05),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-          border: Border.all(
-            color: totalPool > 0
-                ? Colors.purple.withValues(alpha: 0.2)
-                : Colors.grey.withValues(alpha: 0.2),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.trending_up_rounded,
-                  color: totalPool > 0 ? Colors.purple : Colors.grey,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  poolTitle,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
+    return FadeTransition(
+      opacity: _fadePool,
+      child: SlideTransition(
+        position: _slidePool,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              color: totalPool > 0
+                  ? Colors.purple.withValues(alpha: 0.05)
+                  : Colors.grey.withValues(alpha: 0.05),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
               ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
+              border: Border.all(
                 color: totalPool > 0
-                    ? Colors.purple.withValues(alpha: 0.1)
-                    : Colors.grey.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+                    ? Colors.purple.withValues(alpha: 0.2)
+                    : Colors.grey.withValues(alpha: 0.2),
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 16,
-                    color: totalPool > 0 ? Colors.purple : Colors.grey,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      infoMessage,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: totalPool > 0
-                            ? Colors.purple.shade700
-                            : Colors.grey.shade700,
-                        fontWeight: FontWeight.w500,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.trending_up_rounded,
+                      color: totalPool > 0 ? Colors.purple : Colors.grey,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      poolTitle,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
                       ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
                   ),
-                ],
-              ),
-            ),
-            if (totalPool > 0) ...[
-              const SizedBox(height: 12),
-              // Pool entries
-              ...entries.map((entry) {
-                final date = entry['date'] as String;
-                final amount = entry['amount'] as double;
-                final formatted = formatDate(date);
-
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color: totalPool > 0
+                        ? Colors.purple.withValues(alpha: 0.1)
+                        : Colors.grey.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.calendar_today,
-                            size: 14,
-                            color: Colors.purple,
+                      Icon(
+                        Icons.info_outline,
+                        size: 16,
+                        color: totalPool > 0 ? Colors.purple : Colors.grey,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          infoMessage,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: totalPool > 0
+                                ? Colors.purple.shade700
+                                : Colors.grey.shade700,
+                            fontWeight: FontWeight.w500,
                           ),
-                          const SizedBox(width: 6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (totalPool > 0) ...[
+                  const SizedBox(height: 12),
+                  // Pool entries
+                  ...entries.map((entry) {
+                    final date = entry['date'] as String;
+                    final amount = entry['amount'] as double;
+                    final formatted = formatDate(date);
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.calendar_today,
+                                size: 14,
+                                color: Colors.purple,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                formatted,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
                           Text(
-                            formatted,
-                            style: const TextStyle(
+                            currencyFormatter.format(amount.toInt()),
+                            style: TextStyle(
                               fontSize: 13,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.purple.shade700,
                             ),
                           ),
                         ],
                       ),
+                    );
+                  }),
+                  const Divider(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
                       Text(
-                        currencyFormatter.format(amount.toInt()),
-                        style: TextStyle(
+                        totalLabel,
+                        style: const TextStyle(
                           fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        currencyFormatter.format(totalPool.toInt()),
+                        style: TextStyle(
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: Colors.purple.shade700,
                         ),
                       ),
                     ],
                   ),
-                );
-              }),
-              const Divider(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    totalLabel,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    currencyFormatter.format(totalPool.toInt()),
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.purple.shade700,
+                ] else ...[
+                  const SizedBox(height: 8),
+                  Center(
+                    child: Text(
+                      noPoolMessage,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
                   ),
                 ],
-              ),
-            ] else ...[
-              const SizedBox(height: 8),
-              Center(
-                child: Text(
-                  noPoolMessage,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ),
-            ],
-          ],
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -387,236 +456,250 @@ class _PayrollDetailPageState extends State<PayrollDetailPage> {
                     _buildHeader(context, nama, namaBank, noRek, logo),
                     const SizedBox(height: 8),
                     // ATTENDANCE DETAIL INFO
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          color: Colors.white,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
+                    FadeTransition(
+                      opacity: _fadeAttendance,
+                      child: SlideTransition(
+                        position: _slideAttendance,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              color: Colors.white,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                              border: Border.all(
+                                color: Theme.of(
+                                  context,
+                                ).primaryColor.withValues(alpha: 0.1),
+                              ),
                             ),
-                          ],
-                          border: Border.all(
-                            color: Theme.of(
-                              context,
-                            ).primaryColor.withValues(alpha: 0.1),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.fact_check_rounded,
+                                      color: Theme.of(context).primaryColor,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Attendance Detail',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+
+                                // EFFECTIVE SCAN
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'Effective Attendance',
+                                      style: TextStyle(fontSize: 13),
+                                    ),
+                                    Text(
+                                      ((totalEffectiveScan))
+                                          .toDouble()
+                                          .toStringAsFixed(2),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                if (halfDayDates.isNotEmpty) ...[
+                                  const SizedBox(height: 12),
+
+                                  const Text(
+                                    'Half Day Attendance Dates',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 8),
+
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: halfDayDates.map((item) {
+                                        final date = item is Map
+                                            ? item['date']
+                                            : item;
+                                        final note = _getAttendanceNote(item);
+                                        final formatted = formatDate(date);
+
+                                        return InkWell(
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                          splashColor: Colors.transparent,
+                                          highlightColor: Colors.transparent,
+                                          onTap: () {
+                                            if (!mounted) return;
+                                            _showModalAttendance(
+                                              context,
+                                              note,
+                                              formatted,
+                                            );
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 6,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.orange.withValues(
+                                                alpha: 0.1,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              border: Border.all(
+                                                color: Colors.orange.withValues(
+                                                  alpha: 0.3,
+                                                ),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Text("📅 "),
+                                                Text(
+                                                  formatted,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color:
+                                                        Colors.orange.shade800,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                if (note
+                                                    .toString()
+                                                    .isNotEmpty) ...[
+                                                  const SizedBox(width: 4),
+                                                  Icon(
+                                                    Icons.touch_app,
+                                                    size: 12,
+                                                    color: Colors.grey,
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                ],
+
+                                if (absentDates.isNotEmpty) ...[
+                                  const SizedBox(height: 12),
+
+                                  const Text(
+                                    'Absent Attendance Dates',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 8),
+
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: absentDates.map((item) {
+                                        final date = item is Map
+                                            ? item['date']
+                                            : item;
+                                        final note = _getAttendanceNote(item);
+                                        final formatted = formatDate(date);
+
+                                        return InkWell(
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                          splashColor: Colors.transparent,
+                                          highlightColor: Colors.transparent,
+                                          onTap: () {
+                                            if (!mounted) return;
+                                            _showModalAttendance(
+                                              context,
+                                              note,
+                                              formatted,
+                                            );
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 6,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.red.withValues(
+                                                alpha: 0.1,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              border: Border.all(
+                                                color: Colors.red.withValues(
+                                                  alpha: 0.3,
+                                                ),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Text("📅 "),
+                                                Text(
+                                                  formatted,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.red.shade700,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                if (note
+                                                    .toString()
+                                                    .isNotEmpty) ...[
+                                                  const SizedBox(width: 4),
+                                                  Icon(
+                                                    Icons.touch_app,
+                                                    size: 12,
+                                                    color: Colors.grey,
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.fact_check_rounded,
-                                  color: Theme.of(context).primaryColor,
-                                ),
-                                const SizedBox(width: 8),
-                                const Text(
-                                  'Attendance Detail',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-
-                            // EFFECTIVE SCAN
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Effective Attendance',
-                                  style: TextStyle(fontSize: 13),
-                                ),
-                                Text(
-                                  ((totalEffectiveScan))
-                                      .toDouble()
-                                      .toStringAsFixed(2),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            if (halfDayDates.isNotEmpty) ...[
-                              const SizedBox(height: 12),
-
-                              const Text(
-                                'Half Day Attendance Dates',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-
-                              const SizedBox(height: 8),
-
-                              SizedBox(
-                                width: double.infinity,
-                                child: Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: halfDayDates.map((item) {
-                                    final date = item is Map
-                                        ? item['date']
-                                        : item;
-                                    final note = _getAttendanceNote(item);
-                                    final formatted = formatDate(date);
-
-                                    return InkWell(
-                                      borderRadius: BorderRadius.circular(20),
-                                      splashColor: Colors.transparent,
-                                      highlightColor: Colors.transparent,
-                                      onTap: () {
-                                        if (!mounted) return;
-                                        _showModalAttendance(
-                                          context,
-                                          note,
-                                          formatted,
-                                        );
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.orange.withValues(
-                                            alpha: 0.1,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            20,
-                                          ),
-                                          border: Border.all(
-                                            color: Colors.orange.withValues(
-                                              alpha: 0.3,
-                                            ),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Text("📅 "),
-                                            Text(
-                                              formatted,
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.orange.shade800,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                            if (note.toString().isNotEmpty) ...[
-                                              const SizedBox(width: 4),
-                                              Icon(
-                                                Icons.touch_app,
-                                                size: 12,
-                                                color: Colors.grey,
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
-                            ],
-
-                            if (absentDates.isNotEmpty) ...[
-                              const SizedBox(height: 12),
-
-                              const Text(
-                                'Absent Attendance Dates',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-
-                              const SizedBox(height: 8),
-
-                              SizedBox(
-                                width: double.infinity,
-                                child: Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: absentDates.map((item) {
-                                    final date = item is Map
-                                        ? item['date']
-                                        : item;
-                                    final note = _getAttendanceNote(item);
-                                    final formatted = formatDate(date);
-
-                                    return InkWell(
-                                      borderRadius: BorderRadius.circular(20),
-                                      splashColor: Colors.transparent,
-                                      highlightColor: Colors.transparent,
-                                      onTap: () {
-                                        if (!mounted) return;
-                                        _showModalAttendance(
-                                          context,
-                                          note,
-                                          formatted,
-                                        );
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red.withValues(
-                                            alpha: 0.1,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            20,
-                                          ),
-                                          border: Border.all(
-                                            color: Colors.red.withValues(
-                                              alpha: 0.3,
-                                            ),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Text("📅 "),
-                                            Text(
-                                              formatted,
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.red.shade700,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                            if (note.toString().isNotEmpty) ...[
-                                              const SizedBox(width: 4),
-                                              Icon(
-                                                Icons.touch_app,
-                                                size: 12,
-                                                color: Colors.grey,
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
-                            ],
-                          ],
                         ),
                       ),
                     ),
@@ -630,160 +713,172 @@ class _PayrollDetailPageState extends State<PayrollDetailPage> {
                     if (!isPoolProvider) const SizedBox(height: 16),
 
                     // SALARY INFO
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          color: Colors.white,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                          border: Border.all(
-                            color: Theme.of(
-                              context,
-                            ).primaryColor.withValues(alpha: 0.1),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.payments_rounded,
-                                  color: Theme.of(context).primaryColor,
-                                ),
-                                const SizedBox(width: 8),
-                                const Text(
-                                  'Salary Information',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
-                                  ),
+                    FadeTransition(
+                      opacity: _fadeSalary,
+                      child: SlideTransition(
+                        position: _slideSalary,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              color: Colors.white,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
                                 ),
                               ],
-                            ),
-                            const SizedBox(height: 16),
-                            // STATUS BADGE
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isPIC
-                                    ? Colors.green.withValues(alpha: 0.1)
-                                    : Colors.grey.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                isPIC ? 'PIC (+Rp 10.000 / scan)' : 'Non-PIC',
-                                style: TextStyle(
-                                  color: isPIC
-                                      ? Colors.green
-                                      : Colors.grey[700],
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12,
-                                ),
+                              border: Border.all(
+                                color: Theme.of(
+                                  context,
+                                ).primaryColor.withValues(alpha: 0.1),
                               ),
                             ),
-                            const SizedBox(height: 16),
-                            // TOTAL SCAN
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Total Scan',
-                                  style: TextStyle(fontSize: 13),
-                                ),
-                                Text(
-                                  '$totalScan time(s)',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            if (isPIC) ...[
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text(
-                                    'Total Bonus (PIC)',
-                                    style: TextStyle(fontSize: 13),
-                                  ),
-                                  Text(
-                                    currencyFormatter.format(
-                                      (totalEffectiveScan.toDouble() * 10000)
-                                          .toInt(),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.payments_rounded,
+                                      color: Theme.of(context).primaryColor,
                                     ),
-                                    style: const TextStyle(
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Salary Information',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                // STATUS BADGE
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isPIC
+                                        ? Colors.green.withValues(alpha: 0.1)
+                                        : Colors.grey.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    isPIC
+                                        ? 'PIC (+Rp 10.000 / scan)'
+                                        : 'Non-PIC',
+                                    style: TextStyle(
+                                      color: isPIC
+                                          ? Colors.green
+                                          : Colors.grey[700],
                                       fontWeight: FontWeight.w600,
-                                      fontSize: 13,
+                                      fontSize: 12,
                                     ),
                                   ),
+                                ),
+                                const SizedBox(height: 16),
+                                // TOTAL SCAN
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'Total Scan',
+                                      style: TextStyle(fontSize: 13),
+                                    ),
+                                    Text(
+                                      '$totalScan time(s)',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                if (isPIC) ...[
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text(
+                                        'Total Bonus (PIC)',
+                                        style: TextStyle(fontSize: 13),
+                                      ),
+                                      Text(
+                                        currencyFormatter.format(
+                                          (totalEffectiveScan.toDouble() *
+                                                  10000)
+                                              .toInt(),
+                                        ),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Calculated from effective scans × Rp 10.000',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
                                 ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Calculated from effective scans × Rp 10.000',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey[600],
+                                // BASE SALARY
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'Base Salary',
+                                      style: TextStyle(fontSize: 13),
+                                    ),
+                                    Text(
+                                      currencyFormatter.format(baseSalary),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(height: 8),
-                            ],
-                            // BASE SALARY
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Base Salary',
-                                  style: TextStyle(fontSize: 13),
-                                ),
-                                Text(
-                                  currencyFormatter.format(baseSalary),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Divider(height: 24),
-                            // TOTAL GAJI
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Total Salary',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  currencyFormatter.format(totalGaji),
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Theme.of(context).primaryColor,
-                                  ),
+                                const Divider(height: 24),
+                                // TOTAL GAJI
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'Total Salary',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      currencyFormatter.format(totalGaji),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: Theme.of(context).primaryColor,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
