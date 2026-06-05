@@ -367,6 +367,8 @@ class _PayrollDetailPageState extends State<PayrollDetailPage>
   @override
   Widget build(BuildContext context) {
     final volunteerId = _resolveVolunteerId(context);
+    final colorScheme = Theme.of(context).colorScheme;
+
     if (volunteerId.isEmpty) {
       return const Scaffold(
         body: Center(child: Text('Volunteer ID not found')),
@@ -374,7 +376,12 @@ class _PayrollDetailPageState extends State<PayrollDetailPage>
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Payroll Detail')),
+      backgroundColor: colorScheme.surfaceContainerLowest,
+      appBar: AppBar(
+        title: const Text('Payroll Detail'),
+        backgroundColor: colorScheme.surfaceContainerLowest,
+        surfaceTintColor: Colors.transparent,
+      ),
       body: _buildBody(volunteerId),
     );
   }

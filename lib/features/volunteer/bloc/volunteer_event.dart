@@ -1,14 +1,16 @@
+import 'package:mbg_test/features/volunteer/data/models/volunteer_model.dart';
+
 abstract class VolunteerEvent {}
 
 class LoadVolunteer extends VolunteerEvent {}
 
 class AddVolunteer extends VolunteerEvent {
-  final dynamic volunteer;
+  final Volunteer volunteer;
   AddVolunteer(this.volunteer);
 }
 
 class UpdateVolunteer extends VolunteerEvent {
-  final dynamic volunteer;
+  final Volunteer volunteer;
   UpdateVolunteer(this.volunteer);
 }
 
@@ -23,6 +25,18 @@ class SearchVolunteer extends VolunteerEvent {
   final String? jenisKelamin;
 
   SearchVolunteer(this.query, this.tim, this.jenisKelamin);
+}
+
+class VolunteerDataReceived extends VolunteerEvent {
+  final List<Volunteer> volunteer;
+
+  VolunteerDataReceived(this.volunteer);
+}
+
+class VolunteerStreamFailed extends VolunteerEvent {
+  final Object error;
+
+  VolunteerStreamFailed(this.error);
 }
 
 class FilterVolunteer extends VolunteerEvent {

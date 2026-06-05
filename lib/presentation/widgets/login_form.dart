@@ -124,22 +124,25 @@ class LoginFormWidget extends StatelessWidget {
                       await FirebaseAuth.instance.sendPasswordResetEmail(
                         email: email,
                       );
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            "Password reset link has been sent to your email",
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              "Password reset link has been sent to your email",
+                            ),
+                            duration: Duration(seconds: 1),
                           ),
-                          duration: Duration(seconds: 1),
-                        ),
-                      );
+                        );
+                      }
                     } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text("Failed to send email: $e"),
-                          duration: Duration(seconds: 1),
-                        ),
-                      );
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text("Failed to send email: $e"),
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      }
                     }
                   },
                   child: const Text("Forgot Password?"),

@@ -96,8 +96,13 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
+      backgroundColor: colorScheme.surfaceContainerLowest,
       appBar: AppBar(
+        backgroundColor: colorScheme.surfaceContainerLowest,
+        surfaceTintColor: Colors.transparent,
         title: Text(existing == null ? 'Add Volunteer' : 'Edit Volunteer'),
       ),
       body: BlocConsumer<VolunteerBloc, VolunteerState>(

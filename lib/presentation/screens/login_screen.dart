@@ -24,7 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 1500), () {
+    Future.delayed(const Duration(milliseconds: 1300), () {
       if (mounted) {
         setState(() {
           _showContent = true;
@@ -40,12 +40,26 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // Validates the form and submits the login event to the bloc
+  void _submit(BuildContext context, LoginState state) {
+    if (_formKey.currentState!.validate()) {
+      FocusScope.of(context).unfocus();
+      context.read<LoginBloc>().add(
+        LoginSubmitted(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => LoginBloc(context.read<AuthRepository>()),
       child: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
+        onDoubleTap: () => FocusScope.of(context).unfocus(),
         child: Scaffold(
           backgroundColor: Colors.white,
           resizeToAvoidBottomInset: true,
@@ -107,9 +121,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     key: ValueKey('loader'),
                                     height: 80,
                                     width: 80,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 3,
-                                    ),
+                                    child: CircularProgressIndicator(),
                                   ),
                           ),
                         );
@@ -123,17 +135,5 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
-  }
-
-  void _submit(BuildContext context, LoginState state) {
-    if (_formKey.currentState!.validate()) {
-      FocusScope.of(context).unfocus();
-      context.read<LoginBloc>().add(
-        LoginSubmitted(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-        ),
-      );
-    }
   }
 }

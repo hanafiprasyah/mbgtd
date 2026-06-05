@@ -1,10 +1,8 @@
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/date_symbol_data_local.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:mbg_test/core/helper/design_system.dart';
 import 'package:mbg_test/core/services/camera_prewarm.dart';
 import 'package:mbg_test/presentation/widgets/home_tab.dart';
 import 'package:mbg_test/presentation/widgets/setting_tab.dart';
@@ -20,14 +18,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _controller = PersistentTabController();
   bool _isLoading = true;
-  int _loadingTextIndex = 0;
   Map<String, dynamic>? userData;
-
-  final List<String> _loadingTexts = [
-    "Welcome back,",
-    "Preparing your data...",
-    "Ready to go!",
-  ];
 
   Future<void> _fetchUserData() async {
     try {
@@ -59,32 +50,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _startLoadingSequence() async {
     final user = FirebaseAuth.instance.currentUser;
 
-    // Start text animation (non-blocking)
-    Future.delayed(const Duration(milliseconds: 1000), () {
-      if (!mounted) return;
-      setState(() => _loadingTextIndex = 1);
-    });
+    await Future.wait([_fetchUserData()]);
 
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (!mounted) return;
-      setState(() => _loadingTextIndex = 2);
-    });
+    final data = await getUserRole(user?.uid ?? "");
 
-    // Wait for BOTH animation minimum time AND data fetching
-    await Future.wait([
-      Future.delayed(const Duration(milliseconds: 2200)),
-      _fetchUserData().whenComplete(() async {
-        // Ensure user data is reloaded before fetching role
-        debugPrint("User Uid: ${user?.uid}");
-      }),
-    ]).whenComplete(() async {
-      final data = await getUserRole(user?.uid ?? "");
-
-      if (!mounted) return;
-      setState(() {
-        userData = data;
-        _isLoading = false;
-      });
+    if (!mounted) return;
+    setState(() {
+      userData = data;
+      _isLoading = false;
     });
   }
 
@@ -133,8 +106,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
 
-    initializeDateFormatting('id_ID', null);
-
     _startLoadingSequence();
     Future.microtask(() async {
       await CameraPrewarmService.prewarm();
@@ -171,19 +142,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
               ),
-              const SizedBox(height: AppSpacing.lg),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: Text(
-                  _loadingTexts[_loadingTextIndex],
-                  key: ValueKey(_loadingTextIndex),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
             ],
           ),
         ),
@@ -199,6 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       resizeToAvoidBottomInset: true,
       tabs: [
+        // Home Tab
         PersistentTabConfig(
           screen: buildHomeTab(
             context,
@@ -209,6 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           item: ItemConfig(icon: const Icon(Icons.home), title: "Home"),
         ),
+        // Settings Tab
         PersistentTabConfig(
           screen: buildSettingTab(
             context,

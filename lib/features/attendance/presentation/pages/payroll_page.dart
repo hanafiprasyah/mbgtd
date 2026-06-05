@@ -552,8 +552,13 @@ class _PayrollPageState extends State<PayrollPage>
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
+      backgroundColor: colorScheme.surfaceContainerLowest,
       appBar: AppBar(
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: colorScheme.surfaceContainerLowest,
         title: const Text('Payroll Volunteer'),
         actions: [
           IconButton(
@@ -844,7 +849,7 @@ class _PayrollPageState extends State<PayrollPage>
                             pinned: true,
                             delegate: _TeamHeaderDelegate(
                               title:
-                                  '$team (Total: ${currencyFormatter.format(totalTeam)})',
+                                  '$team (Total: ${currencyFormatter.format(totalTeam)}) - ${items.length} orang',
                             ),
                           ),
 
@@ -1343,9 +1348,58 @@ class _TeamHeaderDelegate extends SliverPersistentHeaderDelegate {
         vertical: AppSpacing.sm,
       ),
       alignment: Alignment.centerLeft,
-      child: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      child: Builder(
+        builder: (context) {
+          final parts = title.split(' - ');
+          final mainText = parts[0];
+          final countText = parts.length > 1 ? parts[1] : '';
+
+          return Row(
+            children: [
+              Expanded(
+                child: Text(
+                  mainText,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (countText.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).primaryColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.people,
+                        size: 12,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        countText.replaceAll('orang', 'people'),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }

@@ -20,6 +20,7 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
   @override
   Widget build(BuildContext context) {
     final args = ModalRoute.of(context)?.settings.arguments;
+    final colorScheme = Theme.of(context).colorScheme;
 
     if (args == null || args is! Volunteer) {
       return const Scaffold(
@@ -30,7 +31,12 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
     volunteer ??= args;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Detail Volunteer')),
+      backgroundColor: colorScheme.surfaceContainerLowest,
+      appBar: AppBar(
+        title: const Text('Detail Volunteer'),
+        backgroundColor: colorScheme.surfaceContainerLowest,
+        surfaceTintColor: Colors.transparent,
+      ),
       body: TweenAnimationBuilder<double>(
         tween: Tween(begin: 0, end: 1),
         duration: const Duration(milliseconds: 500),

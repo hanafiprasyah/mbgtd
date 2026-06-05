@@ -17,22 +17,48 @@ class _AuthGateState extends State<AuthGate> {
   @override
   void initState() {
     super.initState();
-    context.read<AuthBloc>().add(AuthCheckRequested());
+    Future.microtask(() {
+      if (mounted) {
+        context.read<AuthBloc>().add(AuthCheckRequested());
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
+        Widget child;
+
         if (state is AuthInitial) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+          child = Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text(
+                    'Checking session...',
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
           );
         } else if (state is AuthAuthenticated) {
-          return const HomeScreen();
+          child = const HomeScreen();
         } else {
-          return const LoginScreen();
+          child = const LoginScreen();
         }
+
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 400),
+          transitionBuilder: (child, animation) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          child: KeyedSubtree(key: ValueKey(state.runtimeType), child: child),
+        );
       },
     );
   }
