@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:mbg_test/auth_gate.dart';
 import 'package:mbg_test/presentation/screens/home_screen.dart';
+import 'package:mbg_test/features/users/data/models/user_model.dart';
+import 'package:mbg_test/features/users/presentation/user_detail.dart';
+import 'package:mbg_test/features/users/presentation/user_form.dart';
+import 'package:mbg_test/features/users/presentation/user_list.dart';
 import 'package:mbg_test/presentation/screens/not_found_screen.dart';
 import 'package:mbg_test/features/volunteer/data/models/volunteer_model.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/payroll_page.dart';
@@ -53,6 +57,25 @@ class AppRoutes {
         );
       case '/payroll-history':
         return MaterialPageRoute(builder: (_) => const PayrollHistoryPage());
+      case '/manage-users':
+        return MaterialPageRoute(builder: (_) => const UserListPage());
+      case '/user-add':
+        return MaterialPageRoute(
+          builder: (_) => const UserFormPage(),
+          settings: settings,
+        );
+      case '/user-edit':
+        final user = settings.arguments as UserModel;
+        return MaterialPageRoute(
+          builder: (_) => UserFormPage(existing: user),
+          settings: settings,
+        );
+      case '/user-detail':
+        final id = settings.arguments as String;
+        return MaterialPageRoute(
+          builder: (_) => UserDetailPage(id: id),
+          settings: settings,
+        );
       default:
         return MaterialPageRoute(builder: (_) => const NotFoundPage());
     }
