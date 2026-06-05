@@ -554,7 +554,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                                         type: MaterialType.transparency,
                                         child: InkWell(
                                           borderRadius: BorderRadius.circular(
-                                            AppRadius.md,
+                                            AppRadius.xl,
                                           ),
                                           onTap: () {
                                             Navigator.pushNamed(
@@ -566,10 +566,6 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                                           child: Ink(
                                             decoration: BoxDecoration(
                                               color: colorScheme.surface,
-                                              borderRadius:
-                                                  BorderRadius.circular(
-                                                    AppRadius.lg,
-                                                  ),
                                               boxShadow: [
                                                 BoxShadow(
                                                   color: colorScheme.shadow
@@ -591,23 +587,52 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                                                     width: 42,
                                                     height: 42,
                                                     decoration: BoxDecoration(
-                                                      gradient: LinearGradient(
-                                                        colors: [
-                                                          colorScheme.primary,
-                                                          colorScheme.primary
-                                                              .withValues(
-                                                                alpha: 0.68,
-                                                              ),
-                                                        ],
-                                                        begin:
-                                                            Alignment.topLeft,
-                                                        end: Alignment
-                                                            .bottomRight,
-                                                      ),
+                                                      gradient:
+                                                          (r.isActive == true)
+                                                          ? LinearGradient(
+                                                              colors: [
+                                                                Colors
+                                                                    .green
+                                                                    .shade400,
+                                                                Colors
+                                                                    .green
+                                                                    .shade700,
+                                                              ],
+                                                              begin: Alignment
+                                                                  .topLeft,
+                                                              end: Alignment
+                                                                  .bottomRight,
+                                                            )
+                                                          : null,
+                                                      color:
+                                                          (r.isActive == true)
+                                                          ? null
+                                                          : colorScheme
+                                                                .surfaceContainerHighest,
                                                       borderRadius:
                                                           BorderRadius.circular(
                                                             AppRadius.lg,
                                                           ),
+                                                      boxShadow:
+                                                          (r.isActive == true)
+                                                          ? [
+                                                              BoxShadow(
+                                                                color: Colors
+                                                                    .green
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.4,
+                                                                    ),
+                                                                blurRadius: 12,
+                                                                spreadRadius: 1,
+                                                                offset:
+                                                                    const Offset(
+                                                                      0,
+                                                                      4,
+                                                                    ),
+                                                              ),
+                                                            ]
+                                                          : [],
                                                     ),
                                                     child: Center(
                                                       child: Text(
@@ -655,51 +680,6 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                                                             const SizedBox(
                                                               width: 8,
                                                             ),
-                                                            Container(
-                                                              padding:
-                                                                  const EdgeInsets.symmetric(
-                                                                    horizontal:
-                                                                        10,
-                                                                    vertical: 4,
-                                                                  ),
-                                                              decoration: BoxDecoration(
-                                                                color:
-                                                                    (r.isActive ==
-                                                                        true)
-                                                                    ? Colors
-                                                                          .green
-                                                                          .withValues(
-                                                                            alpha:
-                                                                                0.14,
-                                                                          )
-                                                                    : colorScheme
-                                                                          .surfaceContainerHighest,
-                                                                borderRadius:
-                                                                    BorderRadius.circular(
-                                                                      999,
-                                                                    ),
-                                                              ),
-                                                              child: Text(
-                                                                (r.isActive ==
-                                                                        true)
-                                                                    ? 'Active'
-                                                                    : 'Inactive',
-                                                                style: TextStyle(
-                                                                  color:
-                                                                      (r.isActive ==
-                                                                          true)
-                                                                      ? Colors
-                                                                            .green
-                                                                            .shade700
-                                                                      : colorScheme
-                                                                            .onSurfaceVariant,
-                                                                  fontSize: 8,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w700,
-                                                                ),
-                                                              ),
-                                                            ),
                                                           ],
                                                         ),
                                                         const SizedBox(
@@ -726,6 +706,22 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                                                     ),
                                                   ),
                                                   const SizedBox(width: 6),
+                                                  IconButton(
+                                                    icon: Icon(
+                                                      Icons.qr_code_rounded,
+                                                      color:
+                                                          colorScheme.primary,
+                                                    ),
+                                                    tooltip: 'Generate QR',
+                                                    onPressed: () {
+                                                      Navigator.pushNamed(
+                                                        context,
+                                                        '/qr-generator',
+                                                        arguments: r,
+                                                      );
+                                                    },
+                                                  ),
+                                                  const SizedBox(width: 2),
                                                   IconButton(
                                                     icon: Icon(
                                                       Icons

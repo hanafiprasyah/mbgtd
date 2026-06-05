@@ -73,25 +73,11 @@ class NotFoundPage extends StatelessWidget {
                         ),
                       ),
                       onPressed: () {
-                        Navigator.pushNamedAndRemoveUntil(
-                          context,
-                          '/home',
-                          (route) => false,
-                        );
+                        Navigator.pop(context);
                       },
                       icon: const Icon(Icons.home_rounded),
                       label: const Text("Back to previous page"),
                     ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Secondary action
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: const Text("Back to previous page"),
                   ),
                 ],
               ),

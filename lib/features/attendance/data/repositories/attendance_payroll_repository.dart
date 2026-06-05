@@ -121,31 +121,11 @@ class AttendancePayrollRepository {
     final Map<String, Map<String, dynamic>> teamDaySummary = {};
     final Map<String, double> poolByProviderByDate =
         {}; // "{provider}_{date}" -> amount
-
-    // First pass: find the most recent halfday date for each pool provider (Chef, ASLAP, etc.)
-    final Map<String, String?> mostRecentHalfDayDatePerProvider = {};
-
-    groupByDateTim.forEach((key, list) {
-      final split = key.split('_');
-      final date = split[0];
-      final tim = split.sublist(1).join('_');
-
-      final rule = payrollRules[tim];
-      final isProvider = rule?.isChefOrAslap ?? false;
-
-      if (isProvider) {
-        for (var rec in list) {
-          final multiplier = (rec['multiplier'] ?? 1.0) as double;
-          // Check if provider has halfday (0 < multiplier < 1)
-          if (multiplier > 0.0 && multiplier < 1.0) {
-            final currentRecent = mostRecentHalfDayDatePerProvider[tim];
-            if (currentRecent == null || date.compareTo(currentRecent) > 0) {
-              mostRecentHalfDayDatePerProvider[tim] = date;
-            }
-          }
-        }
-      }
-    });
+    // Accumulate pool contributions from providers for every half-day record.
+    // Previously only the most recent half-day per provider was considered,
+    // which caused provider pool to be applied only on the last absent date.
+    // We now add multiplier * providerBase for each date where provider had
+    // multiplier < 1.0 so distribution and per-date UI chips reflect all days.
 
     // Second pass: compute team day summary and calculate pool from providers
     groupByDateTim.forEach((key, list) {
@@ -170,15 +150,11 @@ class AttendancePayrollRepository {
           fullCount += 1;
         }
 
-        // Calculate pool contribution from providers
+        // Calculate pool contribution from providers for every half-day record
         final rule = payrollRules[tim];
         final isProvider = rule?.isChefOrAslap ?? false;
 
-        if (isProvider &&
-            multiplier > 0.0 &&
-            multiplier < 1.0 &&
-            date == mostRecentHalfDayDatePerProvider[tim]) {
-          // Provider halfday on most recent date contributes to pool
+        if (isProvider && multiplier > 0.0 && multiplier < 1.0) {
           final providerBase = getBaseSalary(tim);
           final poolKey = '${tim}_$date';
           poolByProviderByDate[poolKey] =
