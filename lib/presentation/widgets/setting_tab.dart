@@ -54,34 +54,7 @@ Widget buildSettingTab(
                   ),
                 ),
                 SliverToBoxAdapter(
-                  child: isDeveloper
-                      ? Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.md,
-                            vertical: AppSpacing.sm,
-                          ),
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.pushNamed(context, '/manage-users');
-                              },
-                              icon: const Icon(Icons.manage_accounts_rounded),
-                              label: const Text("Manage Users"),
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    AppRadius.lg,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        )
-                      : null,
+                  child: isDeveloper ? _userSetting(context) : null,
                 ),
                 SliverToBoxAdapter(
                   child: Padding(
@@ -92,5 +65,30 @@ Widget buildSettingTab(
               ],
             ),
           ),
+  );
+}
+
+Widget _userSetting(BuildContext context) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(
+      horizontal: AppSpacing.md,
+      vertical: AppSpacing.sm,
+    ),
+    child: SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: () {
+          Navigator.pushNamed(context, '/manage-users');
+        },
+        icon: const Icon(Icons.manage_accounts_rounded),
+        label: const Text("Manage Users"),
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+          ),
+        ),
+      ),
+    ),
   );
 }

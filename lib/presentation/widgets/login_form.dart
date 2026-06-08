@@ -11,6 +11,19 @@ class LoginFormWidget extends StatelessWidget {
   final VoidCallback onSubmit;
   final bool isLoading;
 
+  bool _isValidEmail(String value) {
+    final v = value.trim();
+    // Simple, pragmatic email check for UX; Firebase will ultimately validate.
+    final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+    return emailRegex.hasMatch(v);
+  }
+
+  void _showSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 1)),
+    );
+  }
+
   const LoginFormWidget({
     super.key,
     required this.formKey,
@@ -61,7 +74,7 @@ class LoginFormWidget extends StatelessWidget {
                   if (value == null || value.isEmpty) {
                     return "Email cannot be empty";
                   }
-                  if (!value.contains('@')) {
+                  if (!_isValidEmail(value)) {
                     return "Invalid email format";
                   }
                   return null;
@@ -110,12 +123,10 @@ class LoginFormWidget extends StatelessWidget {
                   onPressed: () async {
                     final email = emailController.text.trim();
 
-                    if (email.isEmpty || !email.contains('@')) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Please enter a valid email first"),
-                          duration: Duration(seconds: 1),
-                        ),
+                    if (email.isEmpty || !_isValidEmail(email)) {
+                      _showSnackBar(
+                        context,
+                        "Please enter a valid email first",
                       );
                       return;
                     }
@@ -124,27 +135,19 @@ class LoginFormWidget extends StatelessWidget {
                       await FirebaseAuth.instance.sendPasswordResetEmail(
                         email: email,
                       );
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              "Password reset link has been sent to your email",
-                            ),
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text("Failed to send email: $e"),
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
-                      }
+                    } catch (_) {
+                      // Intentionally ignore the specific error to avoid leaking
+                      // account existence / backend details.
+                    }
+
+                    if (context.mounted) {
+                      _showSnackBar(
+                        context,
+                        "If the email exists, we sent a password reset link.",
+                      );
                     }
                   },
+
                   child: const Text("Forgot Password?"),
                 ),
               ),

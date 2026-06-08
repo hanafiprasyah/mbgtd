@@ -8,6 +8,7 @@ import 'package:mbg_test/core/helper/design_system.dart';
 import 'package:mbg_test/features/users/bloc/user_bloc.dart';
 import 'package:mbg_test/features/volunteer/bloc/volunteer_bloc.dart';
 import 'package:mbg_test/features/attendance/bloc/attendance_bloc.dart';
+import 'package:mbg_test/features/attendance/bloc/period/period_bloc.dart';
 import 'package:mbg_test/features/users/data/repositories/user_repository.dart';
 import 'package:mbg_test/features/volunteer/data/repositories/volunteer_repository.dart';
 import 'package:mbg_test/features/attendance/data/repositories/attendance_repository.dart';
@@ -39,6 +40,10 @@ class MyApp extends StatelessWidget {
           ),
           BlocProvider(
             create: (context) => UserBloc(context.read<UserRepository>()),
+          ),
+          BlocProvider(
+            create: (context) =>
+                PeriodHistoryBloc(context.read<AttendanceRepository>()),
           ),
         ],
         child: MaterialApp(

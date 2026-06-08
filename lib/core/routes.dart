@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mbg_test/auth_gate.dart';
+import 'package:mbg_test/features/users/presentation/developer_guard.dart';
 import 'package:mbg_test/presentation/screens/home_screen.dart';
 import 'package:mbg_test/features/users/data/models/user_model.dart';
 import 'package:mbg_test/features/users/presentation/user_detail.dart';
@@ -58,22 +59,25 @@ class AppRoutes {
       case '/payroll-history':
         return MaterialPageRoute(builder: (_) => const PayrollHistoryPage());
       case '/manage-users':
-        return MaterialPageRoute(builder: (_) => const UserListPage());
+        return MaterialPageRoute(
+          builder: (_) => DeveloperRouteGuard(child: const UserListPage()),
+        );
       case '/user-add':
         return MaterialPageRoute(
-          builder: (_) => const UserFormPage(),
+          builder: (_) => DeveloperRouteGuard(child: const UserFormPage()),
           settings: settings,
         );
       case '/user-edit':
         final user = settings.arguments as UserModel;
         return MaterialPageRoute(
-          builder: (_) => UserFormPage(existing: user),
+          builder: (_) =>
+              DeveloperRouteGuard(child: UserFormPage(existing: user)),
           settings: settings,
         );
       case '/user-detail':
         final id = settings.arguments as String;
         return MaterialPageRoute(
-          builder: (_) => UserDetailPage(id: id),
+          builder: (_) => DeveloperRouteGuard(child: UserDetailPage(id: id)),
           settings: settings,
         );
       default:

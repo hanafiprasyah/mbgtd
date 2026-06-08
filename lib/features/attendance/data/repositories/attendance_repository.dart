@@ -1,6 +1,7 @@
 import '../models/attendance_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:mbg_test/features/attendance/data/models/attendance_period.dart';
 
 class AttendanceRepository {
   final firestore = FirebaseFirestore.instance;
@@ -73,5 +74,20 @@ class AttendanceRepository {
         .where('volunteerId', isEqualTo: volunteerId)
         .snapshots()
         .map((snap) => snap.docs.length);
+  }
+
+  // This method retrieves the attendance periods from the Firestore database. It fetches the documents from the 'attendance_periods' collection, orders them by the 'resetAt' field in descending order, and maps each document to an AttendancePeriod object. The result is a list of attendance periods that can be used to determine the current active period for attendance tracking.
+  Future<List<AttendancePeriod>> getAttendancePeriods() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('attendance_periods')
+          .orderBy('resetAt', descending: true)
+          .get();
+      return snapshot.docs
+          .map((doc) => AttendancePeriod.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to load periods: $e');
+    }
   }
 }

@@ -1,12 +1,12 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
-import '../bloc/user_bloc.dart';
-import '../bloc/user_event.dart';
-import '../bloc/user_state.dart';
-import '../data/models/user_model.dart';
+import 'package:mbg_test/features/users/bloc/user_bloc.dart';
+import 'package:mbg_test/features/users/bloc/user_event.dart';
+import 'package:mbg_test/features/users/bloc/user_state.dart';
+import 'package:mbg_test/features/users/presentation/user_form.dart';
+import 'package:mbg_test/features/users/data/models/user_model.dart';
+import 'package:mbg_test/features/users/presentation/user_detail.dart';
 
 class UserListPage extends StatefulWidget {
   const UserListPage({super.key});
@@ -16,92 +16,99 @@ class UserListPage extends StatefulWidget {
 }
 
 class _UserListPageState extends State<UserListPage> {
-  final searchController = TextEditingController();
-  final List<String> roles = [
+  final List<String> _roles = const [
     'aslap',
     'admin',
-    'superadmin',
+    'developer',
     'sppi',
     'accountant',
     'scanner',
   ];
-  String? selectedRole;
-  Timer? _debounce;
+  String? _selectedRole;
 
   @override
   void initState() {
     super.initState();
-    context.read<UserBloc>().add(LoadUser());
+    _loadUsers();
   }
 
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    searchController.dispose();
-    super.dispose();
+  void _loadUsers() {
+    final bloc = context.read<UserBloc>();
+    if (_selectedRole != null && _selectedRole!.isNotEmpty) {
+      bloc.add(FilterUser(_selectedRole));
+    } else {
+      bloc.add(LoadUser());
+    }
   }
 
-  void _onSearchChanged(String value) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 350), () {
-      if (!mounted) return;
-      context.read<UserBloc>().add(SearchUser(value, selectedRole));
-    });
-  }
-
-  Future<void> _showRoleFilterDialog() async {
-    String? tempRole = selectedRole;
-    final result = await showDialog<bool>(
+  Future<void> _showRoleFilterSheet() async {
+    String? tempRole = _selectedRole;
+    final result = await showModalBottomSheet<dynamic>(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Filter Users'),
-          content: DropdownButtonFormField<String>(
-            isExpanded: true,
-            initialValue: tempRole,
-            decoration: const InputDecoration(labelText: 'Role'),
-            items: [
-              const DropdownMenuItem(value: null, child: Text('All roles')),
-              ...roles.map(
-                (role) => DropdownMenuItem(
-                  value: role,
-                  child: Text(role.toUpperCase()),
-                ),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            return Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Filter by role',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    children: [
+                      FilterChip(
+                        label: const Text('All'),
+                        selected: tempRole == null,
+                        onSelected: (_) => setSheetState(() => tempRole = null),
+                      ),
+                      ..._roles.map(
+                        (role) => FilterChip(
+                          label: Text(role.toUpperCase()),
+                          selected: tempRole == role,
+                          onSelected: (_) =>
+                              setSheetState(() => tempRole = role),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () =>
+                            Navigator.pop(sheetContext, '__CANCEL__'),
+                        child: const Text('Cancel'),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(sheetContext, tempRole),
+                        child: const Text('Apply'),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
-            onChanged: (value) {
-              tempRole = value;
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                tempRole = null;
-                Navigator.pop(dialogContext, true);
-              },
-              child: const Text('Reset'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Apply'),
-            ),
-          ],
+            );
+          },
         );
       },
     );
 
-    if (result == true) {
-      if (!mounted) return;
+    if (mounted && result != '__CANCEL__') {
       setState(() {
-        selectedRole = tempRole;
+        _selectedRole = result as String?;
       });
-      context.read<UserBloc>().add(
-        SearchUser(searchController.text, selectedRole),
-      );
+      _loadUsers();
     }
   }
 
@@ -112,7 +119,7 @@ class _UserListPageState extends State<UserListPage> {
         return AlertDialog(
           title: const Text('Delete user'),
           content: Text(
-            'Are you sure you want to delete ${user.fullname}? This action cannot be undone.',
+            'Are you sure you want to delete "${user.fullname}"? This action cannot be undone.',
           ),
           actions: [
             TextButton(
@@ -120,7 +127,10 @@ class _UserListPageState extends State<UserListPage> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
               onPressed: () => Navigator.pop(dialogContext, true),
               child: const Text('Delete'),
             ),
@@ -128,265 +138,402 @@ class _UserListPageState extends State<UserListPage> {
         );
       },
     );
-
     return confirm == true;
+  }
+
+  Future<T?> _pushFadeRoute<T>(Widget page) {
+    return Navigator.of(context).push<T>(
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => page,
+        transitionsBuilder: (_, animation, __, child) {
+          const begin = 0.0;
+          const end = 1.0;
+          final opacityTween = Tween(begin: begin, end: end);
+          final scaleTween = Tween(begin: 0.95, end: 1.0);
+          return FadeTransition(
+            opacity: animation.drive(opacityTween),
+            child: ScaleTransition(
+              scale: animation.drive(scaleTween),
+              child: child,
+            ),
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 200),
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.red.shade700,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.green.shade700,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final roleChip = selectedRole != null && selectedRole!.isNotEmpty;
     final colorScheme = Theme.of(context).colorScheme;
+    final isFilterActive = _selectedRole != null && _selectedRole!.isNotEmpty;
 
     return Scaffold(
       backgroundColor: colorScheme.surfaceContainerLowest,
       appBar: AppBar(
         backgroundColor: colorScheme.surfaceContainerLowest,
         surfaceTintColor: Colors.transparent,
+        elevation: 0,
         title: const Text('Manage Users'),
+        centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.filter_list),
+            icon: Badge(
+              isLabelVisible: isFilterActive,
+              child: const Icon(Icons.filter_list),
+            ),
             tooltip: 'Filter by role',
-            onPressed: _showRoleFilterDialog,
-          ),
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Add user',
-            onPressed: () => Navigator.pushNamed(context, '/user-add'),
+            onPressed: _showRoleFilterSheet,
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          children: [
-            TextField(
-              controller: searchController,
-              onChanged: _onSearchChanged,
-              decoration: InputDecoration(
-                labelText: 'Search by name, email, username, role',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          searchController.clear();
-                          setState(() {
-                            selectedRole = null;
-                          });
-                          context.read<UserBloc>().add(LoadUser());
-                        },
-                      )
-                    : null,
+      body: RefreshIndicator(
+        onRefresh: () async => _loadUsers(),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            children: [
+              if (isFilterActive)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FilterChip(
+                      onSelected: (_) => _showRoleFilterSheet(),
+                      label: Text(_selectedRole!.toUpperCase()),
+                      onDeleted: () {
+                        setState(() => _selectedRole = null);
+                        context.read<UserBloc>().add(LoadUser());
+                      },
+                      deleteIcon: const Icon(Icons.close, size: 18),
+                    ),
+                  ),
+                ),
+              Expanded(
+                child: BlocConsumer<UserBloc, UserState>(
+                  listener: (context, state) {
+                    if (state is UserError) {
+                      _showErrorSnackBar(state.message);
+                    }
+                    if (state is UserSuccess) {
+                      final message = state.user == null
+                          ? 'User deleted successfully'
+                          : 'User saved successfully';
+                      _showSuccessSnackBar(message);
+                      _loadUsers();
+                    }
+                  },
+                  builder: (context, state) {
+                    return AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      transitionBuilder: (child, animation) =>
+                          FadeTransition(opacity: animation, child: child),
+                      child: _buildContent(state),
+                    );
+                  },
+                ),
               ),
+            ],
+          ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          await _pushFadeRoute(const UserFormPage());
+          if (mounted) _loadUsers();
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('Add user'),
+      ),
+    );
+  }
+
+  Widget _buildContent(UserState state) {
+    if (state is UserLoading) {
+      return const Center(
+        key: ValueKey('loading'),
+        child: CircularProgressIndicator(),
+      );
+    }
+    if (state is UserLoaded) {
+      if (state.users.isEmpty) {
+        return _buildEmptyState();
+      }
+      return _buildUserList(state.users);
+    }
+    if (state is UserError) {
+      return _buildErrorState(state.message);
+    }
+    return const Center(key: ValueKey('initial'), child: Text('Ready'));
+  }
+
+  Widget _buildEmptyState() {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Center(
+      key: const ValueKey('empty'),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.people_outline,
+            size: 80,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'No users found',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Try changing the filter or add a new user',
+            style: TextStyle(color: colorScheme.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String message) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Center(
+      key: const ValueKey('error'),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, size: 80, color: colorScheme.error),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'Failed to load users',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(color: colorScheme.error),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
             ),
-            if (roleChip)
-              Padding(
-                padding: const EdgeInsets.only(top: AppSpacing.sm),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Chip(
-                    label: Text(selectedRole!.toUpperCase()),
-                    deleteIcon: const Icon(Icons.close),
-                    onDeleted: () {
-                      setState(() {
-                        selectedRole = null;
-                      });
-                      context.read<UserBloc>().add(
-                        SearchUser(searchController.text, null),
-                      );
-                    },
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          FilledButton.icon(
+            onPressed: _loadUsers,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUserList(List<UserModel> users) {
+    return ListView.separated(
+      key: const ValueKey('list'),
+      itemCount: users.length,
+      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+      itemBuilder: (context, index) {
+        final user = users[index];
+        return _UserCard(
+          user: user,
+          onTap: () async {
+            await _pushFadeRoute(UserDetailPage(id: user.id));
+            if (mounted) _loadUsers();
+          },
+          onEdit: () async {
+            await _pushFadeRoute(UserFormPage(existing: user));
+            if (mounted) _loadUsers();
+          },
+          onDelete: () async {
+            final confirmed = await _confirmDelete(user);
+            if (mounted && confirmed) {
+              context.read<UserBloc>().add(DeleteUser(user.id));
+            }
+          },
+        );
+      },
+    );
+  }
+}
+
+// ==================== Custom Widget for User Card ====================
+
+class _UserCard extends StatelessWidget {
+  final UserModel user;
+  final VoidCallback onTap;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _UserCard({
+    required this.user,
+    required this.onTap,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  String _getInitials(String fullname) {
+    if (fullname.trim().isEmpty) return '?';
+    final parts = fullname.trim().split(' ');
+    if (parts.length == 1) return parts[0][0].toUpperCase();
+    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final initials = _getInitials(user.fullname);
+
+    return Card(
+      elevation: AppElevation.low,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
+            children: [
+              // Avatar with gradient background
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      colorScheme.primaryContainer,
+                      colorScheme.secondaryContainer,
+                    ],
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: CircleAvatar(
+                  radius: 28,
+                  backgroundColor: Colors.transparent,
+                  child: Text(
+                    initials,
+                    style: TextStyle(
+                      color: colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
                   ),
                 ),
               ),
-            const SizedBox(height: AppSpacing.md),
-            Expanded(
-              child: BlocConsumer<UserBloc, UserState>(
-                listener: (context, state) {
-                  if (state is UserError) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text(state.message)));
-                  }
-                  if (state is UserSuccess) {
-                    final message = state.user == null
-                        ? 'User deleted successfully'
-                        : 'User saved successfully';
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text(message)));
-                  }
-                },
-                builder: (context, state) {
-                  if (state is UserLoading) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (state is UserLoaded) {
-                    if (state.users.isEmpty) {
-                      return const Center(child: Text('No users found.'));
-                    }
-                    return ListView.builder(
-                      itemCount: state.users.length,
-                      itemBuilder: (context, index) {
-                        final user = state.users[index];
-
-                        final initials = user.fullname.isNotEmpty
-                            ? user.fullname
-                                  .trim()
-                                  .split(' ')
-                                  .map((e) => e.isNotEmpty ? e[0] : '')
-                                  .take(2)
-                                  .join()
-                                  .toUpperCase()
-                            : '?';
-
-                        return InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: () async {
-                            final bloc = context.read<UserBloc>();
-                            await Navigator.pushNamed(
-                              context,
-                              '/user-detail',
-                              arguments: user.id,
-                            );
-                            if (!mounted) return;
-                            bloc.add(LoadUser());
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.only(
-                              bottom: AppSpacing.sm,
+              const SizedBox(width: AppSpacing.md),
+              // User info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.fullname,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.email_outlined,
+                          size: 16,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            user.email,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: colorScheme.onSurfaceVariant,
                             ),
-                            padding: const EdgeInsets.all(AppSpacing.sm),
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).cardColor.withValues(alpha: 0.6),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 24,
-                                  backgroundColor: Theme.of(
-                                    context,
-                                  ).colorScheme.primary.withValues(alpha: 0.15),
-                                  child: Text(
-                                    initials,
-                                    style: TextStyle(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: AppSpacing.sm),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        user.fullname,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 15,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.email_outlined,
-                                            size: 14,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Expanded(
-                                            child: Text(
-                                              user.email,
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey.shade600,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.badge_outlined,
-                                            size: 14,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            user.role.toUpperCase(),
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Theme.of(
-                                                context,
-                                              ).colorScheme.primary,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.edit_outlined),
-                                      tooltip: 'Edit user',
-                                      onPressed: () async {
-                                        final bloc = context.read<UserBloc>();
-                                        await Navigator.pushNamed(
-                                          context,
-                                          '/user-edit',
-                                          arguments: user,
-                                        );
-                                        if (!mounted) return;
-                                        bloc.add(LoadUser());
-                                      },
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete_outline),
-                                      tooltip: 'Delete user',
-                                      color: Colors.redAccent,
-                                      onPressed: () async {
-                                        if (!mounted) return;
-                                        final localBloc = context
-                                            .read<UserBloc>();
-                                        final confirmed = await _confirmDelete(
-                                          user,
-                                        );
-                                        if (!mounted) return;
-                                        if (confirmed) {
-                                          localBloc.add(DeleteUser(user.id));
-                                        }
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        );
-                      },
-                    );
-                  }
-                  if (state is UserError) {
-                    return Center(child: Text(state.message));
-                  }
-                  return const Center(child: Text('Loading users...'));
-                },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.badge_outlined,
+                          size: 16,
+                          color: colorScheme.primary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          user.role.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              // Action buttons
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    tooltip: 'Edit user',
+                    onPressed: onEdit,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    tooltip: 'Delete user',
+                    color: Colors.redAccent,
+                    onPressed: onDelete,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

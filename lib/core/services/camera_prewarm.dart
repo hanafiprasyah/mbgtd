@@ -5,9 +5,8 @@ class CameraPrewarmService {
     torchEnabled: false,
     autoStart: false,
     detectionSpeed: DetectionSpeed.noDuplicates,
-    autoZoom: true,
+    autoZoom: false,
     facing: CameraFacing.back,
-    lensType: CameraLensType.normal,
   );
 
   /// Prewarms the camera to reduce the delay when starting the scanner for the first time.
@@ -19,7 +18,7 @@ class CameraPrewarmService {
       await Future.delayed(const Duration(milliseconds: 50));
       if (!controller.value.isRunning) {
         await controller.start();
-        await Future.delayed(const Duration(milliseconds: 200));
+        await Future.delayed(const Duration(milliseconds: 150));
         await controller.stop();
       }
       _isPrewarmed = true;

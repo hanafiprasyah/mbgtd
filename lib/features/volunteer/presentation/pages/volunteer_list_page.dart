@@ -582,7 +582,6 @@ class _VolunteerTile extends StatelessWidget {
               child: Ink(
                 decoration: BoxDecoration(
                   color: colorScheme.surface,
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
                   boxShadow: [
                     BoxShadow(
                       color: colorScheme.shadow.withValues(alpha: 0.08),

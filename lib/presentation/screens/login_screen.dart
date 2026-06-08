@@ -40,17 +40,17 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // Validates the form and submits the login event to the bloc
-  void _submit(BuildContext context, LoginState state) {
-    if (_formKey.currentState!.validate()) {
-      FocusScope.of(context).unfocus();
-      context.read<LoginBloc>().add(
-        LoginSubmitted(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-        ),
-      );
-    }
+  void _submit(BuildContext context) {
+    final isValid = _formKey.currentState?.validate() ?? false;
+    if (!isValid) return;
+
+    FocusScope.of(context).unfocus();
+    context.read<LoginBloc>().add(
+      LoginSubmitted(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      ),
+    );
   }
 
   @override
@@ -59,7 +59,9 @@ class _LoginScreenState extends State<LoginScreen> {
       create: (_) => LoginBloc(context.read<AuthRepository>()),
       child: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
-        onDoubleTap: () => FocusScope.of(context).unfocus(),
+
+        // doubleTap intentionally not handled separately
+        // (tap gesture already unfocuses the keyboard)
         child: Scaffold(
           backgroundColor: Colors.white,
           resizeToAvoidBottomInset: true,
@@ -113,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                               !_isPasswordHidden;
                                         });
                                       },
-                                      onSubmit: () => _submit(context, state),
+                                      onSubmit: () => _submit(context),
                                       isLoading: state.isLoading,
                                     ),
                                   )
