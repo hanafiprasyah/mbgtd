@@ -23,7 +23,9 @@ class _UserDetailPageState extends State<UserDetailPage> {
     _loadUser();
   }
 
-  void _loadUser() {}
+  void _loadUser() {
+    context.read<UserBloc>().add(GetUserById(widget.id));
+  }
 
   Future<bool> _confirmDelete(UserModel user) async {
     return await showDialog<bool>(
