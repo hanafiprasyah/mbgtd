@@ -4,9 +4,7 @@ import 'package:mbg_test/core/helper/design_system.dart';
 import 'package:mbg_test/features/users/bloc/user_bloc.dart';
 import 'package:mbg_test/features/users/bloc/user_event.dart';
 import 'package:mbg_test/features/users/bloc/user_state.dart';
-import 'package:mbg_test/features/users/presentation/user_form.dart';
 import 'package:mbg_test/features/users/data/models/user_model.dart';
-import 'package:mbg_test/features/users/presentation/user_detail.dart';
 
 class UserListPage extends StatefulWidget {
   const UserListPage({super.key});
@@ -141,28 +139,6 @@ class _UserListPageState extends State<UserListPage> {
     return confirm == true;
   }
 
-  Future<T?> _pushFadeRoute<T>(Widget page) {
-    return Navigator.of(context).push<T>(
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => page,
-        transitionsBuilder: (_, animation, __, child) {
-          const begin = 0.0;
-          const end = 1.0;
-          final opacityTween = Tween(begin: begin, end: end);
-          final scaleTween = Tween(begin: 0.95, end: 1.0);
-          return FadeTransition(
-            opacity: animation.drive(opacityTween),
-            child: ScaleTransition(
-              scale: animation.drive(scaleTween),
-              child: child,
-            ),
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 200),
-      ),
-    );
-  }
-
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -275,7 +251,7 @@ class _UserListPageState extends State<UserListPage> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
-          await _pushFadeRoute(const UserFormPage());
+          await Navigator.pushNamed(context, '/user-add');
           if (mounted) _loadUsers();
         },
         icon: const Icon(Icons.add),
@@ -300,7 +276,10 @@ class _UserListPageState extends State<UserListPage> {
     if (state is UserError) {
       return _buildErrorState(state.message);
     }
-    return const Center(key: ValueKey('initial'), child: Text('Ready'));
+    return const Center(
+      key: ValueKey('initial'),
+      child: CircularProgressIndicator(),
+    );
   }
 
   Widget _buildEmptyState() {
@@ -375,11 +354,15 @@ class _UserListPageState extends State<UserListPage> {
         return _UserCard(
           user: user,
           onTap: () async {
-            await _pushFadeRoute(UserDetailPage(id: user.id));
+            await Navigator.pushNamed(
+              context,
+              '/user-detail',
+              arguments: user.id,
+            );
             if (mounted) _loadUsers();
           },
           onEdit: () async {
-            await _pushFadeRoute(UserFormPage(existing: user));
+            await Navigator.pushNamed(context, '/user-edit', arguments: user);
             if (mounted) _loadUsers();
           },
           onDelete: () async {

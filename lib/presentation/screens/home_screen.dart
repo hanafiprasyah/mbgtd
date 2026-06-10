@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mbg_test/core/services/camera_prewarm.dart';
 import 'package:mbg_test/presentation/widgets/home_tab.dart';
+import 'package:mbg_test/presentation/widgets/report_tab.dart';
 import 'package:mbg_test/presentation/widgets/setting_tab.dart';
 import 'package:mbg_test/presentation/widgets/bricks/home/camera_widget.dart';
 import 'package:persistent_bottom_nav_bar_v2/persistent_bottom_nav_bar_v2.dart';
@@ -116,6 +117,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
 
+    final role = userData?['role'] as String?;
+    final isScanner =
+        user != null && (role)?.toLowerCase().contains('scanner') == true;
+
     // Camera service prewarm with loading screen
     if (_isLoading) {
       return const CameraPrewarmWidget();
@@ -141,6 +146,15 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           item: ItemConfig(icon: const Icon(Icons.home), title: "Home"),
         ),
+        // Report Tab
+        if (!isScanner)
+          PersistentTabConfig(
+            screen: buildReportTab(context),
+            item: ItemConfig(
+              icon: const Icon(Icons.bar_chart_rounded),
+              title: "Report",
+            ),
+          ),
         // Settings Tab
         PersistentTabConfig(
           screen: buildSettingTab(

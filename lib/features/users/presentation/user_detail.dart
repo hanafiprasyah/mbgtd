@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
-import '../bloc/user_bloc.dart';
-import '../bloc/user_event.dart';
-import '../bloc/user_state.dart';
-import '../data/models/user_model.dart';
-import 'user_form.dart';
+import 'package:mbg_test/features/users/bloc/user_bloc.dart';
+import 'package:mbg_test/features/users/bloc/user_event.dart';
+import 'package:mbg_test/features/users/bloc/user_state.dart';
+import 'package:mbg_test/features/users/data/models/user_model.dart';
 
 class UserDetailPage extends StatefulWidget {
   final String id;
@@ -25,6 +24,13 @@ class _UserDetailPageState extends State<UserDetailPage> {
 
   void _loadUser() {
     context.read<UserBloc>().add(GetUserById(widget.id));
+  }
+
+  String _getInitials(String fullname) {
+    if (fullname.trim().isEmpty) return '?';
+    final parts = fullname.trim().split(' ');
+    if (parts.length == 1) return parts[0][0].toUpperCase();
+    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
   }
 
   Future<bool> _confirmDelete(UserModel user) async {
@@ -52,28 +58,6 @@ class _UserDetailPageState extends State<UserDetailPage> {
           ),
         ) ??
         false;
-  }
-
-  Future<T?> _pushFadeRoute<T>(Widget page) {
-    return Navigator.of(context).push<T>(
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => page,
-        transitionsBuilder: (_, animation, __, child) {
-          const begin = 0.0;
-          const end = 1.0;
-          final opacityTween = Tween(begin: begin, end: end);
-          final scaleTween = Tween(begin: 0.95, end: 1.0);
-          return FadeTransition(
-            opacity: animation.drive(opacityTween),
-            child: ScaleTransition(
-              scale: animation.drive(scaleTween),
-              child: child,
-            ),
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 200),
-      ),
-    );
   }
 
   @override
@@ -161,7 +145,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
     }
     return const Center(
       key: ValueKey('initial'),
-      child: Text('Fetching user information...'),
+      child: CircularProgressIndicator(),
     );
   }
 
@@ -275,8 +259,10 @@ class _UserDetailPageState extends State<UserDetailPage> {
                         ),
                       ),
                       onPressed: () async {
-                        final updated = await _pushFadeRoute(
-                          UserFormPage(existing: user),
+                        final updated = await Navigator.pushNamed(
+                          context,
+                          '/user-edit',
+                          arguments: user,
                         );
                         if (!mounted) return;
                         if (updated != null) _loadUser();
@@ -343,13 +329,6 @@ class _UserDetailPageState extends State<UserDetailPage> {
         ),
       ],
     );
-  }
-
-  String _getInitials(String fullname) {
-    if (fullname.trim().isEmpty) return '?';
-    final parts = fullname.trim().split(' ');
-    if (parts.length == 1) return parts[0][0].toUpperCase();
-    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
   }
 
   Widget _buildErrorContent(String message) {

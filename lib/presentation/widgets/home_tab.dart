@@ -59,18 +59,6 @@ Widget buildHomeTab(
         subtitle: 'Salary & Period',
         onTap: () => Navigator.pushNamed(context, '/payroll'),
       );
-      addMenu(
-        index: 3,
-        icon: Icons.bar_chart,
-        title: 'Reports',
-        subtitle: 'Coming soon',
-        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            duration: Duration(seconds: 1),
-            content: Text('Reports feature coming soon!'),
-          ),
-        ),
-      );
       return items;
     }
 
@@ -106,18 +94,6 @@ Widget buildHomeTab(
         title: 'Payroll',
         subtitle: 'Salary & Period',
         onTap: () => Navigator.pushNamed(context, '/payroll'),
-      );
-      addMenu(
-        index: 3,
-        icon: Icons.bar_chart,
-        title: 'Reports',
-        subtitle: 'Coming soon',
-        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            duration: Duration(seconds: 1),
-            content: Text('Reports feature coming soon!'),
-          ),
-        ),
       );
       return items;
     }
@@ -161,18 +137,6 @@ Widget buildHomeTab(
         title: 'Scan',
         subtitle: 'Attendance',
         onTap: () => Navigator.pushNamed(context, '/qr-scanner'),
-      );
-      addMenu(
-        index: 3,
-        icon: Icons.bar_chart,
-        title: 'Reports',
-        subtitle: 'Coming soon',
-        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            duration: Duration(seconds: 1),
-            content: Text('Reports feature coming soon!'),
-          ),
-        ),
       );
       return items;
     }
