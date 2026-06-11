@@ -332,4 +332,92 @@ class AttendancePayrollRepository {
         .toString()
         .trim();
   }
+
+  Future<Map<String, dynamic>> getPayrollSnapshot() async {
+    final volunteersSnap = await firestore.collection('volunteers').get();
+    final attendanceSnap = await firestore.collection('attendances').get();
+
+    final grouped = _groupAttendanceByDateTim(attendanceSnap);
+    final teamDaySummaryResult = _computeTeamDaySummaryFromGroups(grouped);
+    final teamDaySummary =
+        teamDaySummaryResult['teamDaySummary']
+            as Map<String, Map<String, dynamic>>;
+
+    final memberPayrolls = _computeMemberPayrolls(
+      attendanceSnap,
+      teamDaySummary,
+    );
+    final memberTotalPay =
+        memberPayrolls['memberTotalPay'] as Map<String, double>;
+    final memberTotalScan =
+        memberPayrolls['memberTotalScan'] as Map<String, int>;
+    final memberEffectiveScan =
+        memberPayrolls['memberEffectiveScan'] as Map<String, double>;
+
+    final Map<String, Map<String, dynamic>> volunteersMap = {};
+
+    for (var doc in volunteersSnap.docs) {
+      final data = doc.data();
+      final id = doc.id;
+      final isPIC = (data['isPIC'] ?? false) == true;
+      final tim = (data['tim'] ?? '').toString().trim();
+      final nama = data['namaLengkap'] ?? '-';
+
+      final totalScan = memberTotalScan[id] ?? 0;
+      final totalEffectiveScan = memberEffectiveScan[id] ?? 0.0;
+      final totalGajiDouble = memberTotalPay[id] ?? 0.0;
+
+      const picBonusPerScan = 10000;
+      final scanBonus = (totalEffectiveScan * picBonusPerScan).toInt();
+      final totalGaji = isPIC
+          ? (totalGajiDouble.toInt() + scanBonus)
+          : totalGajiDouble.toInt();
+
+      final dailyList = <Map<String, dynamic>>[];
+      final attendanceDocs = attendanceSnap.docs.where((d) {
+        final dData = d.data();
+        return dData['volunteerId'] == id;
+      });
+
+      for (var attDoc in attendanceDocs) {
+        final attData = attDoc.data();
+        final multiplier = (attData['multiplier'] ?? 1.0).toDouble();
+        final attendanceType = attData['attendanceType'] ?? 'full';
+        final date = attData['date'] ?? '';
+        dailyList.add({
+          'date': date,
+          'multiplier': multiplier,
+          'attendanceType': attendanceType,
+        });
+      }
+
+      volunteersMap[id] = {
+        'id': id,
+        'nama': nama,
+        'tim': tim,
+        'totalGaji': totalGaji,
+        'isPIC': isPIC,
+        'totalScan': totalScan,
+        'effectiveScan': totalEffectiveScan,
+        'dailyDetails': dailyList,
+      };
+    }
+
+    final Map<String, int> teamTotal = {};
+    int grandTotal = 0;
+
+    for (final volunteer in volunteersMap.values) {
+      final tim = volunteer['tim'] as String;
+      final gaji = volunteer['totalGaji'] as int;
+      teamTotal[tim] = (teamTotal[tim] ?? 0) + gaji;
+      grandTotal += gaji;
+    }
+
+    return {
+      'resetAt': DateTime.now(),
+      'volunteers': volunteersMap,
+      'teamTotal': teamTotal,
+      'grandTotal': grandTotal,
+    };
+  }
 }

@@ -498,33 +498,51 @@ class _PayrollPageState extends State<PayrollPage>
 
   Future<void> _resetPeriod() async {
     final firestore = FirebaseFirestore.instance;
-    final now = DateTime.now();
 
     try {
+      // 1. Take last period
+      final repo = AttendancePayrollRepository();
+      final payrollSnapshot = await repo.getPayrollSnapshot();
+
+      // 2. Save snapshot to collection 'payroll_periods'
+      await firestore.collection('payroll_periods').add({
+        'resetAt': FieldValue.serverTimestamp(),
+        'grandTotal': payrollSnapshot['grandTotal'],
+        'teamTotal': payrollSnapshot['teamTotal'],
+        'volunteers': payrollSnapshot['volunteers'].map((id, data) {
+          // Save volunteer data without id, but id is declared
+          return MapEntry(id, {...data, 'dailyDetails': data['dailyDetails']});
+        }),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // 3. Delete all docs on collection 'attendances'
       final attendanceSnap = await firestore.collection('attendances').get();
       final batch = firestore.batch();
-
       for (var doc in attendanceSnap.docs) {
         batch.delete(doc.reference);
       }
 
+      // 4. (Optional)
       final periodRef = firestore.collection('attendance_periods').doc();
-
       batch.set(periodRef, {
-        'resetAt': now,
+        'resetAt': DateTime.now(),
         'totalDeleted': attendanceSnap.docs.length,
       });
 
       await batch.commit();
 
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Attendance reset for new period')),
+        const SnackBar(
+          content: Text(
+            'Attendance reset for new period and snapshot recorded',
+          ),
+        ),
       );
+      setState(() {});
     } catch (e) {
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Reset failed: $e'),

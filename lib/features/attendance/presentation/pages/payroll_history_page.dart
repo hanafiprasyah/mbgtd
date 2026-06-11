@@ -1,11 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mbg_test/core/helper/design_system.dart';
-import 'package:mbg_test/features/attendance/bloc/period/period_bloc.dart';
-import 'package:mbg_test/features/attendance/bloc/period/period_event.dart';
-import 'package:mbg_test/features/attendance/bloc/period/period_state.dart';
-import 'package:mbg_test/features/attendance/data/models/attendance_period.dart';
+import 'package:mbg_test/features/attendance/data/models/payroll_period_model.dart';
 
 class PayrollHistoryPage extends StatefulWidget {
   const PayrollHistoryPage({super.key});
@@ -15,210 +11,136 @@ class PayrollHistoryPage extends StatefulWidget {
 }
 
 class _PayrollHistoryPageState extends State<PayrollHistoryPage> {
-  final DateFormat _dateFormatter = DateFormat('dd MMM yyyy, HH:mm');
-
-  @override
-  void initState() {
-    super.initState();
-    if (!mounted) return;
-    context.read<PeriodHistoryBloc>().add(LoadPeriodHistory());
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Attendance Period History'),
-        elevation: 0,
-        centerTitle: true,
-      ),
-      body: BlocBuilder<PeriodHistoryBloc, PeriodHistoryState>(
-        builder: (context, state) {
-          if (state is PeriodHistoryLoading) {
-            return _buildShimmerLoading();
+      appBar: AppBar(title: const Text('Payroll Period History')),
+      body: FutureBuilder<List<PayrollPeriod>>(
+        future: _fetchPayrollPeriods(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
           }
-          if (state is PeriodHistoryLoaded) {
-            return RefreshIndicator(
-              onRefresh: () async {
-                context.read<PeriodHistoryBloc>().add(RefreshPeriodHistory());
-              },
-              child: state.periods.isEmpty
-                  ? _buildEmptyState()
-                  : ListView.separated(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          final periods = snapshot.data!;
+          if (periods.isEmpty) {
+            return const Center(child: Text('No payroll history found.'));
+          }
+          return ListView.builder(
+            itemCount: periods.length,
+            itemBuilder: (context, index) {
+              final period = periods[index];
+              return Card(
+                margin: const EdgeInsets.all(8),
+                child: ExpansionTile(
+                  title: Text(
+                    DateFormat('dd MMM yyyy, HH:mm').format(period.resetAt),
+                  ),
+                  subtitle: Text(
+                    'Total Payroll: ${_formatCurrency(period.grandTotal)}',
+                  ),
+                  children: [
+                    // Show based on team
+                    for (var entry in period.teamTotal.entries)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('${entry.key}:'),
+                            Text(_formatCurrency(entry.value)),
+                          ],
+                        ),
                       ),
-                      itemCount: state.periods.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final period = state.periods[index];
-                        return _buildPeriodCard(period, theme);
-                      },
-                    ),
-            );
-          }
-          if (state is PeriodHistoryError) {
-            return _buildErrorState(state.message);
-          }
-          return const SizedBox.shrink();
+                    const Divider(),
+                    // Show volunteer (expandable)
+                    for (var volunteerEntry in period.volunteers.entries)
+                      ListTile(
+                        title: Text(volunteerEntry.value['nama']),
+                        subtitle: Text(
+                          '${volunteerEntry.value['tim']} - ${_formatCurrency(volunteerEntry.value['totalGaji'])}',
+                        ),
+                        onTap: () {
+                          _showVolunteerDetail(context, volunteerEntry.value);
+                        },
+                      ),
+                  ],
+                ),
+              );
+            },
+          );
         },
       ),
     );
   }
 
-  Widget _buildPeriodCard(AttendancePeriod period, ThemeData theme) {
-    return Card(
-      elevation: AppElevation.medium,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withAlpha(26),
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Icon(
-                Icons.history,
-                color: theme.colorScheme.primary,
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _dateFormatter.format(period.resetAt),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Total reset: ${period.totalDeleted} data',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.black54,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.chevron_right,
-              color: theme.colorScheme.primary.withAlpha(128),
-            ),
-          ],
-        ),
-      ),
-    );
+  Future<List<PayrollPeriod>> _fetchPayrollPeriods() async {
+    final snap = await FirebaseFirestore.instance
+        .collection('payroll_periods')
+        .orderBy('resetAt', descending: true)
+        .get();
+    return snap.docs.map((doc) => PayrollPeriod.fromFirestore(doc)).toList();
   }
 
-  Widget _buildShimmerLoading() {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: 5,
-      itemBuilder: (_, __) => Card(
-        margin: const EdgeInsets.only(bottom: 12),
-        child: const Padding(
-          padding: EdgeInsets.all(16),
-          child: Row(
+  String _formatCurrency(int amount) {
+    return NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp. ',
+      decimalDigits: 0,
+    ).format(amount);
+  }
+
+  void _showVolunteerDetail(
+    BuildContext context,
+    Map<String, dynamic> volunteer,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                width: 50,
-                height: 50,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      height: 16,
-                      width: double.infinity,
-                      child: LinearProgressIndicator(),
-                    ),
-                    SizedBox(height: 8),
-                    SizedBox(
-                      height: 14,
-                      width: 100,
-                      child: LinearProgressIndicator(),
-                    ),
-                  ],
+              Text(
+                volunteer['nama'],
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
+              const SizedBox(height: 8),
+              Text('Team: ${volunteer['tim']}'),
+              Text('Total Payroll: ${_formatCurrency(volunteer['totalGaji'])}'),
+              const SizedBox(height: 12),
+              const Text(
+                'Daily Details:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              ...(volunteer['dailyDetails'] as List).map((day) {
+                final multiplier = day['multiplier'].toDouble();
+                String type;
+                if (multiplier == 0) {
+                  type = 'Absent';
+                } else if (multiplier == 0.5) {
+                  type = 'Half Day / Sakit';
+                } else {
+                  type = 'Full Day';
+                }
+                return ListTile(
+                  title: Text(day['date']),
+                  subtitle: Text('$type (multiplier $multiplier)'),
+                );
+              }),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.history, size: 64, color: Colors.grey.shade400),
-          const SizedBox(height: 16),
-          Text(
-            'No period history found',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(color: Colors.grey.shade600),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Period reset records will appear here',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade500),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorState(String message) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.error_outline, size: 64, color: Colors.red.shade300),
-          const SizedBox(height: 16),
-          Text(
-            'Failed to load history',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              message,
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
-            ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () {
-              context.read<PeriodHistoryBloc>().add(LoadPeriodHistory());
-            },
-            icon: const Icon(Icons.refresh),
-            label: const Text('Retry'),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
