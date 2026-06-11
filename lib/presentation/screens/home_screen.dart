@@ -1,3 +1,4 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,6 +8,7 @@ import 'package:mbg_test/presentation/widgets/home_tab.dart';
 import 'package:mbg_test/presentation/widgets/report_tab.dart';
 import 'package:mbg_test/presentation/widgets/setting_tab.dart';
 import 'package:mbg_test/presentation/widgets/bricks/home/camera_widget.dart';
+import 'package:mbg_test/privacy_policy_text.dart';
 import 'package:persistent_bottom_nav_bar_v2/persistent_bottom_nav_bar_v2.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -20,6 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
   Map<String, dynamic>? userData;
   final _controller = PersistentTabController();
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   Future<void> _fetchUserData() async {
     try {
@@ -102,6 +105,69 @@ class _HomeScreenState extends State<HomeScreen> {
     return _formatDate(date);
   }
 
+  Future<void> _checkIfPrivacyAccepted() async {
+    final accepted = await _secureStorage.read(key: 'privacy_accepted');
+    if (accepted != 'true' && mounted) {
+      await _showPrivacyPolicyModal(context);
+    }
+  }
+
+  Future<void> _showPrivacyPolicyModal(BuildContext context) async {
+    bool agreed = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false, // prevent dismissing by tapping outside
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Privacy Policy'),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 400, // adjustable
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Text(
+                    privacyPolicyText, // the full policy as a String
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: agreed
+                      ? null // disable after agreeing
+                      : () {
+                          setState(() {
+                            agreed = true;
+                          });
+                        },
+                  child: const Text('I Agree'),
+                ),
+                TextButton(
+                  onPressed: agreed
+                      ? () async {
+                          // Save acceptance securely
+                          await _secureStorage.write(
+                            key: 'privacy_accepted',
+                            value: 'true',
+                          );
+                          if (dialogContext.mounted) {
+                            Navigator.of(dialogContext).pop();
+                          }
+                        }
+                      : null, // disabled until 'I Agree' is clicked
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -111,6 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Future.microtask(() async {
       await CameraPrewarmService.prewarm();
     });
+    _checkIfPrivacyAccepted();
   }
 
   @override

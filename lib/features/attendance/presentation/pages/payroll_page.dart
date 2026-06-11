@@ -534,6 +534,16 @@ class _PayrollPageState extends State<PayrollPage>
     }
   }
 
+  String _formatDisplayDate(String dateStr) {
+    if (dateStr.isEmpty || dateStr == '-') return dateStr;
+    try {
+      final parsed = DateFormat('yyyy-MM-dd').parse(dateStr);
+      return DateFormat('d MMM yyyy', 'en_US').format(parsed);
+    } catch (e) {
+      return dateStr;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -879,6 +889,9 @@ class _PayrollPageState extends State<PayrollPage>
                                             (teamDayMap[team] ?? [])[index];
 
                                         final date = summary['date'] ?? '-';
+                                        final displayDate = _formatDisplayDate(
+                                          date,
+                                        );
                                         final full = summary['fullCount'] ?? 0;
                                         final half = summary['halfCount'] ?? 0;
                                         final absent =
@@ -886,7 +899,6 @@ class _PayrollPageState extends State<PayrollPage>
                                         final share =
                                             summary['sharePerFull'] ?? 0.0;
 
-                                        // Highlight today logic
                                         final today = DateFormat(
                                           'yyyy-MM-dd',
                                         ).format(DateTime.now());
@@ -927,7 +939,7 @@ class _PayrollPageState extends State<PayrollPage>
                                                 MainAxisAlignment.center,
                                             children: [
                                               Text(
-                                                date,
+                                                displayDate,
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.w700,
@@ -986,58 +998,6 @@ class _PayrollPageState extends State<PayrollPage>
                                           ),
                                         );
                                       },
-                                    ),
-
-                                    // LEFT FADE
-                                    Positioned(
-                                      left: 0,
-                                      top: 0,
-                                      bottom: 0,
-                                      child: IgnorePointer(
-                                        child: Container(
-                                          width: 16,
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              begin: Alignment.centerLeft,
-                                              end: Alignment.centerRight,
-                                              colors: [
-                                                Theme.of(
-                                                  context,
-                                                ).scaffoldBackgroundColor,
-                                                Theme.of(context)
-                                                    .scaffoldBackgroundColor
-                                                    .withValues(alpha: 0),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-
-                                    // RIGHT FADE
-                                    Positioned(
-                                      right: 0,
-                                      top: 0,
-                                      bottom: 0,
-                                      child: IgnorePointer(
-                                        child: Container(
-                                          width: 16,
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              begin: Alignment.centerRight,
-                                              end: Alignment.centerLeft,
-                                              colors: [
-                                                Theme.of(
-                                                  context,
-                                                ).scaffoldBackgroundColor,
-                                                Theme.of(context)
-                                                    .scaffoldBackgroundColor
-                                                    .withValues(alpha: 0),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
                                     ),
                                   ],
                                 ),
