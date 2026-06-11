@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
@@ -14,6 +15,8 @@ class UserListPage extends StatefulWidget {
 }
 
 class _UserListPageState extends State<UserListPage> {
+  Timer? _debounce;
+
   final List<String> _roles = const [
     'aslap',
     'admin',
@@ -22,21 +25,55 @@ class _UserListPageState extends State<UserListPage> {
     'accountant',
     'scanner',
   ];
+  final TextEditingController _searchController = TextEditingController();
+
   String? _selectedRole;
+  bool _isSearching = false;
+
+  int get _activeFilterCount {
+    var count = 0;
+    if (_selectedRole != null) count++;
+    return count;
+  }
 
   @override
   void initState() {
     super.initState();
-    _loadUsers();
+    _applyCriteria();
   }
 
-  void _loadUsers() {
-    final bloc = context.read<UserBloc>();
-    if (_selectedRole != null && _selectedRole!.isNotEmpty) {
-      bloc.add(FilterUser(_selectedRole));
-    } else {
-      bloc.add(LoadUser());
-    }
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _applyCriteria() {
+    final query = _searchController.text.trim();
+
+    context.read<UserBloc>().add(SearchUser(query, _selectedRole));
+  }
+
+  void _onSearchChanged(String value) {
+    setState(() => _isSearching = value.trim().isNotEmpty);
+
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      _applyCriteria();
+    });
+  }
+
+  void _clearSearch() {
+    if (_searchController.text.isEmpty) return;
+
+    setState(() {
+      _searchController.clear();
+      _isSearching = false;
+    });
+
+    _applyCriteria();
   }
 
   Future<void> _showRoleFilterSheet() async {
@@ -106,7 +143,7 @@ class _UserListPageState extends State<UserListPage> {
       setState(() {
         _selectedRole = result as String?;
       });
-      _loadUsers();
+      _applyCriteria();
     }
   }
 
@@ -189,35 +226,143 @@ class _UserListPageState extends State<UserListPage> {
         title: const Text('Manage Users'),
         centerTitle: true,
         actions: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.tune_rounded,
+                  color: _activeFilterCount > 0
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+                ),
+                onPressed: _showRoleFilterSheet,
+                onLongPress: () {
+                  setState(() => _selectedRole = null);
+                  _applyCriteria();
+                },
+              ),
+              if (_activeFilterCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      _activeFilterCount.toString(),
+                      style: const TextStyle(fontSize: 10, color: Colors.white),
+                    ),
+                  ),
+                ),
+            ],
+          ),
           IconButton(
-            icon: Badge(
-              isLabelVisible: isFilterActive,
-              child: const Icon(Icons.filter_list),
-            ),
-            tooltip: 'Filter by role',
-            onPressed: _showRoleFilterSheet,
+            icon: const Icon(Icons.person_add_alt_1),
+            tooltip: 'Add user',
+            onPressed: () async {
+              await Navigator.pushNamed(context, '/user-add');
+              if (mounted) _applyCriteria();
+            },
           ),
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () async => _loadUsers(),
+        onRefresh: () async => _applyCriteria(),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Column(
             children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: _onSearchChanged,
+                    style: const TextStyle(fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: 'Search users, email, role...',
+                      hintStyle: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 14,
+                      ),
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Icon(
+                          Icons.search_rounded,
+                          size: 20,
+                          color: _isSearching
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      suffixIcon: _isSearching
+                          ? IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 20),
+                              onPressed: _clearSearch,
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: Colors.transparent,
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 14,
+                        horizontal: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.3),
+                          width: 1.2,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: AppSpacing.md),
               if (isFilterActive)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                  padding: const EdgeInsets.only(
+                    bottom: AppSpacing.xs,
+                    left: AppSpacing.lg,
+                  ),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: FilterChip(
-                      onSelected: (_) => _showRoleFilterSheet(),
-                      label: Text(_selectedRole!.toUpperCase()),
+                      onSelected: (value) => _showRoleFilterSheet(),
+                      label: Text(
+                        _selectedRole!.toUpperCase(),
+                        style: TextStyle(fontSize: 12),
+                      ),
                       onDeleted: () {
                         setState(() => _selectedRole = null);
-                        context.read<UserBloc>().add(LoadUser());
+                        _applyCriteria();
                       },
-                      deleteIcon: const Icon(Icons.close, size: 18),
+                      deleteIcon: const Icon(Icons.close, size: 16),
                     ),
                   ),
                 ),
@@ -232,7 +377,7 @@ class _UserListPageState extends State<UserListPage> {
                           ? 'User deleted successfully'
                           : 'User saved successfully';
                       _showSuccessSnackBar(message);
-                      _loadUsers();
+                      _applyCriteria();
                     }
                   },
                   builder: (context, state) {
@@ -249,14 +394,7 @@ class _UserListPageState extends State<UserListPage> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          await Navigator.pushNamed(context, '/user-add');
-          if (mounted) _loadUsers();
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Add user'),
-      ),
+      // floatingActionButton removed
     );
   }
 
@@ -335,7 +473,9 @@ class _UserListPageState extends State<UserListPage> {
           ),
           const SizedBox(height: AppSpacing.lg),
           FilledButton.icon(
-            onPressed: _loadUsers,
+            onPressed: () {
+              if (mounted) _applyCriteria();
+            },
             icon: const Icon(Icons.refresh),
             label: const Text('Retry'),
           ),
@@ -359,11 +499,11 @@ class _UserListPageState extends State<UserListPage> {
               '/user-detail',
               arguments: user.id,
             );
-            if (mounted) _loadUsers();
+            if (mounted) _applyCriteria();
           },
           onEdit: () async {
             await Navigator.pushNamed(context, '/user-edit', arguments: user);
-            if (mounted) _loadUsers();
+            if (mounted) _applyCriteria();
           },
           onDelete: () async {
             final confirmed = await _confirmDelete(user);
@@ -406,6 +546,8 @@ class _UserCard extends StatelessWidget {
 
     return Card(
       elevation: AppElevation.low,
+      shadowColor: Colors.transparent,
+      color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
       ),
@@ -459,27 +601,6 @@ class _UserCard extends StatelessWidget {
                     Row(
                       children: [
                         Icon(
-                          Icons.email_outlined,
-                          size: 16,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            user.email,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(
                           Icons.badge_outlined,
                           size: 16,
                           color: colorScheme.primary,
@@ -488,7 +609,7 @@ class _UserCard extends StatelessWidget {
                         Text(
                           user.role.toUpperCase(),
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 11,
                             color: colorScheme.primary,
                             fontWeight: FontWeight.w500,
                           ),
@@ -503,16 +624,16 @@ class _UserCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.edit_outlined),
+                    icon: const Icon(Icons.edit_outlined, size: 18),
                     tooltip: 'Edit user',
                     onPressed: onEdit,
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    tooltip: 'Delete user',
-                    color: Colors.redAccent,
-                    onPressed: onDelete,
-                  ),
+                  // IconButton(
+                  //   icon: const Icon(Icons.delete_outline),
+                  //   tooltip: 'Delete user',
+                  //   color: Colors.redAccent,
+                  //   onPressed: onDelete,
+                  // ),
                 ],
               ),
             ],
