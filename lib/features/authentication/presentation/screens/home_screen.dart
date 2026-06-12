@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mbg_test/core/services/camera_prewarm.dart';
-import 'package:mbg_test/presentation/widgets/home_tab.dart';
-import 'package:mbg_test/presentation/widgets/report_tab.dart';
-import 'package:mbg_test/presentation/widgets/setting_tab.dart';
-import 'package:mbg_test/presentation/widgets/bricks/home/camera_widget.dart';
+import 'package:mbg_test/features/authentication/presentation/widgets/home_tab.dart';
+import 'package:mbg_test/features/authentication/presentation/widgets/report_tab.dart';
+import 'package:mbg_test/features/authentication/presentation/widgets/setting_tab.dart';
+import 'package:mbg_test/features/authentication/presentation/widgets/bricks/home/camera_widget.dart';
 import 'package:mbg_test/privacy_policy_text.dart';
 import 'package:persistent_bottom_nav_bar_v2/persistent_bottom_nav_bar_v2.dart';
 

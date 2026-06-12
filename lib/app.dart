@@ -1,9 +1,9 @@
 import 'auth_gate.dart';
-import 'logic/auth/auth_bloc.dart';
+import 'features/authentication/logic/auth/auth_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:mbg_test/core/routes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'data/repositories/auth_repository.dart';
+import 'features/authentication/data/repositories/auth_repository.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
 import 'package:mbg_test/features/users/bloc/user_bloc.dart';
 import 'package:mbg_test/features/volunteer/bloc/volunteer_bloc.dart';

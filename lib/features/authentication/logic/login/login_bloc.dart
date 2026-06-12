@@ -1,7 +1,7 @@
 import 'login_event.dart';
 import 'login_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mbg_test/data/repositories/auth_repository.dart';
+import 'package:mbg_test/features/authentication/data/repositories/auth_repository.dart';
 
 class LoginBloc extends Bloc<LoginEvent, LoginState> {
   final AuthRepository authRepository;

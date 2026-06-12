@@ -1,10 +1,10 @@
-import 'logic/auth/auth_bloc.dart';
-import 'logic/auth/auth_state.dart';
+import 'features/authentication/logic/auth/auth_bloc.dart';
+import 'features/authentication/logic/auth/auth_state.dart';
 import 'package:flutter/material.dart';
-import 'presentation/screens/home_screen.dart';
+import 'features/authentication/presentation/screens/home_screen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'presentation/screens/login_screen.dart';
-import 'package:mbg_test/logic/auth/auth_event.dart';
+import 'features/authentication/presentation/screens/login_screen.dart';
+import 'package:mbg_test/features/authentication/logic/auth/auth_event.dart';
 
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});

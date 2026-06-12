@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mbg_test/logic/auth/auth_bloc.dart';
-import 'package:mbg_test/logic/auth/auth_event.dart';
+import 'package:mbg_test/features/authentication/logic/auth/auth_bloc.dart';
+import 'package:mbg_test/features/authentication/logic/auth/auth_event.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
 
 Widget buildLogoutButton(BuildContext context) {

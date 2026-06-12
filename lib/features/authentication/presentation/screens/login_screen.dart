@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mbg_test/logic/login/login_bloc.dart';
-import 'package:mbg_test/logic/login/login_event.dart';
-import 'package:mbg_test/logic/login/login_state.dart';
+import 'package:mbg_test/features/authentication/logic/login/login_bloc.dart';
+import 'package:mbg_test/features/authentication/logic/login/login_event.dart';
+import 'package:mbg_test/features/authentication/logic/login/login_state.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
-import 'package:mbg_test/presentation/widgets/login_form.dart';
-import 'package:mbg_test/data/repositories/auth_repository.dart';
+import 'package:mbg_test/features/authentication/presentation/widgets/login_form.dart';
+import 'package:mbg_test/features/authentication/data/repositories/auth_repository.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

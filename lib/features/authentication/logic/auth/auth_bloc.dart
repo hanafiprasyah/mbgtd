@@ -4,7 +4,7 @@ import 'auth_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mbg_test/core/services/token_service.dart';
 import 'package:mbg_test/core/services/isolate_scheduler.dart';
-import 'package:mbg_test/data/repositories/auth_repository.dart';
+import 'package:mbg_test/features/authentication/data/repositories/auth_repository.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   // The AuthBloc manages authentication state and token refresh logic.

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
-import 'package:mbg_test/presentation/widgets/bricks/setting/info_card.dart';
-import 'package:mbg_test/presentation/widgets/bricks/setting/profile_hero.dart';
-import 'package:mbg_test/presentation/widgets/bricks/setting/logout_button.dart';
+import 'package:mbg_test/features/authentication/presentation/widgets/bricks/setting/info_card.dart';
+import 'package:mbg_test/features/authentication/presentation/widgets/bricks/setting/profile_hero.dart';
+import 'package:mbg_test/features/authentication/presentation/widgets/bricks/setting/logout_button.dart';
 
 Widget buildSettingTab(
   BuildContext context,

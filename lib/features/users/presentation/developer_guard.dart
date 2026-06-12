@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mbg_test/data/repositories/auth_repository.dart';
+import 'package:mbg_test/features/authentication/data/repositories/auth_repository.dart';
 import 'package:mbg_test/features/users/data/repositories/user_repository.dart';
-import 'package:mbg_test/presentation/screens/not_found_screen.dart';
+import 'package:mbg_test/features/authentication/presentation/screens/not_found_screen.dart';
 
 class DeveloperRouteGuard extends StatelessWidget {
   final Widget child;

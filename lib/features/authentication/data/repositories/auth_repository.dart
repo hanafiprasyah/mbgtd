@@ -1,5 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:mbg_test/data/datasources/local/secure_storage_service.dart';
+import 'package:mbg_test/features/authentication/data/datasources/local/secure_storage_service.dart';
 
 class AuthRepository {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;

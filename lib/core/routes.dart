@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:mbg_test/auth_gate.dart';
 import 'package:mbg_test/features/users/presentation/developer_guard.dart';
-import 'package:mbg_test/presentation/screens/home_screen.dart';
+import 'package:mbg_test/features/authentication/presentation/screens/home_screen.dart';
 import 'package:mbg_test/features/users/data/models/user_model.dart';
 import 'package:mbg_test/features/users/presentation/user_detail.dart';
 import 'package:mbg_test/features/users/presentation/user_form.dart';
 import 'package:mbg_test/features/users/presentation/user_list.dart';
-import 'package:mbg_test/presentation/screens/not_found_screen.dart';
+import 'package:mbg_test/features/authentication/presentation/screens/not_found_screen.dart';
 import 'package:mbg_test/features/volunteer/data/models/volunteer_model.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/payroll_page.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/scanner_page.dart';
