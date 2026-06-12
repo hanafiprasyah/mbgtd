@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import '../../bloc/volunteer_bloc.dart';
-import '../../bloc/volunteer_event.dart';
-import '../../bloc/volunteer_state.dart';
-import '../../data/models/volunteer_model.dart';
+import 'package:mbg_test/features/volunteer/bloc/volunteer_bloc.dart';
+import 'package:mbg_test/features/volunteer/bloc/volunteer_event.dart';
+import 'package:mbg_test/features/volunteer/bloc/volunteer_state.dart';
+import 'package:mbg_test/features/volunteer/data/models/volunteer_model.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
 
 class VolunteerFormPage extends StatefulWidget {

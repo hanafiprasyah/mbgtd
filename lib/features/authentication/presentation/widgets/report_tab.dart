@@ -6,7 +6,13 @@ Widget buildReportTab(BuildContext context) {
   final colorScheme = theme.colorScheme;
 
   return Scaffold(
-    appBar: AppBar(title: const Text('Report'), centerTitle: true),
+    backgroundColor: colorScheme.surfaceContainerLowest,
+    appBar: AppBar(
+      title: const Text('Report'),
+      centerTitle: true,
+      surfaceTintColor: Colors.transparent,
+      backgroundColor: colorScheme.surfaceContainerLowest,
+    ),
     body: Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppRadius.lg),

@@ -394,7 +394,6 @@ class _UserListPageState extends State<UserListPage> {
           ),
         ),
       ),
-      // floatingActionButton removed
     );
   }
 
@@ -601,7 +600,7 @@ class _UserCard extends StatelessWidget {
                     Row(
                       children: [
                         Icon(
-                          Icons.badge_outlined,
+                          Icons.apps_rounded,
                           size: 16,
                           color: colorScheme.primary,
                         ),

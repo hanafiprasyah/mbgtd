@@ -144,8 +144,15 @@ Widget buildHomeTab(
     return [const Center(child: Text('No menu available for your role.'))];
   }
 
+  final colorScheme = Theme.of(context).colorScheme;
+
   return Scaffold(
-    appBar: AppBar(title: const Text('Home')),
+    backgroundColor: colorScheme.surfaceContainerLowest,
+    appBar: AppBar(
+      title: const Text('Home'),
+      surfaceTintColor: Colors.transparent,
+      backgroundColor: colorScheme.surfaceContainerLowest,
+    ),
     body: Padding(
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
