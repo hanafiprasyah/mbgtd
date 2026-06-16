@@ -870,6 +870,21 @@ class _PayrollPageState extends State<PayrollPage>
                       final items = groupedData[team]!;
                       final totalTeam = teamTotals[team] ?? 0;
 
+                      // Detect Chef & Check if any contributions from Masak as Burden value
+                      final isChefTeam =
+                          team.toString().trim().toLowerCase() == 'chef';
+                      final teamChips = teamDayMap[team] ?? [];
+                      final hasMasakExtra =
+                          isChefTeam &&
+                          teamChips.any(
+                            (s) =>
+                                ((s['extraFromMasakBurden'] as num?)
+                                        ?.toDouble() ??
+                                    0.0) >
+                                0,
+                          );
+                      final chipsHeight = hasMasakExtra ? 132.0 : 100.0;
+
                       return SliverMainAxisGroup(
                         slivers: [
                           // STICKY HEADER
@@ -889,7 +904,7 @@ class _PayrollPageState extends State<PayrollPage>
                                 vertical: 8,
                               ),
                               child: SizedBox(
-                                height: 100,
+                                height: chipsHeight,
                                 child: Stack(
                                   children: [
                                     ListView.separated(
@@ -916,6 +931,14 @@ class _PayrollPageState extends State<PayrollPage>
                                             summary['absentCount'] ?? 0;
                                         final share =
                                             summary['sharePerFull'] ?? 0.0;
+
+                                        // Burden value from Masak H/A at the same date
+                                        final masakExtra = isChefTeam
+                                            ? ((summary['extraFromMasakBurden']
+                                                          as num?)
+                                                      ?.toDouble() ??
+                                                  0.0)
+                                            : 0.0;
 
                                         final today = DateFormat(
                                           'yyyy-MM-dd',
@@ -1012,6 +1035,40 @@ class _PayrollPageState extends State<PayrollPage>
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               ),
+
+                                              // Show burden from Masak at this date
+                                              if (masakExtra > 0) ...[
+                                                const SizedBox(height: 4),
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.deepOrange
+                                                        .withValues(
+                                                          alpha: 0.12,
+                                                        ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          6,
+                                                        ),
+                                                  ),
+                                                  child: Text(
+                                                    '+${currencyFormatter.format(masakExtra.toInt())}\ndari Masak H/A',
+                                                    style: TextStyle(
+                                                      fontSize: 9,
+                                                      height: 1.2,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: Colors
+                                                          .deepOrange
+                                                          .shade700,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
                                             ],
                                           ),
                                         );

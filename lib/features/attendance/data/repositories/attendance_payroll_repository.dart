@@ -203,18 +203,44 @@ class AttendancePayrollRepository {
 
       // Check if Chef has pool for this date
       if (tim.toLowerCase() == 'masak') {
+        // Masak burden is shared between Masak and Chef full-timers ──
+
+        // [1] Get the number of Chef full-timers on the same day
+        final chefSummaryKey = '${date}_Chef';
+        final chefSummary = teamDaySummary[chefSummaryKey];
+        final chefFull = (chefSummary?['fullCount'] as int?) ?? 0;
+
+        final masakFull = full;
+        final combinedFull = masakFull + chefFull;
+        final masakTotalBurden = summary['totalBurden'] as double;
+
+        // [2] Burden from Masak absent/half-day → evenly distributed to Masak + Chef
+        double masakBurdenPerCombinedFull = 0.0;
+        if (combinedFull > 0 && masakTotalBurden > 0) {
+          masakBurdenPerCombinedFull = masakTotalBurden / combinedFull;
+        }
+
+        // [3] Pool from Chef half-day → remains only for Masak (unchanged)
         final chefPoolKey = 'Chef_$date';
         final chefPool = poolByProviderByDate[chefPoolKey] ?? 0.0;
-        if (full > 0 && chefPool > 0) {
-          final chefExtra = chefPool / full;
-          summary['poolExtra'] = chefExtra;
-          summary['chefExtraPerMasakFull'] =
-              chefExtra; // Keep for backwards compatibility
-          summary['sharePerFull'] =
-              (summary['sharePerFull'] as double) + chefExtra;
-        } else {
-          summary['poolExtra'] = 0.0;
-          summary['chefExtraPerMasakFull'] = 0.0;
+        double chefPoolPerMasakFull = 0.0;
+        if (masakFull > 0 && chefPool > 0) {
+          chefPoolPerMasakFull = chefPool / masakFull;
+        }
+
+        // [4] Update Masak: sharePerFull = (burden/combined) + (chefPool/masak)
+        final masakSharePerFull =
+            masakBurdenPerCombinedFull + chefPoolPerMasakFull;
+        summary['sharePerFull'] = masakSharePerFull;
+        summary['poolExtra'] = masakSharePerFull;
+        summary['chefExtraPerMasakFull'] =
+            chefPoolPerMasakFull; // backward compat
+
+        // [5] Inject extra into Chef summary: Chef full-timers receive from Masak
+        if (chefSummary != null && masakBurdenPerCombinedFull > 0) {
+          chefSummary['extraFromMasakBurden'] = masakBurdenPerCombinedFull;
+          chefSummary['poolExtra'] =
+              masakBurdenPerCombinedFull; // untuk pool UI di detail page
         }
       }
       // ASLAP provides pool to ASLAP (self)
@@ -295,6 +321,16 @@ class AttendancePayrollRepository {
 
       memberTotalPay[volunteerId] =
           (memberTotalPay[volunteerId] ?? 0.0) + payForThisScan;
+
+      // [NEW] Add extra from Masak burden for Chef full-timers
+      final isFullDay = multiplier >= 1.0 && attendanceType != 'absent';
+      final extraFromMasakBurden = (isFullDay && teamSummary != null)
+          ? ((teamSummary['extraFromMasakBurden'] as double?) ?? 0.0)
+          : 0.0;
+      if (extraFromMasakBurden > 0) {
+        memberTotalPay[volunteerId] =
+            (memberTotalPay[volunteerId] ?? 0.0) + extraFromMasakBurden;
+      }
 
       if (attendanceType == 'absent' || multiplier == 0.0) {
         absentDatesMap[volunteerId] = [

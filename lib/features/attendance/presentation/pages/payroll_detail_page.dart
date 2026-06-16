@@ -173,9 +173,11 @@ class _PayrollDetailPageState extends State<PayrollDetailPage>
     // Determine pool source based on volunteer's team
     String poolSource = '';
     if (volunteerTeam.toLowerCase() == 'masak') {
-      poolSource = 'Chef'; // Masak receives from Chef
+      poolSource = 'Chef & Masak';
     } else if (volunteerTeam.toLowerCase() == 'aslap') {
       poolSource = 'ASLAP'; // ASLAP receives from itself
+    } else if (volunteerTeam.toLowerCase() == 'chef') {
+      poolSource = 'Masak';
     } else {
       poolSource = volunteerTeam; // Other teams show their own team as source
     }
@@ -454,8 +456,7 @@ class _PayrollDetailPageState extends State<PayrollDetailPage>
 
               // Calculate pool distribution for this volunteer's team
               final poolInfo = _calculatePoolInfo(tim, teamDaySummary);
-              final isPoolProvider =
-                  tim.toLowerCase() == 'chef' || tim.toLowerCase() == 'aslap';
+              final isPoolProvider = tim.toLowerCase() == 'aslap';
 
               return SingleChildScrollView(
                 child: Column(
