@@ -23,6 +23,8 @@ const _teamOptions = [
 
 const _genderOptions = ['Laki-laki', 'Perempuan'];
 
+enum VolunteerSortOption { none, ageAscending, nameAZ }
+
 class VolunteerListPage extends StatefulWidget {
   const VolunteerListPage({super.key});
 
@@ -37,6 +39,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
   String? _selectedGender;
   bool _isSearching = false;
   String? _pendingDeleteName;
+  VolunteerSortOption _sortOption = VolunteerSortOption.none;
 
   int get _activeFilterCount {
     var count = 0;
@@ -72,6 +75,47 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
       _selectedGender = null;
     });
     _applyCurrentCriteria();
+  }
+
+  void _onSortSelected(VolunteerSortOption option) {
+    setState(() => _sortOption = option);
+  }
+
+  List<Volunteer> _sortVolunteers(List<Volunteer> volunteers) {
+    if (_sortOption == VolunteerSortOption.none) return volunteers;
+
+    final sorted = List<Volunteer>.from(volunteers);
+    switch (_sortOption) {
+      case VolunteerSortOption.ageAscending:
+        sorted.sort(
+          (a, b) => _ageFromBirthDate(
+            a.tanggalLahir,
+          ).compareTo(_ageFromBirthDate(b.tanggalLahir)),
+        );
+        break;
+      case VolunteerSortOption.nameAZ:
+        sorted.sort(
+          (a, b) => a.namaLengkap.toLowerCase().compareTo(
+            b.namaLengkap.toLowerCase(),
+          ),
+        );
+        break;
+      case VolunteerSortOption.none:
+        break;
+    }
+    return sorted;
+  }
+
+  // NOTE: assumes `Volunteer` has a `tanggalLahir` (DateTime) field for
+  // date of birth. Rename below if your model uses a different field.
+  int _ageFromBirthDate(DateTime birthDate) {
+    final now = DateTime.now();
+    var age = now.year - birthDate.year;
+    final birthdayPassedThisYear =
+        now.month > birthDate.month ||
+        (now.month == birthDate.month && now.day >= birthDate.day);
+    if (!birthdayPassedThisYear) age--;
+    return age;
   }
 
   void _clearSearch() {
@@ -221,6 +265,17 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
         backgroundColor: colorScheme.surfaceContainerLowest,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
+        leadingWidth: Navigator.canPop(context) ? 96 : 48,
+        leading: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            if (Navigator.canPop(context)) const BackButton(),
+            _SortActionButton(
+              selected: _sortOption,
+              onSelected: _onSortSelected,
+            ),
+          ],
+        ),
         actions: [
           FilterActionButton(
             count: _activeFilterCount,
@@ -281,7 +336,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                 builder: (context, state) {
                   if (state is VolunteerLoaded) {
                     return _VolunteerList(
-                      volunteers: state.volunteer,
+                      volunteers: _sortVolunteers(state.volunteer),
                       onDelete: _confirmDelete,
                     );
                   }
@@ -308,6 +363,43 @@ class _VolunteerFilter {
 
   final String? tim;
   final String? gender;
+}
+
+class _SortActionButton extends StatelessWidget {
+  const _SortActionButton({required this.selected, required this.onSelected});
+
+  final VolunteerSortOption selected;
+  final ValueChanged<VolunteerSortOption> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = selected != VolunteerSortOption.none;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return PopupMenuButton<VolunteerSortOption>(
+      tooltip: 'Sort',
+      initialValue: selected,
+      onSelected: onSelected,
+      icon: Icon(Icons.sort, color: isActive ? colorScheme.primary : null),
+      itemBuilder: (context) => [
+        CheckedPopupMenuItem(
+          value: VolunteerSortOption.none,
+          checked: selected == VolunteerSortOption.none,
+          child: const Text('Default'),
+        ),
+        CheckedPopupMenuItem(
+          value: VolunteerSortOption.ageAscending,
+          checked: selected == VolunteerSortOption.ageAscending,
+          child: const Text('Age (Youngest First)'),
+        ),
+        CheckedPopupMenuItem(
+          value: VolunteerSortOption.nameAZ,
+          checked: selected == VolunteerSortOption.nameAZ,
+          child: const Text('Name (A-Z)'),
+        ),
+      ],
+    );
+  }
 }
 
 class _VolunteerList extends StatelessWidget {

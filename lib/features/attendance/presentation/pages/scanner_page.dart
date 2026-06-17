@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -19,7 +20,8 @@ class ScannerPage extends StatefulWidget {
   State<ScannerPage> createState() => _ScannerPageState();
 }
 
-class _ScannerPageState extends State<ScannerPage> with WidgetsBindingObserver {
+class _ScannerPageState extends State<ScannerPage>
+    with WidgetsBindingObserver, TickerProviderStateMixin {
   late final MobileScannerController _controller =
       CameraPrewarmService.controller;
   bool isScanning = false;
@@ -35,10 +37,17 @@ class _ScannerPageState extends State<ScannerPage> with WidgetsBindingObserver {
   Timer? _idleTimer;
   static const Duration _idleDuration = Duration(seconds: 10);
 
+  // UI-only: drives the animated scan line on the viewfinder.
+  late final AnimationController _scanLineController;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _scanLineController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    )..repeat(reverse: true);
     _permissionFuture = PermissionService.requestCamera();
     _initCameraUltraFast();
     _resetIdleTimer();
@@ -112,10 +121,22 @@ class _ScannerPageState extends State<ScannerPage> with WidgetsBindingObserver {
             if (state is AttendanceSuccess) {
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Scan successful! Attendance recorded'),
-                  backgroundColor: Colors.green,
-                  duration: Duration(seconds: 2),
+                SnackBar(
+                  content: const Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.white),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text('Scan successful! Attendance recorded'),
+                      ),
+                    ],
+                  ),
+                  backgroundColor: const Color(0xFF16A34A),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                  duration: const Duration(seconds: 2),
                 ),
               );
 
@@ -135,8 +156,18 @@ class _ScannerPageState extends State<ScannerPage> with WidgetsBindingObserver {
 
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Scan failed: ${state.message}'),
-                  backgroundColor: Colors.red,
+                  content: Row(
+                    children: [
+                      const Icon(Icons.error, color: Colors.white),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text('Scan failed: ${state.message}')),
+                    ],
+                  ),
+                  backgroundColor: const Color(0xFFDC2626),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
                   duration: const Duration(seconds: 2),
                 ),
               );
@@ -232,56 +263,170 @@ class _ScannerPageState extends State<ScannerPage> with WidgetsBindingObserver {
                       },
                     ),
                   ),
-                  // Overlay box
-                  Center(
-                    child: Container(
-                      width: 250,
-                      height: 250,
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: isProcessing
-                              ? Colors.greenAccent
-                              : Colors.white,
-                          width: 3,
-                        ),
-                        borderRadius: BorderRadius.circular(AppRadius.md),
+                  // --- Modern viewfinder: dim mask + corner brackets + scan line ---
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: AnimatedBuilder(
+                        animation: _scanLineController,
+                        builder: (context, _) {
+                          return CustomPaint(
+                            painter: _ScannerOverlayPainter(
+                              scanLineValue: _scanLineController.value,
+                              isProcessing: isProcessing,
+                              frameRadius: 24,
+                              frameSize: 260,
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
+
+                  // Helper label under the frame
+                  Align(
+                    alignment: const Alignment(0, 0.34),
+                    child: IgnorePointer(
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 200),
+                        opacity: isProcessing ? 0 : 1,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.45),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Text(
+                            'Fit QR Code on the box',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // --- Top bar: gradient backdrop + back button + title ---
+                  const Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: IgnorePointer(
+                      child: SizedBox(
+                        height: 130,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.black54, Colors.transparent],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          children: [
+                            _FrostedIconButton(
+                              icon: Icons.arrow_back_ios_new,
+                              onTap: isProcessing ? null : _handleBackAction,
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'Scan QR Code',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // --- Bottom controls: frosted torch toggle ---
                   Positioned(
                     bottom: AppSpacing.lg,
                     left: 0,
                     right: 0,
                     child: SafeArea(
                       child: Center(
-                        child: Container(
-                          width: 56,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.6),
-                            shape: BoxShape.circle,
-                          ),
-                          child: IconButton(
-                            icon: Icon(
-                              _isTorchOn ? Icons.flash_on : Icons.flash_off,
-                              color: Colors.white,
-                            ),
-                            onPressed: () {
-                              _controller.toggleTorch();
-                              setState(() {
-                                _isTorchOn = !_isTorchOn;
-                              });
-                            },
-                          ),
+                        child: _FrostedIconButton(
+                          icon: _isTorchOn ? Icons.flash_on : Icons.flash_off,
+                          active: _isTorchOn,
+                          size: 56,
+                          onTap: () {
+                            _controller.toggleTorch();
+                            setState(() {
+                              _isTorchOn = !_isTorchOn;
+                            });
+                          },
                         ),
                       ),
                     ),
                   ),
-                  // Loading indicator
+
+                  // Processing overlay
                   if (isProcessing)
-                    const Positioned.fill(
-                      child: Center(
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                    Positioned.fill(
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
+                        child: Container(
+                          color: Colors.black.withValues(alpha: 0.25),
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 28,
+                                vertical: 20,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.65),
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.md,
+                                ),
+                              ),
+                              child: const Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SizedBox(
+                                    width: 28,
+                                    height: 28,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    'Processing...',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                 ],
@@ -298,6 +443,7 @@ class _ScannerPageState extends State<ScannerPage> with WidgetsBindingObserver {
     _idleTimer?.cancel();
     _unlockTimer?.cancel();
     _audioPlayer.dispose();
+    _scanLineController.dispose();
     // NO dispose controller here (shared via CameraPrewarmService)
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -330,5 +476,160 @@ class _ScannerPageState extends State<ScannerPage> with WidgetsBindingObserver {
       default:
         break;
     }
+  }
+}
+
+/// Frosted-glass circular icon button used for the back and torch controls.
+/// Purely presentational — no business logic lives here.
+class _FrostedIconButton extends StatelessWidget {
+  const _FrostedIconButton({
+    required this.icon,
+    required this.onTap,
+    this.size = 44,
+    this.active = false,
+  });
+
+  final IconData icon;
+  final VoidCallback? onTap;
+  final double size;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = onTap == null;
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 200),
+      opacity: disabled ? 0.4 : 1,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(size / 2),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Material(
+            color: active
+                ? Colors.amber.withValues(alpha: 0.85)
+                : Colors.black.withValues(alpha: 0.35),
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: onTap,
+              child: SizedBox(
+                width: size,
+                height: size,
+                child: Icon(icon, color: Colors.white, size: size * 0.42),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Paints the dim mask, corner brackets, and animated scan line for the
+/// QR viewfinder. Purely presentational — no scanning logic lives here.
+class _ScannerOverlayPainter extends CustomPainter {
+  _ScannerOverlayPainter({
+    required this.scanLineValue,
+    required this.isProcessing,
+    required this.frameSize,
+    required this.frameRadius,
+  });
+
+  final double scanLineValue;
+  final bool isProcessing;
+  final double frameSize;
+  final double frameRadius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final frameRect = Rect.fromCenter(
+      center: Offset(size.width / 2, size.height / 2),
+      width: frameSize,
+      height: frameSize,
+    );
+
+    // Dim everything outside the scan frame.
+    final backgroundPath = Path()
+      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    final holePath = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(frameRect, Radius.circular(frameRadius)),
+      );
+    final maskPath = Path.combine(
+      PathOperation.difference,
+      backgroundPath,
+      holePath,
+    );
+    canvas.drawPath(
+      maskPath,
+      Paint()..color = Colors.black.withValues(alpha: 0.55),
+    );
+
+    // Corner brackets — color reflects scanning vs. processing state.
+    final accent = isProcessing ? const Color(0xFF34D399) : Colors.white;
+    final bracketPaint = Paint()
+      ..color = accent
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    const bracketLength = 28.0;
+
+    void drawL(Offset start, Offset corner, Offset end) {
+      final path = Path()
+        ..moveTo(start.dx, start.dy)
+        ..lineTo(corner.dx, corner.dy)
+        ..lineTo(end.dx, end.dy);
+      canvas.drawPath(path, bracketPaint);
+    }
+
+    drawL(
+      Offset(frameRect.left, frameRect.top + bracketLength),
+      frameRect.topLeft,
+      Offset(frameRect.left + bracketLength, frameRect.top),
+    );
+    drawL(
+      Offset(frameRect.right - bracketLength, frameRect.top),
+      frameRect.topRight,
+      Offset(frameRect.right, frameRect.top + bracketLength),
+    );
+    drawL(
+      Offset(frameRect.left, frameRect.bottom - bracketLength),
+      frameRect.bottomLeft,
+      Offset(frameRect.left + bracketLength, frameRect.bottom),
+    );
+    drawL(
+      Offset(frameRect.right - bracketLength, frameRect.bottom),
+      frameRect.bottomRight,
+      Offset(frameRect.right, frameRect.bottom - bracketLength),
+    );
+
+    // Animated scan line — only while actively scanning, not processing.
+    if (!isProcessing) {
+      final lineY =
+          frameRect.top + 16 + (frameRect.height - 32) * scanLineValue;
+      final lineRect = Rect.fromLTWH(
+        frameRect.left + 12,
+        lineY,
+        frameRect.width - 24,
+        3,
+      );
+      final shader = LinearGradient(
+        colors: [
+          accent.withValues(alpha: 0),
+          accent.withValues(alpha: 0.9),
+          accent.withValues(alpha: 0),
+        ],
+      ).createShader(lineRect);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(lineRect, const Radius.circular(2)),
+        Paint()..shader = shader,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ScannerOverlayPainter oldDelegate) {
+    return oldDelegate.scanLineValue != scanLineValue ||
+        oldDelegate.isProcessing != isProcessing;
   }
 }
