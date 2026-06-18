@@ -1,3 +1,6 @@
+import 'package:mbg_test/features/food/bloc/food_bloc.dart';
+import 'package:mbg_test/features/food/data/repositories/food_repository.dart';
+
 import 'auth_gate.dart';
 import 'features/authentication/logic/auth/auth_bloc.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +27,7 @@ class MyApp extends StatelessWidget {
         RepositoryProvider(create: (_) => VolunteerRepository()),
         RepositoryProvider(create: (_) => AttendanceRepository()),
         RepositoryProvider(create: (_) => UserRepository()),
+        RepositoryProvider(create: (_) => FoodRepository()),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -45,9 +49,12 @@ class MyApp extends StatelessWidget {
             create: (context) =>
                 PeriodHistoryBloc(context.read<AttendanceRepository>()),
           ),
+          BlocProvider(
+            create: (context) => FoodBloc(context.read<FoodRepository>()),
+          ),
         ],
         child: MaterialApp(
-          title: "MBGTD App",
+          title: "GeezeHub",
           debugShowCheckedModeBanner: false,
           initialRoute: '/',
           onGenerateRoute: AppRoutes.generateRoute,

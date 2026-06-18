@@ -282,35 +282,6 @@ class _ScannerPageState extends State<ScannerPage>
                     ),
                   ),
 
-                  // Helper label under the frame
-                  Align(
-                    alignment: const Alignment(0, 0.34),
-                    child: IgnorePointer(
-                      child: AnimatedOpacity(
-                        duration: const Duration(milliseconds: 200),
-                        opacity: isProcessing ? 0 : 1,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.45),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Text(
-                            'Fit QR Code on the box',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
                   // --- Top bar: gradient backdrop + back button + title ---
                   const Positioned(
                     top: 0,
@@ -346,15 +317,6 @@ class _ScannerPageState extends State<ScannerPage>
                             _FrostedIconButton(
                               icon: Icons.arrow_back_ios_new,
                               onTap: isProcessing ? null : _handleBackAction,
-                            ),
-                            const SizedBox(width: 12),
-                            const Text(
-                              'Scan QR Code',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 17,
-                                fontWeight: FontWeight.w600,
-                              ),
                             ),
                           ],
                         ),
@@ -412,14 +374,6 @@ class _ScannerPageState extends State<ScannerPage>
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2.5,
                                       color: Colors.white,
-                                    ),
-                                  ),
-                                  SizedBox(height: 12),
-                                  Text(
-                                    'Processing...',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                 ],

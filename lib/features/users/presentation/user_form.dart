@@ -29,6 +29,7 @@ class _UserFormPageState extends State<UserFormPage> {
     'sppi',
     'accountant',
     'scanner',
+    'nutritionist',
   ];
 
   // Validation regex patterns
@@ -439,6 +440,8 @@ class _UserFormPageState extends State<UserFormPage> {
         return Icons.assignment_ind;
       case 'aslap':
         return Icons.analytics;
+      case 'nutritionist':
+        return Icons.health_and_safety_rounded;
       default:
         return Icons.qr_code_scanner;
     }
@@ -454,6 +457,8 @@ class _UserFormPageState extends State<UserFormPage> {
         return Colors.orange;
       case 'aslap':
         return Colors.purple;
+      case 'nutritionist':
+        return Colors.teal;
       default:
         return Colors.grey;
     }

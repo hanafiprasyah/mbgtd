@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mbg_test/auth_gate.dart';
+import 'package:mbg_test/features/food/data/models/food_model.dart';
+import 'package:mbg_test/features/food/presentation/pages/food_form.dart';
+import 'package:mbg_test/features/food/presentation/pages/food_list.dart';
 import 'package:mbg_test/features/users/presentation/developer_guard.dart';
 import 'package:mbg_test/features/authentication/presentation/screens/home_screen.dart';
 import 'package:mbg_test/features/users/data/models/user_model.dart';
@@ -78,6 +81,14 @@ class AppRoutes {
         final id = settings.arguments as String;
         return MaterialPageRoute(
           builder: (_) => DeveloperRouteGuard(child: UserDetailPage(id: id)),
+          settings: settings,
+        );
+      case '/food-bank':
+        return MaterialPageRoute(builder: (_) => FoodListScreen());
+      case '/food-edit':
+        final food = settings.arguments as Food;
+        return MaterialPageRoute(
+          builder: (_) => FoodFormScreen(food: food),
           settings: settings,
         );
       default:

@@ -18,10 +18,13 @@ Widget buildHomeTab(
   final isSPPI = user != null && role.toLowerCase().contains('sppi');
   final isAslap = user != null && role.toLowerCase().contains('aslap');
   final isAdmin = user != null && role.toLowerCase().contains('admin');
+  final isNutritionist =
+      user != null && role.toLowerCase().contains('nutritionist');
 
   List<Widget> buildMenus() {
     List<Widget> items = [];
 
+    // generate menu
     void addMenu({
       required int index,
       required IconData icon,
@@ -51,6 +54,23 @@ Widget buildHomeTab(
       return items;
     }
 
+    if (isNutritionist) {
+      addMenu(
+        index: 0,
+        icon: Icons.people,
+        title: 'Volunteers',
+        subtitle: 'Manage Volunteer',
+        onTap: () => Navigator.pushNamed(context, '/volunteers'),
+      );
+      addMenu(
+        index: 0,
+        icon: Icons.food_bank_rounded,
+        title: 'Food Bank',
+        subtitle: 'Manage menu archive',
+        onTap: () => Navigator.pushNamed(context, '/food-bank'),
+      );
+    }
+
     if (isAccountant) {
       addMenu(
         index: 0,
@@ -58,6 +78,13 @@ Widget buildHomeTab(
         title: 'Payroll',
         subtitle: 'Salary & Period',
         onTap: () => Navigator.pushNamed(context, '/payroll'),
+      );
+      addMenu(
+        index: 0,
+        icon: Icons.food_bank_rounded,
+        title: 'Food Bank',
+        subtitle: 'Manage menu archive',
+        onTap: () => Navigator.pushNamed(context, '/food-bank'),
       );
       return items;
     }
@@ -77,6 +104,13 @@ Widget buildHomeTab(
         subtitle: 'Salary & Period',
         onTap: () => Navigator.pushNamed(context, '/payroll'),
       );
+      addMenu(
+        index: 0,
+        icon: Icons.food_bank_rounded,
+        title: 'Food Bank',
+        subtitle: 'Manage menu archive',
+        onTap: () => Navigator.pushNamed(context, '/food-bank'),
+      );
       return items;
     }
 
@@ -95,6 +129,13 @@ Widget buildHomeTab(
         subtitle: 'Salary & Period',
         onTap: () => Navigator.pushNamed(context, '/payroll'),
       );
+      addMenu(
+        index: 0,
+        icon: Icons.food_bank_rounded,
+        title: 'Food Bank',
+        subtitle: 'Manage menu archive',
+        onTap: () => Navigator.pushNamed(context, '/food-bank'),
+      );
       return items;
     }
 
@@ -112,6 +153,13 @@ Widget buildHomeTab(
         title: 'Scan',
         subtitle: 'Attendance',
         onTap: () => Navigator.pushNamed(context, '/qr-scanner'),
+      );
+      addMenu(
+        index: 0,
+        icon: Icons.food_bank_rounded,
+        title: 'Food Bank',
+        subtitle: 'Manage menu archive',
+        onTap: () => Navigator.pushNamed(context, '/food-bank'),
       );
       return items;
     }
@@ -137,6 +185,13 @@ Widget buildHomeTab(
         title: 'Scan',
         subtitle: 'Attendance',
         onTap: () => Navigator.pushNamed(context, '/qr-scanner'),
+      );
+      addMenu(
+        index: 0,
+        icon: Icons.food_bank_rounded,
+        title: 'Food Bank',
+        subtitle: 'Manage menu archive',
+        onTap: () => Navigator.pushNamed(context, '/food-bank'),
       );
       return items;
     }
