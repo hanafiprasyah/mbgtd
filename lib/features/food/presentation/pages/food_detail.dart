@@ -47,6 +47,14 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
       listener: (context, state) {
         if (_isDeleting) {
           if (state.status == FoodStatus.success) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Success deleted ${state.foods[6]}'),
+                  duration: const Duration(seconds: 1),
+                ),
+              );
+            }
             _isDeleting = false;
             Navigator.pop(context);
             return;
@@ -93,16 +101,56 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
         body: CustomScrollView(
           slivers: [
             SliverAppBar(
+              automaticallyImplyLeading: false,
+              backgroundColor: Colors.transparent,
               expandedHeight: 300,
               pinned: true,
               flexibleSpace: FlexibleSpaceBar(
+                collapseMode: CollapseMode.parallax,
                 background: GestureDetector(
                   onTap: () => _showFullScreenImage(context, food.photoUrl),
                   child: Hero(
+                    transitionOnUserGestures: true,
+                    curve: Curves.easeInOut,
                     tag: 'food-${food.id}',
-                    child: food.photoUrl != null
-                        ? Image.network(food.photoUrl!, fit: BoxFit.cover)
-                        : Container(color: Colors.grey[300]),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        ClipRect(
+                          child: Image.network(
+                            food.photoUrl ?? '',
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Image.asset(
+                                'assets/placeholder.jpeg',
+                                fit: BoxFit.cover,
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return Image.asset(
+                                'assets/placeholder.jpeg',
+                                fit: BoxFit.cover,
+                              );
+                            },
+                          ),
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: 0.4),
+                              ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -208,15 +256,58 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
   }
 
   void _showFullScreenImage(BuildContext context, String? url) {
-    if (url == null) return;
+    if (url == null || url.isEmpty) return;
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => Scaffold(
-          backgroundColor: Colors.black,
-          appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
-          body: Center(child: InteractiveViewer(child: Image.network(url))),
+      PageRouteBuilder(
+        opaque: false,
+        pageBuilder: (_, __, ___) => Scaffold(
+          backgroundColor: Colors.black.withValues(alpha: 0.95),
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => Navigator.pop(context),
+                  onVerticalDragUpdate: (details) {
+                    if (details.primaryDelta != null &&
+                        details.primaryDelta! > 12) {
+                      Navigator.pop(context);
+                    }
+                  },
+                ),
+              ),
+              Center(
+                child: Hero(
+                  tag: 'food-${food.id}',
+                  child: GestureDetector(
+                    onTap:
+                        () {}, // prevent tap from closing when tapping the image
+                    child: _ZoomableImage(url: url),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 40,
+                left: 16,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    padding: const EdgeInsets.all(8),
+                    child: const Icon(Icons.close, color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
       ),
     );
   }
@@ -242,6 +333,56 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
             child: const Text('Delete'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ZoomableImage extends StatefulWidget {
+  final String url;
+  const _ZoomableImage({required this.url});
+
+  @override
+  State<_ZoomableImage> createState() => _ZoomableImageState();
+}
+
+class _ZoomableImageState extends State<_ZoomableImage> {
+  final TransformationController _controller = TransformationController();
+  TapDownDetails? _doubleTapDetails;
+
+  void _handleDoubleTap() {
+    if (_controller.value != Matrix4.identity()) {
+      _controller.value = Matrix4.identity();
+    } else {
+      final position = _doubleTapDetails!.localPosition;
+      _controller.value = Matrix4.identity()
+        ..translate(-position.dx * 2, -position.dy * 2)
+        ..scale(2.5);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onDoubleTapDown: (details) => _doubleTapDetails = details,
+      onDoubleTap: _handleDoubleTap,
+      child: InteractiveViewer(
+        transformationController: _controller,
+        minScale: 1,
+        maxScale: 5,
+        child: Image.network(
+          widget.url,
+          fit: BoxFit.contain,
+          loadingBuilder: (context, child, progress) {
+            if (progress == null) return child;
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            );
+          },
+          errorBuilder: (context, error, stackTrace) {
+            return Image.asset('assets/placeholder.jpeg', fit: BoxFit.contain);
+          },
+        ),
       ),
     );
   }

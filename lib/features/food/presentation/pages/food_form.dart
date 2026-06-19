@@ -185,181 +185,188 @@ class _FoodFormScreenState extends State<FoodFormScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // === Section: Menu ===
-              _buildSectionHeader('Menu Information', Icons.restaurant_menu),
-              const SizedBox(height: 16),
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.all(20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // === Section: Menu ===
+                _buildSectionHeader('Menu Information', Icons.restaurant_menu),
+                const SizedBox(height: 16),
 
-              // Photo upload
-              _buildPhotoUpload(),
-              const SizedBox(height: 20),
+                // Photo upload
+                _buildPhotoUpload(),
+                const SizedBox(height: 20),
 
-              // Name - Required
-              TextFormField(
-                controller: _nameCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Menu Name',
-                  hintText: 'e.g., Nasi Goreng Special',
-                  prefixIcon: const Icon(Icons.food_bank),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  filled: true,
-                  fillColor: colorScheme.surface,
-                ),
-                validator: (v) => _requiredValidator(v, 'Menu name'),
-              ),
-              const SizedBox(height: 16),
-
-              // Period - Required with hint below
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextFormField(
-                    controller: _periodeCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'Period',
-                      hintText: 'e.g., Period 2 - 28 May 2025',
-                      prefixIcon: const Icon(Icons.calendar_today),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      filled: true,
-                      fillColor: colorScheme.surface,
+                // Name - Required
+                TextFormField(
+                  controller: _nameCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Menu Name',
+                    hintText: 'e.g., Nasi Goreng Special',
+                    prefixIcon: const Icon(Icons.food_bank),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                    validator: (v) => _requiredValidator(v, 'Period'),
+                    filled: true,
+                    fillColor: colorScheme.surface,
                   ),
-                  const SizedBox(height: 6),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(
-                      'Example: Period 2 - 28 May 2025, follow the example format carefully.',
-                      style: textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Created by
-              TextFormField(
-                controller: _dibuatOlehCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Created by',
-                  hintText: 'Name of Nutritionist?',
-                  prefixIcon: const Icon(Icons.person_outline),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  filled: true,
-                  fillColor: colorScheme.surface,
+                  validator: (v) => _requiredValidator(v, 'Menu name'),
                 ),
-                validator: (v) => _requiredValidator(v, 'This field'),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // Cooked by
-              TextFormField(
-                controller: _dimasakOlehCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Cooked by',
-                  hintText: 'Chef name?',
-                  prefixIcon: const Icon(Icons.kitchen),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  filled: true,
-                  fillColor: colorScheme.surface,
-                ),
-                validator: (v) => _requiredValidator(v, 'This field'),
-              ),
-              const SizedBox(height: 16),
-
-              // Evaluated by
-              TextFormField(
-                controller: _diketahuiOlehCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Evaluated by',
-                  hintText: 'Name of SPPI?',
-                  prefixIcon: const Icon(Icons.rate_review),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  filled: true,
-                  fillColor: colorScheme.surface,
-                ),
-                validator: (v) => _requiredValidator(v, 'This field'),
-              ),
-              const SizedBox(height: 32),
-
-              // === Section: AKG ===
-              _buildSectionHeader('Nutritional Values (AKG)', Icons.analytics),
-              const SizedBox(height: 16),
-
-              // Explanation
-              Text(
-                'Enter the nutritional content in grams (g) per serving. (Optional)',
-                style: textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Grid of 5 fields with validation
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-                childAspectRatio: 3.4,
-                children: [
-                  _buildAKGField('Carbohydrate', _karboCtrl),
-                  _buildAKGField('Protein', _proteinCtrl),
-                  _buildAKGField('Fat', _lemakCtrl),
-                  _buildAKGField('Energy', _energiCtrl, suffix: 'kcal'),
-                  _buildAKGField('Fiber', _seratCtrl),
-                ],
-              ),
-              const SizedBox(height: 4),
-
-              // Save button
-              ElevatedButton.icon(
-                onPressed: _isSubmitting ? null : _save,
-                icon: _isSubmitting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
+                // Period - Required with hint below
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextFormField(
+                      controller: _periodeCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Period',
+                        hintText: 'e.g., Period 2 - 28 May 2025',
+                        prefixIcon: const Icon(Icons.calendar_today),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                      )
-                    : const Icon(Icons.save),
-                label: Text(
-                  _isSubmitting
-                      ? 'Saving...'
-                      : (_isEditing ? 'Update Menu' : 'Save Menu'),
+                        filled: true,
+                        fillColor: colorScheme.surface,
+                      ),
+                      validator: (v) => _requiredValidator(v, 'Period'),
+                    ),
+                    const SizedBox(height: 6),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Text(
+                        'Example: Period 2 - 28 May 2025, follow the example format carefully.',
+                        style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 56),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                const SizedBox(height: 16),
+
+                // Created by
+                TextFormField(
+                  controller: _dibuatOlehCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Created by',
+                    hintText: 'Name of Nutritionist?',
+                    prefixIcon: const Icon(Icons.person_outline),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    filled: true,
+                    fillColor: colorScheme.surface,
                   ),
-                  elevation: 2,
+                  validator: (v) => _requiredValidator(v, 'This field'),
                 ),
-              ),
-              const SizedBox(height: 16),
-            ],
+                const SizedBox(height: 16),
+
+                // Cooked by
+                TextFormField(
+                  controller: _dimasakOlehCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Cooked by',
+                    hintText: 'Chef name?',
+                    prefixIcon: const Icon(Icons.kitchen),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    filled: true,
+                    fillColor: colorScheme.surface,
+                  ),
+                  validator: (v) => _requiredValidator(v, 'This field'),
+                ),
+                const SizedBox(height: 16),
+
+                // Evaluated by
+                TextFormField(
+                  controller: _diketahuiOlehCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Evaluated by',
+                    hintText: 'Name of SPPI?',
+                    prefixIcon: const Icon(Icons.rate_review),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    filled: true,
+                    fillColor: colorScheme.surface,
+                  ),
+                  validator: (v) => _requiredValidator(v, 'This field'),
+                ),
+                const SizedBox(height: 32),
+
+                // === Section: AKG ===
+                _buildSectionHeader(
+                  'Nutritional Values (AKG)',
+                  Icons.analytics,
+                ),
+                const SizedBox(height: 16),
+
+                // Explanation
+                Text(
+                  'Enter the nutritional content in grams (g) per serving. (Optional)',
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Grid of 5 fields with validation
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                  childAspectRatio: 3.4,
+                  children: [
+                    _buildAKGField('Carbohydrate', _karboCtrl),
+                    _buildAKGField('Protein', _proteinCtrl),
+                    _buildAKGField('Fat', _lemakCtrl),
+                    _buildAKGField('Energy', _energiCtrl, suffix: 'kcal'),
+                    _buildAKGField('Fiber', _seratCtrl),
+                  ],
+                ),
+                const SizedBox(height: 4),
+
+                // Save button
+                ElevatedButton.icon(
+                  onPressed: _isSubmitting ? null : _save,
+                  icon: _isSubmitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.save),
+                  label: Text(
+                    _isSubmitting
+                        ? 'Saving...'
+                        : (_isEditing ? 'Update Menu' : 'Save Menu'),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 56),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 2,
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
         ),
       ),

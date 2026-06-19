@@ -22,3 +22,9 @@ class DeleteFood extends FoodEvent {
   final String id;
   DeleteFood(this.id);
 }
+
+class SearchMenu extends FoodEvent {
+  final String query;
+
+  SearchMenu(this.query);
+}

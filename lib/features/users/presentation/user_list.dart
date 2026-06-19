@@ -18,11 +18,12 @@ class _UserListPageState extends State<UserListPage> {
   Timer? _debounce;
 
   final List<String> _roles = const [
-    'aslap',
-    'admin',
     'developer',
     'sppi',
     'accountant',
+    'nutritionist',
+    'aslap',
+    'admin',
     'scanner',
   ];
   final TextEditingController _searchController = TextEditingController();

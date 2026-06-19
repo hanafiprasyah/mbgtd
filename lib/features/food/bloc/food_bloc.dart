@@ -12,6 +12,7 @@ class FoodBloc extends Bloc<FoodEvent, FoodState> {
     on<AddFood>(_onAddFood);
     on<UpdateFood>(_onUpdateFood);
     on<DeleteFood>(_onDeleteFood);
+    on<SearchMenu>(_onSearchMenu);
   }
 
   Future<void> _onLoadFoods(LoadFoods event, Emitter<FoodState> emit) async {
@@ -112,5 +113,24 @@ class FoodBloc extends Bloc<FoodEvent, FoodState> {
         state.copyWith(status: FoodStatus.error, errorMessage: e.toString()),
       );
     }
+  }
+
+  Future<void> _onSearchMenu(SearchMenu event, Emitter<FoodState> emit) async {
+    final query = event.query.toLowerCase().trim();
+
+    if (query.isEmpty) {
+      // reload original list
+      add(LoadFoods());
+      return;
+    }
+
+    final filtered = state.foods.where((food) {
+      return food.name.toLowerCase().contains(query) ||
+          food.periode.toLowerCase().contains(query) ||
+          food.dibuatOleh.toLowerCase().contains(query) ||
+          food.dimasakOleh.toLowerCase().contains(query);
+    }).toList();
+
+    emit(state.copyWith(foods: filtered, status: FoodStatus.success));
   }
 }
