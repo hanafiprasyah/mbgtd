@@ -23,6 +23,8 @@ class _FoodListScreenState extends State<FoodListScreen> {
   bool _isGrid = false;
   final _storage = const FlutterSecureStorage();
   static const _viewKey = 'food_view_mode';
+  String? _selectedFoodId;
+  String _searchQuery = '';
   @override
   void initState() {
     super.initState();
@@ -43,13 +45,18 @@ class _FoodListScreenState extends State<FoodListScreen> {
     await _storage.write(key: _viewKey, value: _isGrid ? 'grid' : 'list');
   }
 
-  void _openSearchModal() {
-    showModalBottomSheet(
+  void _openSearchModal() async {
+    final result = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const _SearchModal(),
+      builder: (_) => _SearchModal(initialValue: _searchQuery),
     );
+    if (result != null) {
+      setState(() {
+        _searchQuery = result;
+      });
+    }
   }
 
   @override
@@ -267,8 +274,11 @@ class _FoodListScreenState extends State<FoodListScreen> {
                                           );
                                         },
                                         onLongPress: () {
+                                          setState(() {
+                                            _selectedFoodId = food.id
+                                                .toString();
+                                          });
                                           HapticFeedback.mediumImpact();
-
                                           showModalBottomSheet(
                                             context: context,
                                             backgroundColor: Colors.transparent,
@@ -363,15 +373,75 @@ class _FoodListScreenState extends State<FoodListScreen> {
                                                 ),
                                               );
                                             },
-                                          );
+                                          ).whenComplete(() {
+                                            setState(() {
+                                              _selectedFoodId = null;
+                                            });
+                                          });
                                         },
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(
-                                            4,
+                                        child: AnimatedScale(
+                                          scale:
+                                              _selectedFoodId ==
+                                                  food.id.toString()
+                                              ? 1.04
+                                              : 1.0,
+                                          duration: const Duration(
+                                            milliseconds: 220,
                                           ),
-                                          child: _buildFoodImage(
-                                            food.photoUrl,
-                                            food,
+                                          curve: Curves.easeOutCubic,
+                                          child: AnimatedContainer(
+                                            duration: const Duration(
+                                              milliseconds: 220,
+                                            ),
+                                            curve: Curves.easeOutCubic,
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                              border:
+                                                  _selectedFoodId ==
+                                                      food.id.toString()
+                                                  ? Border.all(
+                                                      color: Theme.of(
+                                                        context,
+                                                      ).colorScheme.primary,
+                                                      width: 2,
+                                                    )
+                                                  : null,
+                                              boxShadow:
+                                                  _selectedFoodId ==
+                                                      food.id.toString()
+                                                  ? [
+                                                      BoxShadow(
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .primary
+                                                            .withValues(
+                                                              alpha: 0.25,
+                                                            ),
+                                                        blurRadius: 12,
+                                                        spreadRadius: 1,
+                                                      ),
+                                                    ]
+                                                  : [],
+                                            ),
+                                            child: ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                              child: AnimatedOpacity(
+                                                duration: const Duration(
+                                                  milliseconds: 180,
+                                                ),
+                                                opacity:
+                                                    _selectedFoodId ==
+                                                        food.id.toString()
+                                                    ? 0.92
+                                                    : 1.0,
+                                                child: _buildFoodImage(
+                                                  food.photoUrl,
+                                                  food,
+                                                ),
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -618,69 +688,23 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
   }
 }
 
-// 1x1 transparent gif for placeholder
-final Uint8List kTransparentImage = Uint8List.fromList(<int>[
-  0x47,
-  0x49,
-  0x46,
-  0x38,
-  0x39,
-  0x61,
-  0x01,
-  0x00,
-  0x01,
-  0x00,
-  0x80,
-  0x00,
-  0x00,
-  0x00,
-  0x00,
-  0x00,
-  0xFF,
-  0xFF,
-  0xFF,
-  0x21,
-  0xF9,
-  0x04,
-  0x01,
-  0x0A,
-  0x00,
-  0x01,
-  0x00,
-  0x2C,
-  0x00,
-  0x00,
-  0x00,
-  0x00,
-  0x01,
-  0x00,
-  0x01,
-  0x00,
-  0x00,
-  0x02,
-  0x02,
-  0x4C,
-  0x01,
-  0x00,
-  0x3B,
-]);
-
 class _SearchModal extends StatefulWidget {
-  const _SearchModal();
+  final String initialValue;
+  const _SearchModal({this.initialValue = ''});
 
   @override
   State<_SearchModal> createState() => _SearchModalState();
 }
 
 class _SearchModalState extends State<_SearchModal> {
-  final TextEditingController _controller = TextEditingController();
+  late TextEditingController _controller;
   Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
 
-    // Auto focus
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) {
         FocusScope.of(context).requestFocus(FocusNode());
@@ -692,59 +716,86 @@ class _SearchModalState extends State<_SearchModal> {
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
 
-    return AnimatedPadding(
-      duration: const Duration(milliseconds: 200),
-      padding: EdgeInsets.only(bottom: bottom),
-      child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.black,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Drag indicator
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: Colors.grey[700],
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-
-            // Search field
-            TextField(
-              controller: _controller,
-              autofocus: true,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: "Looking for Chef/Menu/Period?",
-                hintStyle: TextStyle(color: Colors.grey[500]),
-                prefixIcon: const Icon(Icons.search, color: Colors.white),
-                filled: true,
-                fillColor: Colors.grey[900],
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          Navigator.pop(context, _controller.text);
+        }
+      },
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 200),
+        padding: EdgeInsets.only(bottom: bottom),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Drag indicator
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              onChanged: (value) {
-                if (_debounce?.isActive ?? false) _debounce!.cancel();
 
-                _debounce = Timer(const Duration(milliseconds: 300), () {
-                  context.read<FoodBloc>().add(SearchMenu(value));
-                });
-              },
-            ),
+              // Search field
+              TextField(
+                controller: _controller,
+                autofocus: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: "Looking for Chef/Menu/Period?",
+                  hintStyle: TextStyle(color: Colors.grey[500]),
+                  prefixIcon: const Icon(Icons.search, color: Colors.white),
+                  filled: true,
+                  fillColor: Colors.grey[900],
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                  suffixIcon: _controller.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, color: Colors.white),
+                          tooltip: 'Clear',
+                          onPressed: () {
+                            _controller.clear();
+                            setState(() {});
+                            context.read<FoodBloc>().add(SearchMenu(''));
+                          },
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                onChanged: (value) {
+                  setState(() {});
+                  if (_debounce?.isActive ?? false) _debounce!.cancel();
 
-            const SizedBox(height: 16),
-          ],
+                  _debounce = Timer(const Duration(milliseconds: 300), () {
+                    context.read<FoodBloc>().add(SearchMenu(value));
+                  });
+                },
+              ),
+
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _debounce?.cancel();
+    super.dispose();
   }
 }

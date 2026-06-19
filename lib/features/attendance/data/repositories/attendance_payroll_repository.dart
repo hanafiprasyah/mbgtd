@@ -39,6 +39,9 @@ class AttendancePayrollRepository {
       final absentDatesMap =
           memberPayrolls['absentDatesMap']
               as Map<String, List<Map<String, dynamic>>>;
+      final presentButReplacedDatesMap =
+          memberPayrolls['presentButReplacedDatesMap']
+              as Map<String, List<Map<String, dynamic>>>;
       final lastScannedBy =
           memberPayrolls['lastScannedBy'] as Map<String, String>;
 
@@ -73,6 +76,7 @@ class AttendancePayrollRepository {
           'effectiveScan': totalEffectiveScan,
           'halfDayDates': halfDayDatesMap[id] ?? [],
           'absentDates': absentDatesMap[id] ?? [],
+          'presentButReplacedDates': presentButReplacedDatesMap[id] ?? [],
         };
       }
 
@@ -283,6 +287,8 @@ class AttendancePayrollRepository {
     final Map<String, double> memberEffectiveScan = {};
     final Map<String, List<Map<String, dynamic>>> halfDayDatesMap = {};
     final Map<String, List<Map<String, dynamic>>> absentDatesMap = {};
+    final Map<String, List<Map<String, dynamic>>> presentButReplacedDatesMap =
+        {};
     final Map<String, String> lastScannedBy = {};
 
     for (var doc in attendanceSnap.docs) {
@@ -304,6 +310,7 @@ class AttendancePayrollRepository {
         'date': date,
         'note': note,
         'attendanceType': attendanceType,
+        'multiplier': multiplier,
       };
 
       final teamSummary = teamDaySummary[key];
@@ -342,6 +349,13 @@ class AttendancePayrollRepository {
           ...(halfDayDatesMap[volunteerId] ?? []),
           attendanceItem,
         ];
+      } else if (multiplier == 1.0 && note.trim() != 'Full attendance') {
+        // Present (multiplier 1) but with a non-default note, e.g. the
+        // volunteer was scanned as present but actually got substituted.
+        presentButReplacedDatesMap[volunteerId] = [
+          ...(presentButReplacedDatesMap[volunteerId] ?? []),
+          attendanceItem,
+        ];
       }
 
       if (data['scannedByEmail'] != null) {
@@ -355,6 +369,7 @@ class AttendancePayrollRepository {
       'memberEffectiveScan': memberEffectiveScan,
       'halfDayDatesMap': halfDayDatesMap,
       'absentDatesMap': absentDatesMap,
+      'presentButReplacedDatesMap': presentButReplacedDatesMap,
       'lastScannedBy': lastScannedBy,
     };
   }

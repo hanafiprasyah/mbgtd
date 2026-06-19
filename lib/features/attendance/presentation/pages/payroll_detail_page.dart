@@ -434,6 +434,8 @@ class _PayrollDetailPageState extends State<PayrollDetailPage>
                   payrollData?['halfDayDates'] ?? [];
               final List<dynamic> absentDates =
                   payrollData?['absentDates'] ?? [];
+              final List<dynamic> presentButReplacedDates =
+                  payrollData?['presentButReplacedDates'] ?? [];
 
               final totalScan = payrollData?['totalScan'] ?? 0;
               final totalEffectiveScan =
@@ -684,6 +686,95 @@ class _PayrollDetailPageState extends State<PayrollDetailPage>
                                                   style: TextStyle(
                                                     fontSize: 12,
                                                     color: Colors.red.shade700,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                if (note
+                                                    .toString()
+                                                    .isNotEmpty) ...[
+                                                  const SizedBox(width: 4),
+                                                  Icon(
+                                                    Icons.touch_app,
+                                                    size: 12,
+                                                    color: Colors.grey,
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                ],
+
+                                if (presentButReplacedDates.isNotEmpty) ...[
+                                  const SizedBox(height: 12),
+
+                                  const Text(
+                                    'Substituted by others',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 8),
+
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: presentButReplacedDates.map((
+                                        item,
+                                      ) {
+                                        final date = item is Map
+                                            ? item['date']
+                                            : item;
+                                        final note = _getAttendanceNote(item);
+                                        final formatted = formatDate(date);
+
+                                        return InkWell(
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                          splashColor: Colors.transparent,
+                                          highlightColor: Colors.transparent,
+                                          onTap: () {
+                                            if (!mounted) return;
+                                            _showModalAttendance(
+                                              context,
+                                              note,
+                                              formatted,
+                                            );
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 6,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.blue.withValues(
+                                                alpha: 0.1,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              border: Border.all(
+                                                color: Colors.blue.withValues(
+                                                  alpha: 0.3,
+                                                ),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Text("🔁 "),
+                                                Text(
+                                                  formatted,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.blue.shade700,
                                                     fontWeight: FontWeight.w500,
                                                   ),
                                                 ),
