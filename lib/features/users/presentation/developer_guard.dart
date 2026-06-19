@@ -6,28 +6,32 @@ import 'package:mbg_test/features/authentication/presentation/screens/not_found_
 
 class DeveloperRouteGuard extends StatelessWidget {
   final Widget child;
+
   const DeveloperRouteGuard({super.key, required this.child});
+
+  // Create a stream that emits the user's role whenever the auth state changes
+  Stream<String?> getRoleStream(
+    AuthRepository authRepo,
+    UserRepository userRepo,
+  ) {
+    return authRepo.user.asyncMap((firebaseUser) async {
+      if (firebaseUser == null) return null;
+      try {
+        final userModel = await userRepo.getUserById(firebaseUser.uid);
+        return userModel.role;
+      } catch (e) {
+        return null;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final authRepo = context.read<AuthRepository>();
     final userRepo = context.read<UserRepository>();
 
-    // Create a stream that emits the user's role whenever the auth state changes
-    Stream<String?> getRoleStream() {
-      return authRepo.user.asyncMap((firebaseUser) async {
-        if (firebaseUser == null) return null;
-        try {
-          final userModel = await userRepo.getUserById(firebaseUser.uid);
-          return userModel.role;
-        } catch (e) {
-          return null;
-        }
-      });
-    }
-
     return StreamBuilder<String?>(
-      stream: getRoleStream(),
+      stream: getRoleStream(authRepo, userRepo),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(

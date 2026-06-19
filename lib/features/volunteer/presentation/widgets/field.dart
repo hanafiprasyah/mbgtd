@@ -156,11 +156,13 @@ class VolunteerTile extends StatelessWidget {
     required this.volunteer,
     required this.index,
     required this.onDelete,
+    required this.isDeveloper,
   });
 
   final Volunteer volunteer;
   final int index;
   final VoidCallback onDelete;
+  final bool isDeveloper;
 
   @override
   Widget build(BuildContext context) {
@@ -228,14 +230,16 @@ class VolunteerTile extends StatelessWidget {
                           );
                         },
                       ),
-                      IconButton(
-                        icon: Icon(
-                          Icons.delete_outline_rounded,
-                          color: colorScheme.error,
+
+                      if (isDeveloper)
+                        IconButton(
+                          icon: Icon(
+                            Icons.delete_outline_rounded,
+                            color: colorScheme.error,
+                          ),
+                          tooltip: 'Delete',
+                          onPressed: onDelete,
                         ),
-                        tooltip: 'Delete',
-                        onPressed: onDelete,
-                      ),
                     ],
                   ),
                 ),

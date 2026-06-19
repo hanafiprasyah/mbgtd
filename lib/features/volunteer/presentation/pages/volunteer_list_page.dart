@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -40,24 +42,13 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
   bool _isSearching = false;
   String? _pendingDeleteName;
   VolunteerSortOption _sortOption = VolunteerSortOption.none;
+  Map<String, dynamic>? userData;
 
   int get _activeFilterCount {
     var count = 0;
     if (_selectedTim != null) count++;
     if (_selectedGender != null) count++;
     return count;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    context.read<VolunteerBloc>().add(LoadVolunteer());
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
   }
 
   void _applyCurrentCriteria() {
@@ -106,8 +97,6 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
     return sorted;
   }
 
-  // NOTE: assumes `Volunteer` has a `tanggalLahir` (DateTime) field for
-  // date of birth. Rename below if your model uses a different field.
   int _ageFromBirthDate(DateTime birthDate) {
     final now = DateTime.now();
     var age = now.year - birthDate.year;
@@ -251,17 +240,61 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..showSnackBar(
+        SnackBar(content: Text(message), duration: const Duration(seconds: 1)),
+      );
+  }
+
+  Future<Map<String, dynamic>?> _getUserRole(String uid) async {
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+
+    if (!doc.exists) return null;
+    return doc.data();
+  }
+
+  Future<void> _startLoadingSequence() async {
+    final user = FirebaseAuth.instance.currentUser;
+    final data = await _getUserRole(user?.uid ?? "");
+    if (!mounted) return;
+    setState(() {
+      userData = data;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<VolunteerBloc>().add(LoadVolunteer());
+    _startLoadingSequence();
+    if (!mounted) return;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final user = FirebaseAuth.instance.currentUser;
+    final role = userData?['role'] as String?;
+
+    final isAslap =
+        user != null && role != null && role.toLowerCase().contains('aslap');
+    final isDeveloper =
+        user != null &&
+        role != null &&
+        role.toLowerCase().contains('developer');
 
     return Scaffold(
       backgroundColor: colorScheme.surfaceContainerLowest,
       appBar: AppBar(
-        title: const Text('Volunteer'),
+        title: const Text('Volunteers'),
         backgroundColor: colorScheme.surfaceContainerLowest,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
@@ -282,11 +315,13 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
             onPressed: _openFilterDialog,
             onLongPress: _resetFilters,
           ),
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Add Volunteer',
-            onPressed: () => Navigator.pushNamed(context, '/volunteer-add'),
-          ),
+
+          if (isAslap || isDeveloper)
+            IconButton(
+              icon: const Icon(Icons.add),
+              tooltip: 'Add Volunteer',
+              onPressed: () => Navigator.pushNamed(context, '/volunteer-add'),
+            ),
         ],
       ),
       body: GestureDetector(
@@ -338,6 +373,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                     return _VolunteerList(
                       volunteers: _sortVolunteers(state.volunteer),
                       onDelete: _confirmDelete,
+                      isDeveloper: isDeveloper,
                     );
                   }
 
@@ -403,10 +439,15 @@ class _SortActionButton extends StatelessWidget {
 }
 
 class _VolunteerList extends StatelessWidget {
-  const _VolunteerList({required this.volunteers, required this.onDelete});
+  const _VolunteerList({
+    required this.volunteers,
+    required this.onDelete,
+    required this.isDeveloper,
+  });
 
   final List<Volunteer> volunteers;
   final Future<void> Function(Volunteer volunteer) onDelete;
+  final bool isDeveloper;
 
   @override
   Widget build(BuildContext context) {
@@ -426,6 +467,7 @@ class _VolunteerList extends StatelessWidget {
           volunteer: volunteer,
           index: index,
           onDelete: () => onDelete(volunteer),
+          isDeveloper: isDeveloper,
         );
       },
     );

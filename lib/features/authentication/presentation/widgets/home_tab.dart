@@ -74,6 +74,13 @@ Widget buildHomeTab(
     if (isAccountant) {
       addMenu(
         index: 0,
+        icon: Icons.people,
+        title: 'Volunteers',
+        subtitle: 'Manage Volunteer',
+        onTap: () => Navigator.pushNamed(context, '/volunteers'),
+      );
+      addMenu(
+        index: 0,
         icon: Icons.payments,
         title: 'Payroll',
         subtitle: 'Salary & Period',
