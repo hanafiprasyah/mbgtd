@@ -500,11 +500,39 @@ class _PayrollPageState extends State<PayrollPage>
     final firestore = FirebaseFirestore.instance;
 
     try {
-      // 1. Take last period
+      // 1. Fetch attendance count FIRST — validate before any write operation
+      final attendanceSnap = await firestore.collection('attendances').get();
+      final totalDeleted = attendanceSnap.docs.length;
+
+      if (totalDeleted < 350) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.block, color: Colors.white, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Reset not allowed. This period is not yet complete '
+                    '($totalDeleted / 350 records recorded).',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+
+      // 2. Validation passed — take payroll snapshot
       final repo = AttendancePayrollRepository();
       final payrollSnapshot = await repo.getPayrollSnapshot();
 
-      // 2. Save snapshot to collection 'payroll_periods'
+      // 3. Save snapshot to collection 'payroll_periods'
       await firestore.collection('payroll_periods').add({
         'resetAt': FieldValue.serverTimestamp(),
         'grandTotal': payrollSnapshot['grandTotal'],
@@ -516,18 +544,16 @@ class _PayrollPageState extends State<PayrollPage>
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // 3. Delete all docs on collection 'attendances'
-      final attendanceSnap = await firestore.collection('attendances').get();
+      // 4. Delete all attendance docs & record the period log
       final batch = firestore.batch();
       for (var doc in attendanceSnap.docs) {
         batch.delete(doc.reference);
       }
 
-      // 4. (Optional)
       final periodRef = firestore.collection('attendance_periods').doc();
       batch.set(periodRef, {
         'resetAt': DateTime.now(),
-        'totalDeleted': attendanceSnap.docs.length,
+        'totalDeleted': totalDeleted,
       });
 
       await batch.commit();
@@ -618,7 +644,6 @@ class _PayrollPageState extends State<PayrollPage>
 
               if (confirm == true) {
                 await _resetPeriod();
-                setState(() {});
               }
             },
           ),
@@ -896,189 +921,195 @@ class _PayrollPageState extends State<PayrollPage>
                             ),
                           ),
 
-                          // TEAM-DAY SUMMARY (chips)
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              child: SizedBox(
-                                height: chipsHeight,
-                                child: Stack(
-                                  children: [
-                                    ListView.separated(
-                                      scrollDirection: Axis.horizontal,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 4,
-                                      ),
-                                      itemCount:
-                                          (teamDayMap[team] ?? []).length,
-                                      separatorBuilder: (_, __) =>
-                                          const SizedBox(width: 8),
-                                      physics: const BouncingScrollPhysics(),
-                                      itemBuilder: (context, index) {
-                                        final summary =
-                                            (teamDayMap[team] ?? [])[index];
+                          // TEAM-DAY SUMMARY (chips) — only shown when there is scan data
+                          if (teamChips.isNotEmpty)
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                child: SizedBox(
+                                  height: chipsHeight,
+                                  child: Stack(
+                                    children: [
+                                      ListView.separated(
+                                        scrollDirection: Axis.horizontal,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 4,
+                                        ),
+                                        itemCount:
+                                            (teamDayMap[team] ?? []).length,
+                                        separatorBuilder: (_, __) =>
+                                            const SizedBox(width: 8),
+                                        physics: const BouncingScrollPhysics(),
+                                        itemBuilder: (context, index) {
+                                          final summary =
+                                              (teamDayMap[team] ?? [])[index];
 
-                                        final date = summary['date'] ?? '-';
-                                        final displayDate = _formatDisplayDate(
-                                          date,
-                                        );
-                                        final full = summary['fullCount'] ?? 0;
-                                        final half = summary['halfCount'] ?? 0;
-                                        final absent =
-                                            summary['absentCount'] ?? 0;
-                                        final share =
-                                            summary['sharePerFull'] ?? 0.0;
+                                          final date = summary['date'] ?? '-';
+                                          final displayDate =
+                                              _formatDisplayDate(date);
+                                          final full =
+                                              summary['fullCount'] ?? 0;
+                                          final half =
+                                              summary['halfCount'] ?? 0;
+                                          final absent =
+                                              summary['absentCount'] ?? 0;
+                                          final share =
+                                              summary['sharePerFull'] ?? 0.0;
 
-                                        // Burden value from Masak H/A at the same date
-                                        final masakExtra = isChefTeam
-                                            ? ((summary['extraFromMasakBurden']
-                                                          as num?)
-                                                      ?.toDouble() ??
-                                                  0.0)
-                                            : 0.0;
+                                          // Burden value from Masak H/A at the same date
+                                          final masakExtra = isChefTeam
+                                              ? ((summary['extraFromMasakBurden']
+                                                            as num?)
+                                                        ?.toDouble() ??
+                                                    0.0)
+                                              : 0.0;
 
-                                        final today = DateFormat(
-                                          'yyyy-MM-dd',
-                                        ).format(DateTime.now());
-                                        final isToday = date == today;
+                                          final today = DateFormat(
+                                            'yyyy-MM-dd',
+                                          ).format(DateTime.now());
+                                          final isToday = date == today;
 
-                                        return Container(
-                                          width: 140,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 8,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: isToday
-                                                ? Theme.of(context).primaryColor
-                                                      .withValues(alpha: 0.15)
-                                                : Theme.of(context).primaryColor
-                                                      .withValues(alpha: 0.06),
-                                            borderRadius: BorderRadius.circular(
-                                              12,
+                                          return Container(
+                                            width: 140,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 8,
                                             ),
-                                            border: Border.all(
+                                            decoration: BoxDecoration(
                                               color: isToday
-                                                  ? Theme.of(
-                                                      context,
-                                                    ).primaryColor
+                                                  ? Theme.of(context)
+                                                        .primaryColor
+                                                        .withValues(alpha: 0.15)
                                                   : Theme.of(
                                                       context,
                                                     ).primaryColor.withValues(
-                                                      alpha: 0.12,
+                                                      alpha: 0.06,
                                                     ),
-                                              width: isToday ? 1.5 : 1,
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              border: Border.all(
+                                                color: isToday
+                                                    ? Theme.of(
+                                                        context,
+                                                      ).primaryColor
+                                                    : Theme.of(
+                                                        context,
+                                                      ).primaryColor.withValues(
+                                                        alpha: 0.12,
+                                                      ),
+                                                width: isToday ? 1.5 : 1,
+                                              ),
                                             ),
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Text(
-                                                displayDate,
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Theme.of(
-                                                    context,
-                                                  ).primaryColor,
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  displayDate,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).primaryColor,
+                                                  ),
                                                 ),
-                                              ),
-                                              if (isToday)
-                                                Container(
-                                                  margin: const EdgeInsets.only(
-                                                    top: 4,
-                                                  ),
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 4,
-                                                        vertical: 2,
+                                                if (isToday)
+                                                  Container(
+                                                    margin:
+                                                        const EdgeInsets.only(
+                                                          top: 4,
+                                                        ),
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 4,
+                                                          vertical: 2,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.green
+                                                          .withValues(
+                                                            alpha: 0.15,
+                                                          ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            6,
+                                                          ),
+                                                    ),
+                                                    child: const Text(
+                                                      'Today',
+                                                      style: TextStyle(
+                                                        fontSize: 6,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: Colors.green,
                                                       ),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.green
-                                                        .withValues(
-                                                          alpha: 0.15,
-                                                        ),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          6,
-                                                        ),
-                                                  ),
-                                                  child: const Text(
-                                                    'Today',
-                                                    style: TextStyle(
-                                                      fontSize: 6,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: Colors.green,
                                                     ),
                                                   ),
-                                                ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                'F:$full • H:$half • A:$absent',
-                                                style: TextStyle(
-                                                  fontSize: 11,
-                                                  color: Colors.grey.shade700,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                'Share: ${currencyFormatter.format((share).toInt())}',
-                                                style: const TextStyle(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-
-                                              // Show burden from Masak at this date
-                                              if (masakExtra > 0) ...[
                                                 const SizedBox(height: 4),
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 6,
-                                                        vertical: 2,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.deepOrange
-                                                        .withValues(
-                                                          alpha: 0.12,
-                                                        ),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          6,
-                                                        ),
-                                                  ),
-                                                  child: Text(
-                                                    '+${currencyFormatter.format(masakExtra.toInt())}\ndari Masak H/A',
-                                                    style: TextStyle(
-                                                      fontSize: 9,
-                                                      height: 1.2,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      color: Colors
-                                                          .deepOrange
-                                                          .shade700,
-                                                    ),
+                                                Text(
+                                                  'F:$full • H:$half • A:$absent',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: Colors.grey.shade700,
                                                   ),
                                                 ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  'Share: ${currencyFormatter.format((share).toInt())}',
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+
+                                                // Show burden from Masak at this date
+                                                if (masakExtra > 0) ...[
+                                                  const SizedBox(height: 4),
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 6,
+                                                          vertical: 2,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.deepOrange
+                                                          .withValues(
+                                                            alpha: 0.12,
+                                                          ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            6,
+                                                          ),
+                                                    ),
+                                                    child: Text(
+                                                      '+${currencyFormatter.format(masakExtra.toInt())}\ndari Masak H/A',
+                                                      style: TextStyle(
+                                                        fontSize: 9,
+                                                        height: 1.2,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: Colors
+                                                            .deepOrange
+                                                            .shade700,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
                                               ],
-                                            ],
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ],
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
 
                           // TEAM LIST
                           SliverList(
