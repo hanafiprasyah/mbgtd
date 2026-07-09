@@ -42,6 +42,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
   bool _isSearching = false;
   String? _pendingDeleteName;
   VolunteerSortOption _sortOption = VolunteerSortOption.none;
+  bool _isSearchVisible = false;
   Map<String, dynamic>? userData;
 
   int get _activeFilterCount {
@@ -108,13 +109,23 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
   }
 
   void _clearSearch() {
-    if (_searchController.text.isEmpty) return;
-
     setState(() {
       _searchController.clear();
       _isSearching = false;
+      _isSearchVisible = false;
     });
     _applyCurrentCriteria();
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearchVisible = !_isSearchVisible;
+      if (!_isSearchVisible) {
+        _searchController.clear();
+        _isSearching = false;
+      }
+    });
+    if (!_isSearchVisible) _applyCurrentCriteria();
   }
 
   void _onSearchChanged(String value) {
@@ -300,7 +311,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
         surfaceTintColor: Colors.transparent,
         leadingWidth: Navigator.canPop(context) ? 96 : 48,
         leading: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             if (Navigator.canPop(context)) const BackButton(),
             _SortActionButton(
@@ -329,11 +340,17 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
         onTap: () => FocusScope.of(context).unfocus(),
         child: Column(
           children: [
-            SearchField(
-              controller: _searchController,
-              isSearching: _isSearching,
-              onChanged: _onSearchChanged,
-              onClear: _clearSearch,
+            AnimatedSize(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeInOut,
+              child: _isSearchVisible
+                  ? SearchField(
+                      controller: _searchController,
+                      isSearching: _isSearching,
+                      onChanged: _onSearchChanged,
+                      onClear: _clearSearch,
+                    )
+                  : const SizedBox.shrink(),
             ),
             if (_activeFilterCount > 0)
               ActiveFilterChips(
@@ -390,6 +407,11 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
           ],
         ),
       ),
+      floatingActionButton: _SearchFab(
+        isActive: _isSearchVisible,
+        onPressed: _toggleSearch,
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 }
@@ -470,6 +492,48 @@ class _VolunteerList extends StatelessWidget {
           isDeveloper: isDeveloper,
         );
       },
+    );
+  }
+}
+
+class _SearchFab extends StatelessWidget {
+  const _SearchFab({required this.isActive, required this.onPressed});
+
+  final bool isActive;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: isActive
+            ? [
+                BoxShadow(
+                  color: Colors.blueAccent.withValues(alpha: 0.5),
+                  blurRadius: 16,
+                  spreadRadius: 2,
+                ),
+              ]
+            : [],
+      ),
+      child: FloatingActionButton(
+        onPressed: onPressed,
+        tooltip: isActive ? 'Hide Search' : 'Search',
+        backgroundColor: isActive ? Colors.blueAccent : null,
+        foregroundColor: isActive ? Colors.white : null,
+        elevation: isActive ? 0 : 4,
+        mini: true,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: Icon(
+            isActive ? Icons.search_off_rounded : Icons.search_rounded,
+            key: ValueKey(isActive),
+          ),
+        ),
+      ),
     );
   }
 }

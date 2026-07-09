@@ -95,6 +95,54 @@ class AttendancePayrollRepository {
     });
   }
 
+  // ── NEW: per-volunteer attendance stream ───────────────────────────────────
+
+  /// Streams all attendance records for [volunteerId], sorted newest-first.
+  /// Each record map contains:
+  ///   'id', 'date' (String YYYY-MM-DD), 'timestampMs' (int?, scan epoch ms),
+  ///   'attendanceType', 'multiplier', 'note', 'scannedByEmail', 'tim'
+  Stream<List<Map<String, dynamic>>> getVolunteerAttendanceStream(
+    String volunteerId,
+  ) {
+    return firestore
+        .collection('attendances')
+        .where('volunteerId', isEqualTo: volunteerId)
+        .snapshots()
+        .map((snap) {
+          final list =
+              snap.docs.map((doc) {
+                final data = doc.data();
+                final multiplier = (data['multiplier'] ?? 1.0).toDouble();
+                final attendanceType = (data['attendanceType'] ?? 'full')
+                    .toString();
+                final note = _getAttendanceNote(data);
+
+                // Extract scan time from any Timestamp field present
+                final ts =
+                    data['createdAt'] ?? data['timestamp'] ?? data['scannedAt'];
+                final int? timestampMs = ts is Timestamp
+                    ? ts.toDate().millisecondsSinceEpoch
+                    : null;
+
+                return <String, dynamic>{
+                  'id': doc.id,
+                  'date': (data['date'] ?? '').toString(),
+                  'timestampMs': timestampMs,
+                  'attendanceType': attendanceType,
+                  'multiplier': multiplier,
+                  'note': note,
+                  'scannedByEmail': (data['scannedByEmail'] ?? '').toString(),
+                  'tim': (data['tim'] ?? '').toString().trim(),
+                };
+              }).toList()..sort(
+                (a, b) => (b['date'] as String).compareTo(a['date'] as String),
+              );
+          return list;
+        });
+  }
+
+  // ── Private helpers (unchanged) ────────────────────────────────────────────
+
   Map<String, List<Map<String, dynamic>>> _groupAttendanceByDateTim(
     QuerySnapshot attendanceSnap,
   ) {
@@ -123,15 +171,8 @@ class AttendancePayrollRepository {
     Map<String, List<Map<String, dynamic>>> groupByDateTim,
   ) {
     final Map<String, Map<String, dynamic>> teamDaySummary = {};
-    final Map<String, double> poolByProviderByDate =
-        {}; // "{provider}_{date}" -> amount
-    // Accumulate pool contributions from providers for every half-day record.
-    // Previously only the most recent half-day per provider was considered,
-    // which caused provider pool to be applied only on the last absent date.
-    // We now add multiplier * providerBase for each date where provider had
-    // multiplier < 1.0 so distribution and per-date UI chips reflect all days.
+    final Map<String, double> poolByProviderByDate = {};
 
-    // Second pass: compute team day summary and calculate pool from providers
     groupByDateTim.forEach((key, list) {
       final split = key.split('_');
       final date = split[0];
@@ -154,7 +195,6 @@ class AttendancePayrollRepository {
           fullCount += 1;
         }
 
-        // Calculate pool contribution from providers for every half-day record
         final rule = payrollRules[tim];
         final isProvider = rule?.isChefOrAslap ?? false;
 
@@ -192,12 +232,10 @@ class AttendancePayrollRepository {
         'missingWorkload': missingWorkload,
         'totalBurden': totalBurden,
         'sharePerFull': sharePerFull,
-        'poolExtra': 0.0, // Will be filled in third pass
+        'poolExtra': 0.0,
       };
     });
 
-    // Third pass: distribute pool from providers to their receivers
-    // Chef provides pool to Masak
     teamDaySummary.forEach((key, summary) {
       final tim = summary['tim'] as String;
       final date = summary['date'] as String;
@@ -205,11 +243,7 @@ class AttendancePayrollRepository {
       final timRule = payrollRules[tim];
       final timIsShared = timRule?.sharedPayroll ?? true;
 
-      // Check if Chef has pool for this date
       if (tim.toLowerCase() == 'masak') {
-        // Masak burden is shared between Masak and Chef full-timers ──
-
-        // [1] Get the number of Chef full-timers on the same day
         final chefSummaryKey = '${date}_Chef';
         final chefSummary = teamDaySummary[chefSummaryKey];
         final chefFull = (chefSummary?['fullCount'] as int?) ?? 0;
@@ -218,13 +252,11 @@ class AttendancePayrollRepository {
         final combinedFull = masakFull + chefFull;
         final masakTotalBurden = summary['totalBurden'] as double;
 
-        // [2] Burden from Masak absent/half-day → evenly distributed to Masak + Chef
         double masakBurdenPerCombinedFull = 0.0;
         if (combinedFull > 0 && masakTotalBurden > 0) {
           masakBurdenPerCombinedFull = masakTotalBurden / combinedFull;
         }
 
-        // [3] Pool from Chef half-day → remains only for Masak (unchanged)
         final chefPoolKey = 'Chef_$date';
         final chefPool = poolByProviderByDate[chefPoolKey] ?? 0.0;
         double chefPoolPerMasakFull = 0.0;
@@ -232,23 +264,17 @@ class AttendancePayrollRepository {
           chefPoolPerMasakFull = chefPool / masakFull;
         }
 
-        // [4] Update Masak: sharePerFull = (burden/combined) + (chefPool/masak)
         final masakSharePerFull =
             masakBurdenPerCombinedFull + chefPoolPerMasakFull;
         summary['sharePerFull'] = masakSharePerFull;
         summary['poolExtra'] = masakSharePerFull;
-        summary['chefExtraPerMasakFull'] =
-            chefPoolPerMasakFull; // backward compat
+        summary['chefExtraPerMasakFull'] = chefPoolPerMasakFull;
 
-        // [5] Inject extra into Chef summary: Chef full-timers receive from Masak
         if (chefSummary != null && masakBurdenPerCombinedFull > 0) {
           chefSummary['extraFromMasakBurden'] = masakBurdenPerCombinedFull;
-          chefSummary['poolExtra'] =
-              masakBurdenPerCombinedFull; // untuk pool UI di detail page
+          chefSummary['poolExtra'] = masakBurdenPerCombinedFull;
         }
-      }
-      // ASLAP provides pool to ASLAP (self)
-      else if (tim.toLowerCase() == 'aslap') {
+      } else if (tim.toLowerCase() == 'aslap') {
         final aslapPoolKey = 'ASLAP_$date';
         final aslapPool = poolByProviderByDate[aslapPoolKey] ?? 0.0;
         if (full > 0 && aslapPool > 0) {
@@ -259,9 +285,7 @@ class AttendancePayrollRepository {
         } else {
           summary['poolExtra'] = 0.0;
         }
-      }
-      // For other shared teams (Packing, Persiapan, etc): pool is from their own shared burden
-      else if (timIsShared) {
+      } else if (timIsShared) {
         final totalBurden = summary['totalBurden'] as double;
         if (full > 0 && totalBurden > 0) {
           final poolExtra = totalBurden / full;
@@ -329,7 +353,6 @@ class AttendancePayrollRepository {
       memberTotalPay[volunteerId] =
           (memberTotalPay[volunteerId] ?? 0.0) + payForThisScan;
 
-      // [NEW] Add extra from Masak burden for Chef full-timers
       final isFullDay = multiplier >= 1.0 && attendanceType != 'absent';
       final extraFromMasakBurden = (isFullDay && teamSummary != null)
           ? ((teamSummary['extraFromMasakBurden'] as double?) ?? 0.0)
@@ -350,8 +373,6 @@ class AttendancePayrollRepository {
           attendanceItem,
         ];
       } else if (multiplier == 1.0 && note.trim() != 'Full attendance') {
-        // Present (multiplier 1) but with a non-default note, e.g. the
-        // volunteer was scanned as present but actually got substituted.
         presentButReplacedDatesMap[volunteerId] = [
           ...(presentButReplacedDatesMap[volunteerId] ?? []),
           attendanceItem,
