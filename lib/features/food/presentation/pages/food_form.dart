@@ -7,6 +7,8 @@ import 'package:mbg_test/features/food/bloc/food_bloc.dart';
 import 'package:mbg_test/features/food/bloc/food_event.dart';
 import 'package:mbg_test/features/food/bloc/food_state.dart';
 import 'package:mbg_test/features/food/data/models/food_model.dart';
+import 'package:mbg_test/features/users/data/models/user_model.dart';
+import 'package:mbg_test/features/users/data/repositories/user_repository.dart';
 
 class FoodFormScreen extends StatefulWidget {
   final Food? food;
@@ -21,10 +23,11 @@ class _FoodFormScreenState extends State<FoodFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameCtrl;
   late TextEditingController _periodeCtrl;
-  late TextEditingController _dibuatOlehCtrl;
-  late TextEditingController _dimasakOlehCtrl;
-  late TextEditingController _diketahuiOlehCtrl;
+  String? _dibuatOleh;
+  String? _dimasakOleh;
+  String? _diketahuiOleh;
   late TextEditingController _karboCtrl;
+  final _userRepository = UserRepository();
   late TextEditingController _proteinCtrl;
   late TextEditingController _lemakCtrl;
   late TextEditingController _energiCtrl;
@@ -42,9 +45,15 @@ class _FoodFormScreenState extends State<FoodFormScreen> {
     final food = widget.food;
     _nameCtrl = TextEditingController(text: food?.name ?? '');
     _periodeCtrl = TextEditingController(text: food?.periode ?? '');
-    _dibuatOlehCtrl = TextEditingController(text: food?.dibuatOleh ?? '');
-    _dimasakOlehCtrl = TextEditingController(text: food?.dimasakOleh ?? '');
-    _diketahuiOlehCtrl = TextEditingController(text: food?.diketahuiOleh ?? '');
+    _dibuatOleh = (food?.dibuatOleh.isNotEmpty ?? false)
+        ? food!.dibuatOleh
+        : null;
+    _dimasakOleh = (food?.dimasakOleh.isNotEmpty ?? false)
+        ? food!.dimasakOleh
+        : null;
+    _diketahuiOleh = (food?.diketahuiOleh.isNotEmpty ?? false)
+        ? food!.diketahuiOleh
+        : null;
     _karboCtrl = TextEditingController(
       text: food?.karbohidrat.toString() ?? '',
     );
@@ -59,9 +68,6 @@ class _FoodFormScreenState extends State<FoodFormScreen> {
   void dispose() {
     _nameCtrl.dispose();
     _periodeCtrl.dispose();
-    _dibuatOlehCtrl.dispose();
-    _dimasakOlehCtrl.dispose();
-    _diketahuiOlehCtrl.dispose();
     _karboCtrl.dispose();
     _proteinCtrl.dispose();
     _lemakCtrl.dispose();
@@ -90,14 +96,14 @@ class _FoodFormScreenState extends State<FoodFormScreen> {
       id: widget.food?.id,
       name: _nameCtrl.text.trim(),
       periode: _periodeCtrl.text.trim(),
-      dibuatOleh: _dibuatOlehCtrl.text.trim(),
-      dimasakOleh: _dimasakOlehCtrl.text.trim(),
-      diketahuiOleh: _diketahuiOlehCtrl.text.trim(),
-      karbohidrat: double.tryParse(_karboCtrl.text) ?? 0,
-      protein: double.tryParse(_proteinCtrl.text) ?? 0,
-      lemak: double.tryParse(_lemakCtrl.text) ?? 0,
-      energi: double.tryParse(_energiCtrl.text) ?? 0,
-      serat: double.tryParse(_seratCtrl.text) ?? 0,
+      dibuatOleh: _dibuatOleh ?? '',
+      dimasakOleh: _dimasakOleh ?? '',
+      diketahuiOleh: _diketahuiOleh ?? '',
+      karbohidrat: _parseNumeric(_karboCtrl.text),
+      protein: _parseNumeric(_proteinCtrl.text),
+      lemak: _parseNumeric(_lemakCtrl.text),
+      energi: _parseNumeric(_energiCtrl.text),
+      serat: _parseNumeric(_seratCtrl.text),
       photoUrl: _existingPhotoUrl,
     );
 
@@ -136,6 +142,15 @@ class _FoodFormScreenState extends State<FoodFormScreen> {
         backgroundColor: Colors.redAccent,
       ),
     );
+  }
+
+  // Parses a numeric field, accepting both "," and "." as decimal separator
+  // (matches the sanitization already done in _numericValidator).
+  double _parseNumeric(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return 0;
+    final sanitized = trimmed.replaceAll(',', '.');
+    return double.tryParse(sanitized) ?? 0;
   }
 
   // Validator for required text fields
@@ -177,195 +192,187 @@ class _FoodFormScreenState extends State<FoodFormScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return Scaffold(
-      backgroundColor: colorScheme.surfaceContainerLowest,
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Edit Menu' : 'Add Menu'),
+    return PopScope(
+      canPop: !_isSubmitting,
+      child: Scaffold(
         backgroundColor: colorScheme.surfaceContainerLowest,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: SingleChildScrollView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // === Section: Menu ===
-                _buildSectionHeader('Menu Information', Icons.restaurant_menu),
-                const SizedBox(height: 16),
-
-                // Photo upload
-                _buildPhotoUpload(),
-                const SizedBox(height: 20),
-
-                // Name - Required
-                TextFormField(
-                  controller: _nameCtrl,
-                  decoration: InputDecoration(
-                    labelText: 'Menu Name',
-                    hintText: 'e.g., Nasi Goreng Special',
-                    prefixIcon: const Icon(Icons.food_bank),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    filled: true,
-                    fillColor: colorScheme.surface,
+        appBar: AppBar(
+          title: Text(_isEditing ? 'Edit Menu' : 'Add Menu'),
+          backgroundColor: colorScheme.surfaceContainerLowest,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          leading: BackButton(
+            onPressed: _isSubmitting ? null : () => Navigator.pop(context),
+          ),
+        ),
+        body: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.all(20),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // === Section: Menu ===
+                  _buildSectionHeader(
+                    'Menu Information',
+                    Icons.restaurant_menu,
                   ),
-                  validator: (v) => _requiredValidator(v, 'Menu name'),
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-                // Period - Required with hint below
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextFormField(
-                      controller: _periodeCtrl,
-                      decoration: InputDecoration(
-                        labelText: 'Period',
-                        hintText: 'e.g., Period 2 - 28 May 2025',
-                        prefixIcon: const Icon(Icons.calendar_today),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        filled: true,
-                        fillColor: colorScheme.surface,
+                  // Photo upload
+                  _buildPhotoUpload(),
+                  const SizedBox(height: 20),
+
+                  // Name - Required
+                  TextFormField(
+                    controller: _nameCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Menu Name',
+                      hintText: 'e.g., Nasi Goreng Special',
+                      prefixIcon: const Icon(Icons.food_bank),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      validator: (v) => _requiredValidator(v, 'Period'),
+                      filled: true,
+                      fillColor: colorScheme.surface,
                     ),
-                    const SizedBox(height: 6),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Text(
-                        'Example: Period 2 - 28 May 2025, follow the example format carefully.',
-                        style: textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Created by
-                TextFormField(
-                  controller: _dibuatOlehCtrl,
-                  decoration: InputDecoration(
-                    labelText: 'Created by',
-                    hintText: 'Name of Nutritionist?',
-                    prefixIcon: const Icon(Icons.person_outline),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    filled: true,
-                    fillColor: colorScheme.surface,
+                    validator: (v) => _requiredValidator(v, 'Menu name'),
                   ),
-                  validator: (v) => _requiredValidator(v, 'This field'),
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-                // Cooked by
-                TextFormField(
-                  controller: _dimasakOlehCtrl,
-                  decoration: InputDecoration(
-                    labelText: 'Cooked by',
-                    hintText: 'Chef name?',
-                    prefixIcon: const Icon(Icons.kitchen),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    filled: true,
-                    fillColor: colorScheme.surface,
-                  ),
-                  validator: (v) => _requiredValidator(v, 'This field'),
-                ),
-                const SizedBox(height: 16),
-
-                // Evaluated by
-                TextFormField(
-                  controller: _diketahuiOlehCtrl,
-                  decoration: InputDecoration(
-                    labelText: 'Evaluated by',
-                    hintText: 'Name of SPPI?',
-                    prefixIcon: const Icon(Icons.rate_review),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    filled: true,
-                    fillColor: colorScheme.surface,
-                  ),
-                  validator: (v) => _requiredValidator(v, 'This field'),
-                ),
-                const SizedBox(height: 32),
-
-                // === Section: AKG ===
-                _buildSectionHeader(
-                  'Nutritional Values (AKG)',
-                  Icons.analytics,
-                ),
-                const SizedBox(height: 16),
-
-                // Explanation
-                Text(
-                  'Enter the nutritional content in grams (g) per serving. (Optional)',
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Grid of 5 fields with validation
-                GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                  childAspectRatio: 3.4,
-                  children: [
-                    _buildAKGField('Carbohydrate', _karboCtrl),
-                    _buildAKGField('Protein', _proteinCtrl),
-                    _buildAKGField('Fat', _lemakCtrl),
-                    _buildAKGField('Energy', _energiCtrl, suffix: 'kcal'),
-                    _buildAKGField('Fiber', _seratCtrl),
-                  ],
-                ),
-                const SizedBox(height: 4),
-
-                // Save button
-                ElevatedButton.icon(
-                  onPressed: _isSubmitting ? null : _save,
-                  icon: _isSubmitting
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
+                  // Period - Required with hint below
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextFormField(
+                        controller: _periodeCtrl,
+                        decoration: InputDecoration(
+                          labelText: 'Period',
+                          hintText: 'e.g., Period 2 - 28 May 2025',
+                          prefixIcon: const Icon(Icons.calendar_today),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                        )
-                      : const Icon(Icons.save),
-                  label: Text(
-                    _isSubmitting
-                        ? 'Saving...'
-                        : (_isEditing ? 'Update Menu' : 'Save Menu'),
+                          filled: true,
+                          fillColor: colorScheme.surface,
+                        ),
+                        validator: (v) => _requiredValidator(v, 'Period'),
+                      ),
+                      const SizedBox(height: 6),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Text(
+                          'Example: Period 2 - 28 May 2025, follow the example format carefully.',
+                          style: textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 56),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                  const SizedBox(height: 16),
+
+                  // Created by (Nutritionist)
+                  _buildUserDropdown(
+                    label: 'Created by',
+                    hint: 'Select Nutritionist',
+                    icon: Icons.person_outline,
+                    role: 'nutritionist',
+                    value: _dibuatOleh,
+                    onChanged: (v) => setState(() => _dibuatOleh = v),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Cooked by (Chef)
+                  _buildUserDropdown(
+                    label: 'Cooked by',
+                    hint: 'Select Chef',
+                    icon: Icons.kitchen,
+                    role: 'chef',
+                    value: _dimasakOleh,
+                    onChanged: (v) => setState(() => _dimasakOleh = v),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Evaluated by (SPPI)
+                  _buildUserDropdown(
+                    label: 'Evaluated by',
+                    hint: 'Select SPPI',
+                    icon: Icons.rate_review,
+                    role: 'sppi',
+                    value: _diketahuiOleh,
+                    onChanged: (v) => setState(() => _diketahuiOleh = v),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // === Section: AKG ===
+                  _buildSectionHeader(
+                    'Nutritional Values (AKG)',
+                    Icons.analytics,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Explanation
+                  Text(
+                    'Enter the nutritional content in grams (g) per serving. (Optional)',
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
                     ),
-                    elevation: 2,
                   ),
-                ),
-                const SizedBox(height: 16),
-              ],
+                  const SizedBox(height: 16),
+
+                  // Grid of 5 fields with validation
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                    childAspectRatio: 3.4,
+                    children: [
+                      _buildAKGField('Carbohydrate', _karboCtrl),
+                      _buildAKGField('Protein', _proteinCtrl),
+                      _buildAKGField('Fat', _lemakCtrl),
+                      _buildAKGField('Energy', _energiCtrl, suffix: 'kcal'),
+                      _buildAKGField('Fiber', _seratCtrl),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+
+                  // Save button
+                  ElevatedButton.icon(
+                    onPressed: _isSubmitting ? null : _save,
+                    icon: _isSubmitting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.save),
+                    label: Text(
+                      _isSubmitting
+                          ? 'Saving...'
+                          : (_isEditing ? 'Update Menu' : 'Save Menu'),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 56),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 2,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
             ),
           ),
         ),
@@ -477,6 +484,57 @@ class _FoodFormScreenState extends State<FoodFormScreen> {
                 ],
               ),
       ),
+    );
+  }
+
+  Widget _buildUserDropdown({
+    required String label,
+    required String hint,
+    required IconData icon,
+    required String role,
+    required String? value,
+    required ValueChanged<String?> onChanged,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return StreamBuilder<List<UserModel>>(
+      stream: _userRepository.getUsers(role: role),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          // Surface the real cause (e.g. Firestore permission-denied)
+          // instead of leaving the dropdown silently unresponsive.
+          debugPrint('getUsers(role: $role) error: ${snapshot.error}');
+        }
+
+        final names = <String>{
+          ...?snapshot.data?.map((u) => u.fullname),
+          if (value != null) value,
+        }.toList();
+
+        final isLoading =
+            snapshot.connectionState == ConnectionState.waiting &&
+            names.isEmpty;
+
+        return DropdownButtonFormField<String>(
+          initialValue: value,
+          isExpanded: true,
+          decoration: InputDecoration(
+            labelText: label,
+            hintText: isLoading
+                ? 'Loading...'
+                : (names.isEmpty ? 'No $role found' : hint),
+            prefixIcon: Icon(icon),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+            filled: true,
+            fillColor: colorScheme.surface,
+          ),
+          items: names
+              .map((name) => DropdownMenuItem(value: name, child: Text(name)))
+              .toList(),
+          onChanged: names.isEmpty ? null : onChanged,
+          validator: (v) => _requiredValidator(v, 'This field'),
+        );
+      },
     );
   }
 

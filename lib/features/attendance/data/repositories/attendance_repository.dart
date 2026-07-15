@@ -2,6 +2,7 @@ import '../models/attendance_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mbg_test/features/attendance/data/models/attendance_period.dart';
+import 'package:rxdart/rxdart.dart';
 
 class AttendanceRepository {
   final firestore = FirebaseFirestore.instance;
@@ -22,6 +23,21 @@ class AttendanceRepository {
     // Use composite doc ID: volunteerId + date (one scan per day per volunteer)
     final docId = '${volunteerId}_$today';
     final docRef = firestore.collection('attendances').doc(docId);
+
+    // Ensure the volunteer exists and is still active (not resigned)
+    final volunteerDoc = await firestore
+        .collection('volunteers')
+        .doc(volunteerId)
+        .get();
+
+    if (!volunteerDoc.exists) {
+      throw Exception('volunteer-not-found');
+    }
+
+    final isActive = (volunteerDoc.data()?['isActive'] ?? true) == true;
+    if (!isActive) {
+      throw Exception('volunteer-inactive');
+    }
 
     // Prevent duplicate scan on the same day
     final doc = await docRef.get();
@@ -54,10 +70,6 @@ class AttendanceRepository {
       note: "Full attendance",
     );
 
-    final volunteerDoc = await firestore
-        .collection('volunteers')
-        .doc(volunteerId)
-        .get();
     final isPIC = (volunteerDoc.data()?['isPIC'] ?? false) == true;
 
     await docRef.set({
@@ -90,4 +102,79 @@ class AttendanceRepository {
       throw Exception('Failed to load periods: $e');
     }
   }
+
+  // Reminder: active volunteer who has not scanned attendance today or for the last 2 days
+  Stream<Map<String, List<Map<String, dynamic>>>> getAbsenceReminders() {
+    final volunteersStream = firestore
+        .collection('volunteers')
+        .where('isActive', isEqualTo: true)
+        .snapshots();
+    final attendanceStream = firestore.collection('attendances').snapshots();
+
+    return Rx.combineLatest2<
+      QuerySnapshot,
+      QuerySnapshot,
+      Map<String, List<Map<String, dynamic>>>
+    >(volunteersStream, attendanceStream, (volunteersSnap, attendanceSnap) {
+      final now = DateTime.now();
+      final todayStr = _dateKey(now);
+
+      // Last scan date per volunteer
+      final Map<String, String> lastScanDate = {};
+      for (var doc in attendanceSnap.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final volunteerId = data['volunteerId']?.toString();
+        final date = (data['date'] ?? '').toString();
+        if (volunteerId == null || date.isEmpty) continue;
+        final current = lastScanDate[volunteerId];
+        if (current == null || date.compareTo(current) > 0) {
+          lastScanDate[volunteerId] = date;
+        }
+      }
+
+      final notScannedToday = <Map<String, dynamic>>[];
+      final notScanned2Days = <Map<String, dynamic>>[];
+
+      for (var doc in volunteersSnap.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final id = doc.id;
+        final last = lastScanDate[id];
+        final scannedToday = last == todayStr;
+        if (scannedToday) continue;
+
+        final daysSince = last == null
+            ? null
+            : now.difference(DateTime.parse(last)).inDays;
+
+        final item = {
+          'id': id,
+          'nama': (data['namaLengkap'] ?? '-').toString(),
+          'tim': (data['tim'] ?? '').toString().trim(),
+          'lastScanDate': last,
+          'daysSince': daysSince,
+        };
+
+        notScannedToday.add(item);
+        if (last == null || daysSince! >= 2) {
+          notScanned2Days.add(item);
+        }
+      }
+
+      notScannedToday.sort(
+        (a, b) => (a['nama'] as String).compareTo(b['nama'] as String),
+      );
+      notScanned2Days.sort(
+        (a, b) =>
+            (b['daysSince'] ?? 9999).compareTo(a['daysSince'] ?? 9999) as int,
+      );
+
+      return {
+        'notScannedToday': notScannedToday,
+        'notScanned2Days': notScanned2Days,
+      };
+    });
+  }
+
+  String _dateKey(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 }

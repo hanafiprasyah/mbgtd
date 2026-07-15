@@ -30,6 +30,7 @@ class _UserFormPageState extends State<UserFormPage> {
     'accountant',
     'scanner',
     'nutritionist',
+    'chef',
   ];
 
   // Validation regex patterns
@@ -433,15 +434,17 @@ class _UserFormPageState extends State<UserFormPage> {
   IconData _getRoleIcon(String role) {
     switch (role) {
       case 'admin':
-        return Icons.admin_panel_settings;
+        return Icons.admin_panel_settings_rounded;
       case 'accountant':
-        return Icons.receipt;
+        return Icons.receipt_rounded;
       case 'sppi':
-        return Icons.assignment_ind;
+        return Icons.assignment_ind_rounded;
       case 'aslap':
-        return Icons.analytics;
+        return Icons.analytics_rounded;
       case 'nutritionist':
         return Icons.health_and_safety_rounded;
+      case 'chef':
+        return Icons.local_dining_rounded;
       default:
         return Icons.qr_code_scanner;
     }
@@ -459,6 +462,8 @@ class _UserFormPageState extends State<UserFormPage> {
         return Colors.purple;
       case 'nutritionist':
         return Colors.teal;
+      case 'chef':
+        return Colors.amber;
       default:
         return Colors.grey;
     }

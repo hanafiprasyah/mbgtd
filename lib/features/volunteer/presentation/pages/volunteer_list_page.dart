@@ -25,7 +25,7 @@ const _teamOptions = [
 
 const _genderOptions = ['Laki-laki', 'Perempuan'];
 
-enum VolunteerSortOption { none, ageAscending, nameAZ }
+enum VolunteerSortField { none, age, name }
 
 class VolunteerListPage extends StatefulWidget {
   const VolunteerListPage({super.key});
@@ -39,9 +39,11 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
 
   String? _selectedTim;
   String? _selectedGender;
+  bool? _selectedIsActive;
   bool _isSearching = false;
   String? _pendingDeleteName;
-  VolunteerSortOption _sortOption = VolunteerSortOption.none;
+  VolunteerSortField _sortField = VolunteerSortField.none;
+  bool _sortAscending = true;
   bool _isSearchVisible = false;
   Map<String, dynamic>? userData;
 
@@ -49,7 +51,13 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
     var count = 0;
     if (_selectedTim != null) count++;
     if (_selectedGender != null) count++;
+    if (_selectedIsActive != null) count++;
     return count;
+  }
+
+  List<Volunteer> _filterByStatus(List<Volunteer> volunteers) {
+    if (_selectedIsActive == null) return volunteers;
+    return volunteers.where((v) => v.isActive == _selectedIsActive).toList();
   }
 
   void _applyCurrentCriteria() {
@@ -65,36 +73,45 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
     setState(() {
       _selectedTim = null;
       _selectedGender = null;
+      _selectedIsActive = null;
     });
     _applyCurrentCriteria();
   }
 
-  void _onSortSelected(VolunteerSortOption option) {
-    setState(() => _sortOption = option);
+  void _onSortSelected(VolunteerSortField field) {
+    setState(() {
+      if (_sortField == field && field != VolunteerSortField.none) {
+        _sortAscending = !_sortAscending;
+      } else {
+        _sortField = field;
+        _sortAscending = true;
+      }
+    });
   }
 
   List<Volunteer> _sortVolunteers(List<Volunteer> volunteers) {
-    if (_sortOption == VolunteerSortOption.none) return volunteers;
+    if (_sortField == VolunteerSortField.none) return volunteers;
 
     final sorted = List<Volunteer>.from(volunteers);
-    switch (_sortOption) {
-      case VolunteerSortOption.ageAscending:
+    switch (_sortField) {
+      case VolunteerSortField.age:
         sorted.sort(
           (a, b) => _ageFromBirthDate(
             a.tanggalLahir,
           ).compareTo(_ageFromBirthDate(b.tanggalLahir)),
         );
         break;
-      case VolunteerSortOption.nameAZ:
+      case VolunteerSortField.name:
         sorted.sort(
           (a, b) => a.namaLengkap.toLowerCase().compareTo(
             b.namaLengkap.toLowerCase(),
           ),
         );
         break;
-      case VolunteerSortOption.none:
+      case VolunteerSortField.none:
         break;
     }
+    if (!_sortAscending) return sorted.reversed.toList();
     return sorted;
   }
 
@@ -139,6 +156,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
       builder: (dialogContext) {
         var tempTim = _selectedTim;
         var tempGender = _selectedGender;
+        var tempIsActive = _selectedIsActive;
 
         return StatefulBuilder(
           builder: (context, setDialogState) {
@@ -178,6 +196,19 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                       setDialogState(() => tempGender = value);
                     },
                   ),
+                  const SizedBox(height: AppSpacing.md),
+                  DropdownButtonFormField<bool>(
+                    isExpanded: true,
+                    initialValue: tempIsActive,
+                    hint: const Text('Status'),
+                    items: const [
+                      DropdownMenuItem(value: true, child: Text('Active')),
+                      DropdownMenuItem(value: false, child: Text('Inactive')),
+                    ],
+                    onChanged: (value) {
+                      setDialogState(() => tempIsActive = value);
+                    },
+                  ),
                 ],
               ),
               actions: [
@@ -186,6 +217,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                     setDialogState(() {
                       tempTim = null;
                       tempGender = null;
+                      tempIsActive = null;
                     });
                   },
                   child: const Text('Reset'),
@@ -198,7 +230,11 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                   onPressed: () {
                     Navigator.pop(
                       dialogContext,
-                      _VolunteerFilter(tim: tempTim, gender: tempGender),
+                      _VolunteerFilter(
+                        tim: tempTim,
+                        gender: tempGender,
+                        isActive: tempIsActive,
+                      ),
                     );
                   },
                   child: const Text('Apply'),
@@ -215,6 +251,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
     setState(() {
       _selectedTim = result.tim;
       _selectedGender = result.gender;
+      _selectedIsActive = result.isActive;
     });
     _applyCurrentCriteria();
   }
@@ -315,7 +352,8 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
           children: [
             if (Navigator.canPop(context)) const BackButton(),
             _SortActionButton(
-              selected: _sortOption,
+              selectedField: _sortField,
+              ascending: _sortAscending,
               onSelected: _onSortSelected,
             ),
           ],
@@ -353,17 +391,34 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                   : const SizedBox.shrink(),
             ),
             if (_activeFilterCount > 0)
-              ActiveFilterChips(
-                selectedTim: _selectedTim,
-                selectedGender: _selectedGender,
-                onRemoveTim: () {
-                  setState(() => _selectedTim = null);
-                  _applyCurrentCriteria();
-                },
-                onRemoveGender: () {
-                  setState(() => _selectedGender = null);
-                  _applyCurrentCriteria();
-                },
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ActiveFilterChips(
+                    selectedTim: _selectedTim,
+                    selectedGender: _selectedGender,
+                    onRemoveTim: () {
+                      setState(() => _selectedTim = null);
+                      _applyCurrentCriteria();
+                    },
+                    onRemoveGender: () {
+                      setState(() => _selectedGender = null);
+                      _applyCurrentCriteria();
+                    },
+                  ),
+                  if (_selectedIsActive != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                      child: InputChip(
+                        label: Text(
+                          _selectedIsActive == true ? 'Active' : 'Inactive',
+                        ),
+                        onDeleted: () {
+                          setState(() => _selectedIsActive = null);
+                        },
+                      ),
+                    ),
+                ],
               ),
             Expanded(
               child: BlocConsumer<VolunteerBloc, VolunteerState>(
@@ -388,7 +443,9 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
                 builder: (context, state) {
                   if (state is VolunteerLoaded) {
                     return _VolunteerList(
-                      volunteers: _sortVolunteers(state.volunteer),
+                      volunteers: _sortVolunteers(
+                        _filterByStatus(state.volunteer),
+                      ),
                       onDelete: _confirmDelete,
                       isDeveloper: isDeveloper,
                     );
@@ -417,44 +474,96 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
 }
 
 class _VolunteerFilter {
-  const _VolunteerFilter({this.tim, this.gender});
+  const _VolunteerFilter({this.tim, this.gender, this.isActive});
 
   final String? tim;
   final String? gender;
+  final bool? isActive;
 }
 
 class _SortActionButton extends StatelessWidget {
-  const _SortActionButton({required this.selected, required this.onSelected});
+  const _SortActionButton({
+    required this.selectedField,
+    required this.ascending,
+    required this.onSelected,
+  });
 
-  final VolunteerSortOption selected;
-  final ValueChanged<VolunteerSortOption> onSelected;
+  final VolunteerSortField selectedField;
+  final bool ascending;
+  final ValueChanged<VolunteerSortField> onSelected;
+
+  String _labelFor(VolunteerSortField field) {
+    final isSelected = selectedField == field;
+    switch (field) {
+      case VolunteerSortField.age:
+        final youngestFirst = isSelected ? ascending : true;
+        return youngestFirst ? 'Age (Youngest First)' : 'Age (Oldest First)';
+      case VolunteerSortField.name:
+        final aToZ = isSelected ? ascending : true;
+        return aToZ ? 'Name (A-Z)' : 'Name (Z-A)';
+      case VolunteerSortField.none:
+        return 'Default';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final isActive = selected != VolunteerSortOption.none;
+    final isActive = selectedField != VolunteerSortField.none;
     final colorScheme = Theme.of(context).colorScheme;
 
-    return PopupMenuButton<VolunteerSortOption>(
+    return PopupMenuButton<VolunteerSortField>(
       tooltip: 'Sort',
-      initialValue: selected,
+      initialValue: selectedField,
       onSelected: onSelected,
       icon: Icon(Icons.sort, color: isActive ? colorScheme.primary : null),
       itemBuilder: (context) => [
         CheckedPopupMenuItem(
-          value: VolunteerSortOption.none,
-          checked: selected == VolunteerSortOption.none,
+          value: VolunteerSortField.none,
+          checked: selectedField == VolunteerSortField.none,
           child: const Text('Default'),
         ),
         CheckedPopupMenuItem(
-          value: VolunteerSortOption.ageAscending,
-          checked: selected == VolunteerSortOption.ageAscending,
-          child: const Text('Age (Youngest First)'),
+          value: VolunteerSortField.age,
+          checked: selectedField == VolunteerSortField.age,
+          child: _SortMenuLabel(
+            label: _labelFor(VolunteerSortField.age),
+            showDirection: selectedField == VolunteerSortField.age,
+            ascending: ascending,
+          ),
         ),
         CheckedPopupMenuItem(
-          value: VolunteerSortOption.nameAZ,
-          checked: selected == VolunteerSortOption.nameAZ,
-          child: const Text('Name (A-Z)'),
+          value: VolunteerSortField.name,
+          checked: selectedField == VolunteerSortField.name,
+          child: _SortMenuLabel(
+            label: _labelFor(VolunteerSortField.name),
+            showDirection: selectedField == VolunteerSortField.name,
+            ascending: ascending,
+          ),
         ),
+      ],
+    );
+  }
+}
+
+class _SortMenuLabel extends StatelessWidget {
+  const _SortMenuLabel({
+    required this.label,
+    required this.showDirection,
+    required this.ascending,
+  });
+
+  final String label;
+  final bool showDirection;
+  final bool ascending;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Expanded(child: Text(label)),
+        if (showDirection)
+          Icon(ascending ? Icons.arrow_upward : Icons.arrow_downward, size: 16),
       ],
     );
   }

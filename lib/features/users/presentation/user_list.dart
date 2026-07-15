@@ -25,6 +25,7 @@ class _UserListPageState extends State<UserListPage> {
     'aslap',
     'admin',
     'scanner',
+    'chef',
   ];
   final TextEditingController _searchController = TextEditingController();
 

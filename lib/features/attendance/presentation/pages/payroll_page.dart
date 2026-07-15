@@ -726,9 +726,15 @@ class _PayrollPageState extends State<PayrollPage>
                 }
 
                 final combined = snapshot.data!;
-                final rawData = combined.containsKey('volunteers')
+                final rawDataAll = combined.containsKey('volunteers')
                     ? (combined['volunteers'] as Map<String, dynamic>)
                     : combined;
+                // Only include active volunteers in the payroll display
+                final rawData = Map<String, dynamic>.fromEntries(
+                  rawDataAll.entries.where(
+                    (e) => (e.value['isActive'] ?? true) == true,
+                  ),
+                );
                 final Map<String, Map<String, dynamic>> teamDaySummary =
                     combined.containsKey('teamDaySummary')
                     ? Map<String, Map<String, dynamic>>.from(

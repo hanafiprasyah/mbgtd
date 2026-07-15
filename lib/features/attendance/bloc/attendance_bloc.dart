@@ -49,6 +49,12 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
           emit(AttendanceError('Permission denied'));
         } else if (error.contains('user-not-logged-in')) {
           emit(AttendanceError('User not logged in'));
+        } else if (error.contains('volunteer-inactive')) {
+          emit(
+            AttendanceError(
+              'Scanning blocked because of inactive volunteer status',
+            ),
+          );
         } else {
           emit(AttendanceError('Failed to scan QR'));
         }

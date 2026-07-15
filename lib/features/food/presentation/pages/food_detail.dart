@@ -50,7 +50,7 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Success deleted ${state.foods[6]}'),
+                  content: Text('Success deleted ${food.name}'),
                   duration: const Duration(seconds: 1),
                 ),
               );
