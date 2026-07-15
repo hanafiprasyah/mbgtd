@@ -115,28 +115,12 @@ Panduan menu makanan yang berisi:
 - Snapshot-based (immutable data)
 - Pool redistribution system
 
-### 🔸 Modular Structure
-
-- Attendance Module
-- Payroll Module
-- Volunteer Module
-- Inventory Module
-- Nutrition Module
-
----
-
-## 🛠️ Teknologi (Contoh Stack)
+## 🛠️ Teknologi (Stack)
 
 - Frontend: Flutter (Material 3)
 - Backend: Firebase / REST API
 - Database: Firestore
 - Export: Excel Generator
-
----
-
-## 📁 Struktur Fitur (High Level)
-
-/features /attendance /payroll /volunteer /inventory /nutrition
 
 ---
 
@@ -159,7 +143,7 @@ Mandora
 
 ## 📌 Catatan
 
-Aplikasi ini dibuat untuk mendukung operasional program sosial dengan efisiensi tinggi dan transparansi dalam pengelolaan relawan serta distribusi gaji.
+Aplikasi ini dibuat untuk mendukung operasional program MBG di masing-masing dapur SPPG dengan efisiensi tinggi dan transparansi dalam pengelolaan relawan serta distribusi gaji.
 
 ---
 
