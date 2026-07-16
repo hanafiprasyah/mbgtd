@@ -26,6 +26,7 @@ class _UserListPageState extends State<UserListPage> {
     'admin',
     'scanner',
     'chef',
+    'volunteer',
   ];
   final TextEditingController _searchController = TextEditingController();
 
@@ -264,7 +265,7 @@ class _UserListPageState extends State<UserListPage> {
           ),
           IconButton(
             icon: const Icon(Icons.person_add_alt_1),
-            tooltip: 'Add user',
+            tooltip: 'Add staff user',
             onPressed: () async {
               await Navigator.pushNamed(context, '/user-add');
               if (mounted) _applyCriteria();

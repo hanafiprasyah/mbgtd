@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
 import 'package:mbg_test/features/authentication/presentation/widgets/bricks/home/menu_card.dart';
 import 'package:mbg_test/features/attendance/data/repositories/attendance_repository.dart';
+import 'package:mbg_test/features/authentication/presentation/widgets/bricks/home/volunteer_dashboard.dart';
 
 Widget buildHomeTab(
   BuildContext context,
@@ -208,6 +209,34 @@ Widget buildHomeTab(
   }
 
   final colorScheme = Theme.of(context).colorScheme;
+
+  // A logged-in user with none of the admin-type roles above is treated as a
+  // plain volunteer: instead of an empty menu grid, show their personal
+  // realtime dashboard (total scan, attendance timeline, total salary).
+  final hasAdminRole =
+      isDeveloper ||
+      isScanner ||
+      isAccountant ||
+      isSPPI ||
+      isAslap ||
+      isAdmin ||
+      isNutritionist;
+
+  if (user != null && !hasAdminRole) {
+    return Scaffold(
+      backgroundColor: colorScheme.surfaceContainerLowest,
+      appBar: AppBar(
+        title: const Text('Home'),
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: colorScheme.surfaceContainerLowest,
+      ),
+      body: VolunteerDashboard(
+        authUid: user.uid,
+        greeting: greeting,
+        fullname: fullname,
+      ),
+    );
+  }
 
   return Scaffold(
     backgroundColor: colorScheme.surfaceContainerLowest,

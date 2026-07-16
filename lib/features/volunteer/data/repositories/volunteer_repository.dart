@@ -80,6 +80,45 @@ class VolunteerRepository {
     }
   }
 
+  // ── Account-linking helpers ─────────────────────────────────────────────
+
+  /// Volunteers that don't yet have a Firebase Auth account linked
+  /// (`userId` missing or empty). Used to populate the picker when creating
+  /// a new volunteer login account, so linking is explicit — never guessed
+  /// from name matching.
+  Stream<List<Map<String, dynamic>>> getUnlinkedVolunteers() {
+    return firestore.collection('volunteers').snapshots().map((snapshot) {
+      final unlinked = snapshot.docs
+          .where((doc) {
+            final userId = (doc.data()['userId'] ?? '').toString().trim();
+            return userId.isEmpty;
+          })
+          .map((doc) {
+            final data = doc.data();
+            return {
+              'id': doc.id,
+              'namaLengkap': (data['namaLengkap'] ?? '').toString(),
+              'tim': (data['tim'] ?? '').toString(),
+            };
+          })
+          .toList();
+
+      unlinked.sort(
+        (a, b) =>
+            (a['namaLengkap'] as String).compareTo(b['namaLengkap'] as String),
+      );
+      return unlinked;
+    });
+  }
+
+  /// Sets `userId` on a volunteer document — the explicit link between a
+  /// `volunteers` record and its Firebase Auth account / `users` document.
+  Future<void> linkVolunteerToUser(String volunteerId, String userId) async {
+    await firestore.collection('volunteers').doc(volunteerId).update({
+      'userId': userId,
+    });
+  }
+
   // Search volunteers
   Stream<List<Volunteer>> searchVolunteer(
     String query,

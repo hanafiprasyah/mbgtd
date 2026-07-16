@@ -141,6 +141,60 @@ class AttendancePayrollRepository {
         });
   }
 
+  // ── NEW: single-volunteer realtime dashboard (self-service) ────────────────
+
+  /// Realtime dashboard for the currently logged-in volunteer.
+  ///
+  /// Matches the Firebase Auth [authUid] against a `userId` field stored on
+  /// the volunteer's document in the `volunteers` collection. This field is
+  /// NOT created automatically — it must be set once per volunteer (e.g. when
+  /// their account is created, or via a one-time admin action) with:
+  ///
+  ///   FirebaseFirestore.instance.collection('volunteers').doc(volunteerDocId)
+  ///       .update({'userId': theirFirebaseAuthUid});
+  ///
+  /// Returns a stream emitting a map shaped like:
+  ///   {
+  ///     'linked': bool,           // false if no volunteer doc has this userId
+  ///     'id': String,             // volunteer doc id (only if linked)
+  ///     'nama': String,
+  ///     'tim': String,
+  ///     'totalScan': int,
+  ///     'effectiveScan': double,
+  ///     'totalGaji': int,
+  ///     'isPIC': bool,
+  ///     'timeline': List<Map<String, dynamic>>, // newest first, see
+  ///                                              // getVolunteerAttendanceStream
+  ///   }
+  ///
+  /// This reuses [getPayrollStream] so the salary figure a volunteer sees is
+  /// guaranteed to be computed with the exact same rules (burden sharing,
+  /// PIC bonus, etc.) as the admin payroll dashboard — just filtered down to
+  /// their own record.
+  Stream<Map<String, dynamic>> getMyDashboardStream(String authUid) {
+    return getPayrollStream().switchMap((allPayroll) {
+      Map<String, dynamic>? myRecord;
+
+      for (final entry in allPayroll.values) {
+        final data = entry as Map<String, dynamic>;
+        if (data['userId'] == authUid) {
+          myRecord = data;
+          break;
+        }
+      }
+
+      if (myRecord == null) {
+        return Stream.value(<String, dynamic>{'linked': false});
+      }
+
+      final volunteerId = myRecord['id'] as String;
+
+      return getVolunteerAttendanceStream(volunteerId).map((timeline) {
+        return {'linked': true, ...myRecord!, 'timeline': timeline};
+      });
+    });
+  }
+
   // ── Private helpers (unchanged) ────────────────────────────────────────────
 
   Map<String, List<Map<String, dynamic>>> _groupAttendanceByDateTim(

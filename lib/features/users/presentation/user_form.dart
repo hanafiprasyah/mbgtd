@@ -31,6 +31,7 @@ class _UserFormPageState extends State<UserFormPage> {
     'scanner',
     'nutritionist',
     'chef',
+    'volunteer',
   ];
 
   // Validation regex patterns
@@ -170,7 +171,7 @@ class _UserFormPageState extends State<UserFormPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(isEdit ? 'Edit User' : 'Add User'),
+          title: Text(isEdit ? 'Edit User' : 'Add Staff User'),
           actions: [
             if (isEdit)
               IconButton(
@@ -445,6 +446,8 @@ class _UserFormPageState extends State<UserFormPage> {
         return Icons.health_and_safety_rounded;
       case 'chef':
         return Icons.local_dining_rounded;
+      case 'volunteer':
+        return Icons.volunteer_activism_rounded;
       default:
         return Icons.qr_code_scanner;
     }
@@ -464,6 +467,8 @@ class _UserFormPageState extends State<UserFormPage> {
         return Colors.teal;
       case 'chef':
         return Colors.amber;
+      case 'volunteer':
+        return Colors.pink;
       default:
         return Colors.grey;
     }

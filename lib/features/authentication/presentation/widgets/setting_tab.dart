@@ -14,7 +14,8 @@ Widget buildSettingTab(
   Map<String, dynamic>? userData,
 ) {
   final isDeveloper =
-      user != null && userData?['role']?.toLowerCase().contains('developer');
+      user != null &&
+      (userData?['role']?.toLowerCase().contains('developer') ?? false);
 
   return Scaffold(
     appBar: AppBar(
@@ -74,21 +75,42 @@ Widget _userSetting(BuildContext context) {
       horizontal: AppSpacing.md,
       vertical: AppSpacing.sm,
     ),
-    child: SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: () {
-          Navigator.pushNamed(context, '/manage-users');
-        },
-        icon: const Icon(Icons.manage_accounts_rounded),
-        label: const Text("Manage Users"),
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.lg),
+    child: Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pushNamed(context, '/manage-users');
+            },
+            icon: const Icon(Icons.manage_accounts_rounded),
+            label: const Text("Manage Users"),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+              ),
+            ),
           ),
         ),
-      ),
+        const SizedBox(height: AppSpacing.sm),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pushNamed(context, '/volunteer-account-form');
+            },
+            icon: const Icon(Icons.volunteer_activism_rounded),
+            label: const Text("Add Volunteer Account"),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+              ),
+            ),
+          ),
+        ),
+      ],
     ),
   );
 }

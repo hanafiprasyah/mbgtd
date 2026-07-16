@@ -10,6 +10,7 @@ import 'package:mbg_test/features/users/presentation/user_detail.dart';
 import 'package:mbg_test/features/users/presentation/user_form.dart';
 import 'package:mbg_test/features/users/presentation/user_list.dart';
 import 'package:mbg_test/features/authentication/presentation/screens/not_found_screen.dart';
+import 'package:mbg_test/features/users/presentation/volunteer_account_form.dart';
 import 'package:mbg_test/features/volunteer/data/models/volunteer_model.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/payroll_page.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/scanner_page.dart';
@@ -89,6 +90,11 @@ class AppRoutes {
         final food = settings.arguments as Food;
         return MaterialPageRoute(
           builder: (_) => FoodFormScreen(food: food),
+          settings: settings,
+        );
+      case '/volunteer-account-form':
+        return MaterialPageRoute(
+          builder: (_) => VolunteerAccountFormPage(),
           settings: settings,
         );
       default:

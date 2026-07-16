@@ -56,10 +56,16 @@ class _HomeScreenState extends State<HomeScreen> {
     await Future.wait([_fetchUserData()]);
 
     final data = await getUserRole(user?.uid ?? "");
+    final normalized = {
+      'role': (data?['role'] as String?) ?? '',
+      'fullname': (data?['fullname'] as String?) ?? 'Loading user info..',
+      'username': (data?['username'] as String?) ?? 'Loading username..',
+      ...?data,
+    };
 
     if (!mounted) return;
     setState(() {
-      userData = data;
+      userData = normalized;
       _isLoading = false;
     });
   }
@@ -187,6 +193,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final role = userData?['role'] as String?;
     final isScanner =
         user != null && (role)?.toLowerCase().contains('scanner') == true;
+    final isVolunteer =
+        user != null && (role)?.toLowerCase().contains('volunteer') == true;
 
     // Camera service prewarm with loading screen
     if (_isLoading) {
@@ -208,13 +216,13 @@ class _HomeScreenState extends State<HomeScreen> {
             context,
             user,
             _getGreeting(),
-            userData?['role'],
+            userData?['role'] ?? '',
             userData?['fullname'] ?? "Loading user info..",
           ),
           item: ItemConfig(icon: const Icon(Icons.home), title: "Home"),
         ),
         // Report Tab
-        if (!isScanner)
+        if (!isScanner && !isVolunteer)
           PersistentTabConfig(
             screen: buildReportTab(context),
             item: ItemConfig(
