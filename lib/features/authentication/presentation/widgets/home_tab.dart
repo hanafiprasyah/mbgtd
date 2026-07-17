@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
+import 'package:mbg_test/core/services/camera_prewarm.dart';
 import 'package:mbg_test/features/authentication/presentation/widgets/bricks/home/menu_card.dart';
 import 'package:mbg_test/features/attendance/data/repositories/attendance_repository.dart';
 import 'package:mbg_test/features/authentication/presentation/widgets/bricks/home/volunteer_dashboard.dart';
@@ -51,7 +52,10 @@ Widget buildHomeTab(
         icon: Icons.qr_code_scanner,
         title: 'Scan',
         subtitle: 'Attendance',
-        onTap: () => Navigator.pushNamed(context, '/qr-scanner'),
+        onTap: () {
+          CameraPrewarmService.warmBeforeNavigate();
+          Navigator.pushNamed(context, '/qr-scanner');
+        },
       );
       return items;
     }

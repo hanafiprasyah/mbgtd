@@ -34,6 +34,9 @@ class _ScannerPageState extends State<ScannerPage>
   bool _isTorchOn = false;
   String? _lastScannedQR;
 
+  // NEW: surfaces camera-start failures instead of swallowing them.
+  String? _cameraError;
+
   Timer? _idleTimer;
   static const Duration _idleDuration = Duration(seconds: 10);
 
@@ -67,36 +70,47 @@ class _ScannerPageState extends State<ScannerPage>
 
   Future<void> _initCameraUltraFast() async {
     try {
-      // wait permission first
       final granted = await _permissionFuture;
       if (!granted) return;
 
-      // tiny delay to let widget mount cleanly
-      // await Future.delayed(const Duration(milliseconds: 50));
+      // In the normal flow this is a no-op: CameraPrewarmService.warmBeforeNavigate()
+      // (called from wherever "Scan" was tapped) should already have this running
+      // by the time we get here. This is just the safety net for deep links / cold
+      // starts that skip that step.
       if (mounted && !_controller.value.isRunning) {
         await _controller.start();
       }
+      if (mounted && _cameraError != null) {
+        setState(() => _cameraError = null);
+      }
+    } on MobileScannerException catch (e) {
+      if (!mounted) return;
+      setState(() => _cameraError = _describeCameraError(e));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _cameraError = 'Kamera gagal diaktifkan. Coba lagi.');
+    }
+  }
 
-      // Khusus OPPO
-      // if (mounted && !_controller.value.isRunning) {
-      //   try {
-      //     await _controller.start();
-      //   } catch (_) {}
-      // }
-    } catch (_) {}
+  String _describeCameraError(MobileScannerException e) {
+    switch (e.errorCode) {
+      case MobileScannerErrorCode.permissionDenied:
+        return 'Izin kamera ditolak.';
+      case MobileScannerErrorCode.unsupported:
+        return 'Perangkat ini tidak mendukung kamera untuk scan QR.';
+      default:
+        return 'Kamera gagal diaktifkan. Coba lagi.';
+    }
+  }
+
+  Future<void> _retryCamera() async {
+    setState(() => _cameraError = null);
+    await _initCameraUltraFast();
   }
 
   Future<void> _handleBackAction() async {
     if (!mounted) return;
-
-    // Khusus OPPO: stop camera immediately to free up resources for next page (avoid black screen)
-    // try {
-    //   await _controller.stop();
-    //   if (!mounted) return;
-    //   Navigator.of(context).pop();
-    // } catch (_) {}
-
-    // Do NOT stop camera here → keep it alive for next page
+    // Do NOT stop camera here → keep it alive for next page / next visit.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -105,290 +119,326 @@ class _ScannerPageState extends State<ScannerPage>
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<bool>(
-      future: _permissionFuture,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    return Scaffold(
+      // Explicit black background: no default-canvas flash while the
+      // permission FutureBuilder or the camera texture is still booting.
+      backgroundColor: Colors.black,
+      body: FutureBuilder<bool>(
+        future: _permissionFuture,
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const _BootingPlaceholder();
+          }
 
-        if (!snapshot.data!) {
-          return const Center(child: Text('Camera permission denied'));
-        }
+          if (!snapshot.data!) {
+            return _PermissionDeniedView(
+              onRetry: () {
+                setState(() {
+                  _permissionFuture = PermissionService.requestCamera();
+                });
+              },
+            );
+          }
 
-        return BlocListener<AttendanceBloc, AttendanceState>(
-          listener: (context, state) {
-            if (state is AttendanceSuccess) {
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Row(
-                    children: [
-                      Icon(Icons.check_circle, color: Colors.white),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text('Scan successful! Attendance recorded'),
-                      ),
-                    ],
-                  ),
-                  backgroundColor: const Color(0xFF16A34A),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-
-              setState(() {
-                isProcessing = false;
-              });
-
-              Future.microtask(() async {
-                try {} catch (_) {}
+          return BlocListener<AttendanceBloc, AttendanceState>(
+            listener: (context, state) {
+              if (state is AttendanceSuccess) {
                 if (!mounted) return;
-                await _handleBackAction();
-              });
-            }
-
-            if (state is AttendanceError) {
-              if (!mounted) return;
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Row(
-                    children: [
-                      const Icon(Icons.error, color: Colors.white),
-                      const SizedBox(width: 12),
-                      Expanded(child: Text('Scan failed: ${state.message}')),
-                    ],
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.white),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text('Scan successful! Attendance recorded'),
+                        ),
+                      ],
+                    ),
+                    backgroundColor: const Color(0xFF16A34A),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    duration: const Duration(seconds: 2),
                   ),
-                  backgroundColor: const Color(0xFFDC2626),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
+                );
 
-              Future.microtask(() async {
-                try {} catch (_) {}
+                setState(() {
+                  isProcessing = false;
+                });
+
+                Future.microtask(() async {
+                  if (!mounted) return;
+                  await _handleBackAction();
+                });
+              }
+
+              if (state is AttendanceError) {
                 if (!mounted) return;
-                await _handleBackAction();
-              });
-            }
-          },
-          child: Listener(
-            behavior: HitTestBehavior.translucent,
-            onPointerDown: (_) async {
-              _resetIdleTimer();
 
-              // 🔥 Predictive wake: start camera instantly on first touch
-              if (!_controller.value.isRunning) {
-                try {
-                  await _controller.start();
-                } catch (_) {}
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        const Icon(Icons.error, color: Colors.white),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text('Scan failed: ${state.message}')),
+                      ],
+                    ),
+                    backgroundColor: const Color(0xFFDC2626),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+
+                Future.microtask(() async {
+                  if (!mounted) return;
+                  await _handleBackAction();
+                });
               }
             },
-            child: GestureDetector(
+            child: Listener(
               behavior: HitTestBehavior.translucent,
-              onTap: _resetIdleTimer,
-              onPanDown: (_) => _resetIdleTimer(),
-              child: Stack(
-                children: [
-                  RepaintBoundary(
-                    child: MobileScanner(
-                      controller: _controller,
-                      fit: BoxFit.cover,
-                      tapToFocus: true,
-                      // Khusus OPPO
-                      // useAppLifecycleState: true,
-                      useAppLifecycleState: false,
-                      onDetect: (barcodeCapture) async {
-                        _resetIdleTimer();
-                        if (isScanning) return;
-
-                        final now = DateTime.now();
-                        if (_lastScanTime != null &&
-                            now.difference(_lastScanTime!) <
-                                const Duration(milliseconds: 200)) {
-                          return;
-                        }
-                        _lastScanTime = now;
-
-                        final barcode = barcodeCapture.barcodes.first;
-                        // Prefer rawValue, fallback to displayValue (iOS safe)
-                        final raw = barcode.rawValue ?? barcode.displayValue;
-
-                        // Guard invalid / empty payloads (e.g. "||", null)
-                        if (raw == null ||
-                            raw.trim().isEmpty ||
-                            raw.trim() == '||') {
-                          return;
-                        }
-
-                        // 🚀 NEW: avoid scan same QR
-                        if (_lastScannedQR == raw) return;
-                        _lastScannedQR = raw;
-
-                        setState(() {
-                          isScanning = true;
-                          isProcessing = true;
-                        });
-
-                        if (await Vibration.hasVibrator()) {
-                          Vibration.vibrate(duration: 120);
-                        }
-
-                        // await _audioPlayer.play(AssetSource('notif.wav'));
-                        // feedback fire instantly without holding the pipeline
-                        unawaited(_audioPlayer.play(AssetSource('notif.wav')));
-
-                        if (!mounted) return;
-                        context.read<AttendanceBloc>().add(ScanQR(raw));
-
-                        // cancel previous unlock timer (avoid stacking timers)
-                        _unlockTimer?.cancel();
-                        _unlockTimer = Timer(
-                          const Duration(milliseconds: 300),
-                          () {
-                            if (!mounted) return;
-                            setState(() {
-                              isScanning = false;
-                              isProcessing = false;
+              onPointerDown: (_) async {
+                _resetIdleTimer();
+                if (!_controller.value.isRunning) {
+                  try {
+                    await _controller.start();
+                    if (mounted && _cameraError != null) {
+                      setState(() => _cameraError = null);
+                    }
+                  } on MobileScannerException catch (e) {
+                    if (!mounted) return;
+                    setState(() => _cameraError = _describeCameraError(e));
+                  } catch (_) {
+                    // Non-fatal: user can still tap the frame again.
+                  }
+                }
+              },
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: _resetIdleTimer,
+                onPanDown: (_) => _resetIdleTimer(),
+                child: Stack(
+                  children: [
+                    if (_cameraError != null)
+                      _CameraErrorView(
+                        message: _cameraError!,
+                        onRetry: _retryCamera,
+                        onBack: _handleBackAction,
+                      )
+                    else ...[
+                      RepaintBoundary(
+                        child: MobileScanner(
+                          controller: _controller,
+                          fit: BoxFit.cover,
+                          tapToFocus: true,
+                          useAppLifecycleState: false,
+                          errorBuilder: (context, error) {
+                            // mobile_scanner's own render-time error path —
+                            // previously unhandled, so a texture failure
+                            // here just rendered as a blank black surface.
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (!mounted) return;
+                              setState(
+                                () =>
+                                    _cameraError = _describeCameraError(error),
+                              );
                             });
+                            return const _BootingPlaceholder();
                           },
-                        );
-                      },
-                    ),
-                  ),
-                  // --- Modern viewfinder: dim mask + corner brackets + scan line ---
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: AnimatedBuilder(
-                        animation: _scanLineController,
-                        builder: (context, _) {
-                          return CustomPaint(
-                            painter: _ScannerOverlayPainter(
-                              scanLineValue: _scanLineController.value,
-                              isProcessing: isProcessing,
-                              frameRadius: 24,
-                              frameSize: 260,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
+                          placeholderBuilder: (context) =>
+                              const _BootingPlaceholder(),
+                          onDetect: (barcodeCapture) async {
+                            _resetIdleTimer();
+                            if (isScanning) return;
 
-                  // --- Top bar: gradient backdrop + back button + title ---
-                  const Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: IgnorePointer(
-                      child: SizedBox(
-                        height: 130,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Colors.black54, Colors.transparent],
+                            final now = DateTime.now();
+                            if (_lastScanTime != null &&
+                                now.difference(_lastScanTime!) <
+                                    const Duration(milliseconds: 200)) {
+                              return;
+                            }
+                            _lastScanTime = now;
+
+                            final barcode = barcodeCapture.barcodes.first;
+                            final raw =
+                                barcode.rawValue ?? barcode.displayValue;
+
+                            if (raw == null ||
+                                raw.trim().isEmpty ||
+                                raw.trim() == '||') {
+                              return;
+                            }
+
+                            if (_lastScannedQR == raw) return;
+                            _lastScannedQR = raw;
+
+                            setState(() {
+                              isScanning = true;
+                              isProcessing = true;
+                            });
+
+                            if (await Vibration.hasVibrator()) {
+                              Vibration.vibrate(duration: 120);
+                            }
+
+                            unawaited(
+                              _audioPlayer.play(AssetSource('notif.wav')),
+                            );
+
+                            if (!mounted) return;
+                            context.read<AttendanceBloc>().add(ScanQR(raw));
+
+                            _unlockTimer?.cancel();
+                            _unlockTimer = Timer(
+                              const Duration(milliseconds: 300),
+                              () {
+                                if (!mounted) return;
+                                setState(() {
+                                  isScanning = false;
+                                  isProcessing = false;
+                                });
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                      // --- Modern viewfinder: dim mask + corner brackets + scan line ---
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: AnimatedBuilder(
+                            animation: _scanLineController,
+                            builder: (context, _) {
+                              return CustomPaint(
+                                painter: _ScannerOverlayPainter(
+                                  scanLineValue: _scanLineController.value,
+                                  isProcessing: isProcessing,
+                                  frameRadius: 24,
+                                  frameSize: 260,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    // --- Top bar: gradient backdrop + back button + title ---
+                    const Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: IgnorePointer(
+                        child: SizedBox(
+                          height: 130,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [Colors.black54, Colors.transparent],
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: SafeArea(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        child: Row(
-                          children: [
-                            _FrostedIconButton(
-                              icon: Icons.arrow_back_ios_new,
-                              onTap: isProcessing ? null : _handleBackAction,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // --- Bottom controls: frosted torch toggle ---
-                  Positioned(
-                    bottom: AppSpacing.lg,
-                    left: 0,
-                    right: 0,
-                    child: SafeArea(
-                      child: Center(
-                        child: _FrostedIconButton(
-                          icon: _isTorchOn ? Icons.flash_on : Icons.flash_off,
-                          active: _isTorchOn,
-                          size: 56,
-                          onTap: () {
-                            _controller.toggleTorch();
-                            setState(() {
-                              _isTorchOn = !_isTorchOn;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Processing overlay
-                  if (isProcessing)
-                    Positioned.fill(
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
-                        child: Container(
-                          color: Colors.black.withValues(alpha: 0.25),
-                          child: Center(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 28,
-                                vertical: 20,
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: SafeArea(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          child: Row(
+                            children: [
+                              _FrostedIconButton(
+                                icon: Icons.arrow_back_ios_new,
+                                onTap: isProcessing ? null : _handleBackAction,
                               ),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.65),
-                                borderRadius: BorderRadius.circular(
-                                  AppRadius.md,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // --- Bottom controls: frosted torch toggle ---
+                    if (_cameraError == null)
+                      Positioned(
+                        bottom: AppSpacing.lg,
+                        left: 0,
+                        right: 0,
+                        child: SafeArea(
+                          child: Center(
+                            child: _FrostedIconButton(
+                              icon: _isTorchOn
+                                  ? Icons.flash_on
+                                  : Icons.flash_off,
+                              active: _isTorchOn,
+                              size: 56,
+                              onTap: () {
+                                _controller.toggleTorch();
+                                setState(() {
+                                  _isTorchOn = !_isTorchOn;
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    // Processing overlay
+                    if (isProcessing)
+                      Positioned.fill(
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
+                          child: Container(
+                            color: Colors.black.withValues(alpha: 0.25),
+                            child: Center(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 28,
+                                  vertical: 20,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.65),
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.md,
+                                  ),
+                                ),
+                                child: const Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      width: 28,
+                                      height: 28,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              child: const Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizedBox(
-                                    width: 28,
-                                    height: 28,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.5,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
@@ -413,9 +463,12 @@ class _ScannerPageState extends State<ScannerPage>
       case AppLifecycleState.resumed:
         _resetIdleTimer();
         if (!_controller.value.isRunning) {
-          try {
-            _controller.start();
-          } catch (_) {}
+          _controller.start().catchError((e) {
+            if (!mounted) return;
+            setState(
+              () => _cameraError = 'Kamera gagal diaktifkan. Coba lagi.',
+            );
+          });
         }
         break;
       case AppLifecycleState.inactive:
@@ -430,6 +483,112 @@ class _ScannerPageState extends State<ScannerPage>
       default:
         break;
     }
+  }
+}
+
+/// Shown while the camera texture hasn't produced its first frame yet.
+/// Matches the viewfinder's dark theme instead of a bare spinner on a
+/// mismatched background — this is what covers the (now much shorter)
+/// gap instead of a flash of black.
+class _BootingPlaceholder extends StatelessWidget {
+  const _BootingPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black,
+      child: const Center(
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            color: Colors.white70,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PermissionDeniedView extends StatelessWidget {
+  const _PermissionDeniedView({required this.onRetry});
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black,
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.no_photography, color: Colors.white54, size: 48),
+            const SizedBox(height: 16),
+            const Text(
+              'Izin kamera dibutuhkan untuk memindai QR.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white),
+            ),
+            const SizedBox(height: 20),
+            FilledButton(onPressed: onRetry, child: const Text('Coba lagi')),
+            TextButton(
+              onPressed: () => Navigator.of(context).maybePop(),
+              child: const Text(
+                'Kembali',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CameraErrorView extends StatelessWidget {
+  const _CameraErrorView({
+    required this.message,
+    required this.onRetry,
+    required this.onBack,
+  });
+
+  final String message;
+  final VoidCallback onRetry;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black,
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white54, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white),
+              ),
+              const SizedBox(height: 20),
+              FilledButton(onPressed: onRetry, child: const Text('Coba lagi')),
+              TextButton(
+                onPressed: onBack,
+                child: const Text(
+                  'Kembali',
+                  style: TextStyle(color: Colors.white70),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -502,7 +661,6 @@ class _ScannerOverlayPainter extends CustomPainter {
       height: frameSize,
     );
 
-    // Dim everything outside the scan frame.
     final backgroundPath = Path()
       ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
     final holePath = Path()
@@ -519,7 +677,6 @@ class _ScannerOverlayPainter extends CustomPainter {
       Paint()..color = Colors.black.withValues(alpha: 0.55),
     );
 
-    // Corner brackets — color reflects scanning vs. processing state.
     final accent = isProcessing ? const Color(0xFF34D399) : Colors.white;
     final bracketPaint = Paint()
       ..color = accent
@@ -557,7 +714,6 @@ class _ScannerOverlayPainter extends CustomPainter {
       Offset(frameRect.right, frameRect.bottom - bracketLength),
     );
 
-    // Animated scan line — only while actively scanning, not processing.
     if (!isProcessing) {
       final lineY =
           frameRect.top + 16 + (frameRect.height - 32) * scanLineValue;
