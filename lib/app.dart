@@ -1,6 +1,6 @@
 import 'package:mbg_test/features/food/bloc/food_bloc.dart';
 import 'package:mbg_test/features/food/data/repositories/food_repository.dart';
-
+import 'package:mbg_test/features/volunteer/presentation/pages/volunteer_list_page.dart';
 import 'auth_gate.dart';
 import 'features/authentication/logic/auth/auth_bloc.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +8,7 @@ import 'package:mbg_test/core/routes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'features/authentication/data/repositories/auth_repository.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
+import 'package:mbg_test/core/helper/global_scaffold_messenger.dart';
 import 'package:mbg_test/features/users/bloc/user_bloc.dart';
 import 'package:mbg_test/features/volunteer/bloc/volunteer_bloc.dart';
 import 'package:mbg_test/features/attendance/bloc/attendance_bloc.dart';
@@ -56,7 +57,9 @@ class MyApp extends StatelessWidget {
         child: MaterialApp(
           title: "GeezeHub",
           debugShowCheckedModeBanner: false,
+          scaffoldMessengerKey: GlobalScaffoldMessenger.key,
           initialRoute: '/',
+          navigatorObservers: [volunteerRouteObserver],
           onGenerateRoute: AppRoutes.generateRoute,
           theme: ThemeData(
             useMaterial3: true,

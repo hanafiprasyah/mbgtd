@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
 import 'package:intl/intl.dart';
+import 'package:mbg_test/core/helper/global_scaffold_messenger.dart';
 import 'package:mbg_test/core/helper/salary_calculator.dart';
 import 'package:mbg_test/features/attendance/data/repositories/attendance_payroll_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,6 +10,7 @@ import 'package:mbg_test/features/attendance/presentation/pages/attendance_edit.
 import 'package:mbg_test/features/volunteer/bloc/volunteer_bloc.dart';
 import 'package:mbg_test/features/volunteer/bloc/volunteer_event.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
 class PayrollPage extends StatefulWidget {
   const PayrollPage({super.key});
@@ -17,13 +19,9 @@ class PayrollPage extends StatefulWidget {
   State<PayrollPage> createState() => _PayrollPageState();
 }
 
-class _PayrollPageState extends State<PayrollPage>
-    with SingleTickerProviderStateMixin {
+class _PayrollPageState extends State<PayrollPage> {
   String selectedTim = 'all';
   String? lastHighlightedId;
-
-  late final AnimationController _animationController;
-  late final Animation<double> _fadeAnimation;
 
   final currencyFormatter = NumberFormat.currency(
     locale: 'id_ID',
@@ -86,9 +84,12 @@ class _PayrollPageState extends State<PayrollPage>
       ToggleVolunteerPIC(volunteerId, isPIC, tim),
     );
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('PIC status updated')));
+    GlobalScaffoldMessenger.showSnackBar(
+      const SnackBar(
+        content: Text('PIC status updated'),
+        duration: Duration(seconds: 1),
+      ),
+    );
   }
 
   void _showScanHistory(BuildContext context, Map<String, dynamic> item) {
@@ -202,287 +203,356 @@ class _PayrollPageState extends State<PayrollPage>
                         }
 
                         // ✅ DATA exist
-                        return ListView.builder(
-                          itemCount: docs.length,
-                          itemBuilder: (context, index) {
-                            final data =
-                                docs[index].data() as Map<String, dynamic>;
+                        return AnimationLimiter(
+                          child: ListView.builder(
+                            itemCount: docs.length,
+                            itemBuilder: (context, index) {
+                              final data =
+                                  docs[index].data() as Map<String, dynamic>;
 
-                            String docID = docs[index].id;
-                            data['id'] = docID; // add document ID to data map
+                              String docID = docs[index].id;
+                              data['id'] = docID; // add document ID to data map
 
-                            final ts = data['timestamp'];
-                            DateTime? dateTime;
-                            if (ts is Timestamp) {
-                              dateTime = ts.toDate();
-                            }
+                              final ts = data['timestamp'];
+                              DateTime? dateTime;
+                              if (ts is Timestamp) {
+                                dateTime = ts.toDate();
+                              }
 
-                            final formattedDate = dateTime != null
-                                ? DateFormat(
-                                    'dd MMM yyyy • HH:mm',
-                                  ).format(dateTime)
-                                : (data['date'] ?? '-');
+                              final formattedDate = dateTime != null
+                                  ? DateFormat(
+                                      'dd MMM yyyy • HH:mm',
+                                    ).format(dateTime)
+                                  : (data['date'] ?? '-');
 
-                            final isLatest = index == 0;
+                              final isLatest = index == 0;
 
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // TIMELINE
-                                  Column(
-                                    children: [
-                                      Container(
-                                        width: 2,
-                                        height: 12,
-                                        color: Colors.grey.withValues(
-                                          alpha: 0.3,
-                                        ),
+                              return AnimationConfiguration.staggeredList(
+                                position: index,
+                                duration: const Duration(milliseconds: 400),
+                                child: SlideAnimation(
+                                  verticalOffset: 30.0,
+                                  curve: Curves.easeOutCubic,
+                                  child: FadeInAnimation(
+                                    curve: Curves.easeIn,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
                                       ),
-                                      Container(
-                                        width: 10,
-                                        height: 10,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: isLatest
-                                              ? Theme.of(context).primaryColor
-                                              : Colors.grey.withValues(
-                                                  alpha: 0.4,
-                                                ),
-                                        ),
-                                      ),
-                                      Container(
-                                        width: 2,
-                                        height: 60,
-                                        color: Colors.grey.withValues(
-                                          alpha: 0.3,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-
-                                  const SizedBox(width: 10),
-
-                                  // CARD CONTENT
-                                  Expanded(
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(14),
-                                        color: Theme.of(context).cardColor,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: isLatest
-                                                ? Theme.of(context).primaryColor
-                                                      .withValues(alpha: 0.5)
-                                                : Colors.black.withValues(
-                                                    alpha: 0.05,
-                                                  ),
-                                            blurRadius: isLatest ? 16 : 8,
-                                            spreadRadius: isLatest ? 2 : 0,
-                                            offset: const Offset(0, 4),
-                                          ),
-                                        ],
-                                        border: isLatest
-                                            ? Border.all(
-                                                color: Theme.of(
-                                                  context,
-                                                ).primaryColor,
-                                                width: 1.5,
-                                              )
-                                            : null,
-                                      ),
-                                      child: ListTile(
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                              horizontal: 14,
-                                              vertical: 10,
-                                            ),
-                                        leading: Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: Theme.of(context)
-                                                .primaryColor
-                                                .withValues(alpha: 0.1),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Icon(
-                                            Icons.qr_code_scanner,
-                                            size: 16,
-                                            color: Theme.of(
-                                              context,
-                                            ).primaryColor,
-                                          ),
-                                        ),
-                                        title: Row(
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                'Scanned by ${data['scannedByEmail'] ?? '-'}',
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 11,
-                                                ),
-                                              ),
-                                            ),
-                                            // Safer attendanceType handling
-                                            (() {
-                                              final attendanceType =
-                                                  data['attendanceType'];
-                                              final multiplier =
-                                                  (data['multiplier'] is num)
-                                                  ? (data['multiplier'] as num)
-                                                        .toDouble()
-                                                  : null;
-                                              final isAbsent =
-                                                  attendanceType == 'absent' ||
-                                                  multiplier == 0;
-                                              final isHalfDay =
-                                                  !isAbsent &&
-                                                  attendanceType != null &&
-                                                  attendanceType != 'full';
-                                              return Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 4,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: attendanceType == null
-                                                      ? Colors.grey.withValues(
-                                                          alpha: 0.15,
-                                                        )
-                                                      : isAbsent
-                                                      ? Colors.red.withValues(
-                                                          alpha: 0.15,
-                                                        )
-                                                      : isHalfDay
-                                                      ? Colors.amber.withValues(
-                                                          alpha: 0.15,
-                                                        )
-                                                      : Theme.of(context)
-                                                            .primaryColor
-                                                            .withValues(
-                                                              alpha: 0.1,
-                                                            ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(20),
-                                                ),
-                                                child: Text(
-                                                  attendanceType == null
-                                                      ? 'Not Set'
-                                                      : isAbsent
-                                                      ? 'Absent'
-                                                      : isHalfDay
-                                                      ? 'Half Day'
-                                                      : 'Full Day',
-                                                  style: TextStyle(
-                                                    fontSize: 8,
-                                                    fontWeight: FontWeight.w600,
-                                                    color:
-                                                        attendanceType == null
-                                                        ? Colors.grey
-                                                        : isAbsent
-                                                        ? Colors.red.shade700
-                                                        : isHalfDay
-                                                        ? Colors.amber.shade800
-                                                        : Theme.of(
-                                                            context,
-                                                          ).primaryColor,
-                                                  ),
-                                                ),
-                                              );
-                                            })(),
-                                          ],
-                                        ),
-                                        subtitle: Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: 4,
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          // TIMELINE
+                                          Column(
                                             children: [
-                                              Text(
-                                                formattedDate,
-                                                style: const TextStyle(
-                                                  fontSize: 11,
-                                                  color: Colors.grey,
+                                              Container(
+                                                width: 2,
+                                                height: 12,
+                                                color: Colors.grey.withValues(
+                                                  alpha: 0.3,
                                                 ),
                                               ),
-                                              const SizedBox(height: 4),
                                               Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 4,
-                                                    ),
+                                                width: 10,
+                                                height: 10,
                                                 decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
                                                   color: isLatest
-                                                      ? Colors.amber.withValues(
-                                                          alpha: 0.15,
-                                                        )
-                                                      : Theme.of(context)
-                                                            .primaryColor
-                                                            .withValues(
-                                                              alpha: 0.1,
-                                                            ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(20),
+                                                      ? Theme.of(
+                                                          context,
+                                                        ).primaryColor
+                                                      : Colors.grey.withValues(
+                                                          alpha: 0.4,
+                                                        ),
                                                 ),
-                                                child: Text(
-                                                  isLatest ? 'Latest' : 'Past',
-                                                  style: TextStyle(
-                                                    fontSize: 8,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: isLatest
-                                                        ? Colors.amber.shade800
-                                                        : Theme.of(
-                                                            context,
-                                                          ).primaryColor,
-                                                  ),
+                                              ),
+                                              Container(
+                                                width: 2,
+                                                height: 60,
+                                                color: Colors.grey.withValues(
+                                                  alpha: 0.3,
                                                 ),
                                               ),
                                             ],
                                           ),
-                                        ),
-                                        trailing: IconButton(
-                                          icon: Icon(
-                                            Icons.edit,
-                                            color: Colors.orange,
-                                          ),
-                                          onPressed: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    EditAttendancePage(
-                                                      attendanceId:
-                                                          data['id'] ?? '',
-                                                      data: data,
-                                                    ),
+
+                                          const SizedBox(width: 10),
+
+                                          // CARD CONTENT
+                                          Expanded(
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(14),
+                                                color: Theme.of(
+                                                  context,
+                                                ).cardColor,
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: isLatest
+                                                        ? Theme.of(context)
+                                                              .primaryColor
+                                                              .withValues(
+                                                                alpha: 0.5,
+                                                              )
+                                                        : Colors.black
+                                                              .withValues(
+                                                                alpha: 0.05,
+                                                              ),
+                                                    blurRadius: isLatest
+                                                        ? 16
+                                                        : 8,
+                                                    spreadRadius: isLatest
+                                                        ? 2
+                                                        : 0,
+                                                    offset: const Offset(0, 4),
+                                                  ),
+                                                ],
+                                                border: isLatest
+                                                    ? Border.all(
+                                                        color: Theme.of(
+                                                          context,
+                                                        ).primaryColor,
+                                                        width: 1.5,
+                                                      )
+                                                    : null,
                                               ),
-                                            );
-                                            // Navigator.pushNamed(
-                                            //   context,
-                                            //   '/edit-attendance',
-                                            //   arguments: {
-                                            //     'attendanceId': data['id'],
-                                            //     'data': data,
-                                            //   },
-                                            // );
-                                          },
-                                        ),
+                                              child: ListTile(
+                                                contentPadding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 14,
+                                                      vertical: 10,
+                                                    ),
+                                                leading: Container(
+                                                  padding: const EdgeInsets.all(
+                                                    8,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: Theme.of(context)
+                                                        .primaryColor
+                                                        .withValues(alpha: 0.1),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.qr_code_scanner,
+                                                    size: 16,
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).primaryColor,
+                                                  ),
+                                                ),
+                                                title: Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: Text(
+                                                        'Scanned by ${data['scannedByEmail'] ?? '-'}',
+                                                        style: const TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          fontSize: 11,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    // Safer attendanceType handling
+                                                    (() {
+                                                      final attendanceType =
+                                                          data['attendanceType'];
+                                                      final multiplier =
+                                                          (data['multiplier']
+                                                              is num)
+                                                          ? (data['multiplier']
+                                                                    as num)
+                                                                .toDouble()
+                                                          : null;
+                                                      final isAbsent =
+                                                          attendanceType ==
+                                                              'absent' ||
+                                                          multiplier == 0;
+                                                      final isHalfDay =
+                                                          !isAbsent &&
+                                                          attendanceType !=
+                                                              null &&
+                                                          attendanceType !=
+                                                              'full';
+                                                      return Container(
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 10,
+                                                              vertical: 4,
+                                                            ),
+                                                        decoration: BoxDecoration(
+                                                          color:
+                                                              attendanceType ==
+                                                                  null
+                                                              ? Colors.grey
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.15,
+                                                                    )
+                                                              : isAbsent
+                                                              ? Colors.red
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.15,
+                                                                    )
+                                                              : isHalfDay
+                                                              ? Colors.amber
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.15,
+                                                                    )
+                                                              : Theme.of(
+                                                                      context,
+                                                                    )
+                                                                    .primaryColor
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.1,
+                                                                    ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                20,
+                                                              ),
+                                                        ),
+                                                        child: Text(
+                                                          attendanceType == null
+                                                              ? 'Not Set'
+                                                              : isAbsent
+                                                              ? 'Absent'
+                                                              : isHalfDay
+                                                              ? 'Half Day'
+                                                              : 'Full Day',
+                                                          style: TextStyle(
+                                                            fontSize: 8,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                            color:
+                                                                attendanceType ==
+                                                                    null
+                                                                ? Colors.grey
+                                                                : isAbsent
+                                                                ? Colors
+                                                                      .red
+                                                                      .shade700
+                                                                : isHalfDay
+                                                                ? Colors
+                                                                      .amber
+                                                                      .shade800
+                                                                : Theme.of(
+                                                                    context,
+                                                                  ).primaryColor,
+                                                          ),
+                                                        ),
+                                                      );
+                                                    })(),
+                                                  ],
+                                                ),
+                                                subtitle: Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        top: 4,
+                                                      ),
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        formattedDate,
+                                                        style: const TextStyle(
+                                                          fontSize: 11,
+                                                          color: Colors.grey,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                      Container(
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 10,
+                                                              vertical: 4,
+                                                            ),
+                                                        decoration: BoxDecoration(
+                                                          color: isLatest
+                                                              ? Colors.amber
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.15,
+                                                                    )
+                                                              : Theme.of(
+                                                                      context,
+                                                                    )
+                                                                    .primaryColor
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.1,
+                                                                    ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                20,
+                                                              ),
+                                                        ),
+                                                        child: Text(
+                                                          isLatest
+                                                              ? 'Latest'
+                                                              : 'Past',
+                                                          style: TextStyle(
+                                                            fontSize: 8,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                            color: isLatest
+                                                                ? Colors
+                                                                      .amber
+                                                                      .shade800
+                                                                : Theme.of(
+                                                                    context,
+                                                                  ).primaryColor,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                trailing: IconButton(
+                                                  icon: Icon(
+                                                    Icons.edit,
+                                                    color: Colors.orange,
+                                                  ),
+                                                  onPressed: () {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (_) =>
+                                                            EditAttendancePage(
+                                                              attendanceId:
+                                                                  data['id'] ??
+                                                                  '',
+                                                              data: data,
+                                                            ),
+                                                      ),
+                                                    );
+                                                    // Navigator.pushNamed(
+                                                    //   context,
+                                                    //   '/edit-attendance',
+                                                    //   arguments: {
+                                                    //     'attendanceId': data['id'],
+                                                    //     'data': data,
+                                                    //   },
+                                                    // );
+                                                  },
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
-                                ],
-                              ),
-                            );
-                          },
+                                ),
+                              );
+                            },
+                          ),
                         );
                       },
                     ),
@@ -506,7 +576,7 @@ class _PayrollPageState extends State<PayrollPage>
 
       if (totalDeleted < 350) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
+        GlobalScaffoldMessenger.showSnackBar(
           SnackBar(
             content: Row(
               children: [
@@ -522,7 +592,7 @@ class _PayrollPageState extends State<PayrollPage>
             ),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 4),
+            duration: const Duration(seconds: 2),
           ),
         );
         return;
@@ -559,17 +629,18 @@ class _PayrollPageState extends State<PayrollPage>
       await batch.commit();
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+      GlobalScaffoldMessenger.showSnackBar(
+        SnackBar(
           content: Text(
             'Attendance reset for new period and snapshot recorded',
           ),
+          duration: Duration(seconds: 2),
         ),
       );
       setState(() {});
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      GlobalScaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text('Reset failed: $e'),
           backgroundColor: Colors.red,
@@ -586,22 +657,6 @@ class _PayrollPageState extends State<PayrollPage>
     } catch (e) {
       return dateStr;
     }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-
-    _fadeAnimation = CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    );
-
-    _animationController.forward();
   }
 
   @override
@@ -809,583 +864,612 @@ class _PayrollPageState extends State<PayrollPage>
                   teamDayMap.putIfAbsent(tim, () => []).add(summary);
                 });
 
-                return CustomScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  slivers: [
-                    // SUMMARY DASHBOARD
-                    SliverToBoxAdapter(
-                      child: TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 20, end: 0),
-                        duration: const Duration(milliseconds: 500),
-                        curve: Curves.easeOut,
-                        builder: (context, value, child) {
-                          return Transform.translate(
-                            offset: Offset(0, value),
-                            child: Opacity(
-                              opacity: (1 - (value / 20)).clamp(0.0, 1.0),
-                              child: child,
-                            ),
-                          );
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppSpacing.xs),
-                          child: Card(
-                            elevation: 4,
-                            shadowColor: Colors.black.withValues(alpha: 0.1),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Theme.of(
-                                      context,
-                                    ).primaryColor.withValues(alpha: 0.9),
-                                    Theme.of(
-                                      context,
-                                    ).primaryColor.withValues(alpha: 0.7),
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                              ),
+                return AnimationLimiter(
+                  child: CustomScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    slivers: [
+                      // SUMMARY DASHBOARD
+                      SliverToBoxAdapter(
+                        child: AnimationConfiguration.synchronized(
+                          duration: const Duration(milliseconds: 500),
+                          child: SlideAnimation(
+                            verticalOffset: 20.0,
+                            curve: Curves.easeOutCubic,
+                            child: FadeInAnimation(
+                              curve: Curves.easeIn,
                               child: Padding(
-                                padding: const EdgeInsets.all(AppSpacing.md),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Payroll Summary',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        letterSpacing: 0.5,
+                                padding: const EdgeInsets.all(AppSpacing.xs),
+                                child: Card(
+                                  elevation: 4,
+                                  shadowColor: Colors.black.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(20),
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Theme.of(
+                                            context,
+                                          ).primaryColor.withValues(alpha: 0.9),
+                                          Theme.of(
+                                            context,
+                                          ).primaryColor.withValues(alpha: 0.7),
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: _buildSummaryItem(
-                                            context,
-                                            icon: Icons.people,
-                                            label: 'Volunteer',
-                                            value:
-                                                '${totalVolunteer.toString()} people',
-                                          ),
-                                        ),
-                                        Expanded(
-                                          child: _buildSummaryItem(
-                                            context,
-                                            icon: Icons.payments,
-                                            label: 'Payroll Total',
-                                            value: currencyFormatter.format(
-                                              totalGajiAll,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(
+                                        AppSpacing.md,
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Payroll Summary',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                              letterSpacing: 0.5,
                                             ),
                                           ),
-                                        ),
-                                      ],
+                                          const SizedBox(height: 8),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: _buildSummaryItem(
+                                                  context,
+                                                  icon: Icons.people,
+                                                  label: 'Volunteer',
+                                                  value:
+                                                      '${totalVolunteer.toString()} people',
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: _buildSummaryItem(
+                                                  context,
+                                                  icon: Icons.payments,
+                                                  label: 'Payroll Total',
+                                                  value: currencyFormatter
+                                                      .format(totalGajiAll),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
 
-                    ...teams.map((team) {
-                      final items = groupedData[team]!;
-                      final totalTeam = teamTotals[team] ?? 0;
+                      ...teams.map((team) {
+                        final items = groupedData[team]!;
+                        final totalTeam = teamTotals[team] ?? 0;
 
-                      // Detect Chef & Check if any contributions from Masak as Burden value
-                      final isChefTeam =
-                          team.toString().trim().toLowerCase() == 'chef';
-                      final teamChips = teamDayMap[team] ?? [];
-                      final hasMasakExtra =
-                          isChefTeam &&
-                          teamChips.any(
-                            (s) =>
-                                ((s['extraFromMasakBurden'] as num?)
-                                        ?.toDouble() ??
-                                    0.0) >
-                                0,
-                          );
-                      final chipsHeight = hasMasakExtra ? 132.0 : 100.0;
+                        // Detect Chef & Check if any contributions from Masak as Burden value
+                        final isChefTeam =
+                            team.toString().trim().toLowerCase() == 'chef';
+                        final teamChips = teamDayMap[team] ?? [];
+                        final hasMasakExtra =
+                            isChefTeam &&
+                            teamChips.any(
+                              (s) =>
+                                  ((s['extraFromMasakBurden'] as num?)
+                                          ?.toDouble() ??
+                                      0.0) >
+                                  0,
+                            );
+                        final chipsHeight = hasMasakExtra ? 132.0 : 100.0;
 
-                      return SliverMainAxisGroup(
-                        slivers: [
-                          // STICKY HEADER
-                          SliverPersistentHeader(
-                            pinned: true,
-                            delegate: _TeamHeaderDelegate(
-                              title:
-                                  '$team (Total: ${currencyFormatter.format(totalTeam)}) - ${items.length} orang',
-                            ),
-                          ),
-
-                          // TEAM-DAY SUMMARY (chips) — only shown when there is scan data
-                          if (teamChips.isNotEmpty)
-                            SliverToBoxAdapter(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                child: SizedBox(
-                                  height: chipsHeight,
-                                  child: Stack(
-                                    children: [
-                                      ListView.separated(
-                                        scrollDirection: Axis.horizontal,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 4,
-                                        ),
-                                        itemCount:
-                                            (teamDayMap[team] ?? []).length,
-                                        separatorBuilder: (_, __) =>
-                                            const SizedBox(width: 8),
-                                        physics: const BouncingScrollPhysics(),
-                                        itemBuilder: (context, index) {
-                                          final summary =
-                                              (teamDayMap[team] ?? [])[index];
-
-                                          final date = summary['date'] ?? '-';
-                                          final displayDate =
-                                              _formatDisplayDate(date);
-                                          final full =
-                                              summary['fullCount'] ?? 0;
-                                          final half =
-                                              summary['halfCount'] ?? 0;
-                                          final absent =
-                                              summary['absentCount'] ?? 0;
-                                          final share =
-                                              summary['sharePerFull'] ?? 0.0;
-
-                                          // Burden value from Masak H/A at the same date
-                                          final masakExtra = isChefTeam
-                                              ? ((summary['extraFromMasakBurden']
-                                                            as num?)
-                                                        ?.toDouble() ??
-                                                    0.0)
-                                              : 0.0;
-
-                                          final today = DateFormat(
-                                            'yyyy-MM-dd',
-                                          ).format(DateTime.now());
-                                          final isToday = date == today;
-
-                                          return Container(
-                                            width: 140,
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 8,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: isToday
-                                                  ? Theme.of(context)
-                                                        .primaryColor
-                                                        .withValues(alpha: 0.15)
-                                                  : Theme.of(
-                                                      context,
-                                                    ).primaryColor.withValues(
-                                                      alpha: 0.06,
-                                                    ),
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              border: Border.all(
-                                                color: isToday
-                                                    ? Theme.of(
-                                                        context,
-                                                      ).primaryColor
-                                                    : Theme.of(
-                                                        context,
-                                                      ).primaryColor.withValues(
-                                                        alpha: 0.12,
-                                                      ),
-                                                width: isToday ? 1.5 : 1,
-                                              ),
-                                            ),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Text(
-                                                  displayDate,
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: Theme.of(
-                                                      context,
-                                                    ).primaryColor,
-                                                  ),
-                                                ),
-                                                if (isToday)
-                                                  Container(
-                                                    margin:
-                                                        const EdgeInsets.only(
-                                                          top: 4,
-                                                        ),
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 4,
-                                                          vertical: 2,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.green
-                                                          .withValues(
-                                                            alpha: 0.15,
-                                                          ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            6,
-                                                          ),
-                                                    ),
-                                                    child: const Text(
-                                                      'Today',
-                                                      style: TextStyle(
-                                                        fontSize: 6,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        color: Colors.green,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  'F:$full • H:$half • A:$absent',
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                    color: Colors.grey.shade700,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  'Share: ${currencyFormatter.format((share).toInt())}',
-                                                  style: const TextStyle(
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-
-                                                // Show burden from Masak at this date
-                                                if (masakExtra > 0) ...[
-                                                  const SizedBox(height: 4),
-                                                  Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 6,
-                                                          vertical: 2,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.deepOrange
-                                                          .withValues(
-                                                            alpha: 0.12,
-                                                          ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            6,
-                                                          ),
-                                                    ),
-                                                    child: Text(
-                                                      '+${currencyFormatter.format(masakExtra.toInt())}\ndari Masak H/A',
-                                                      style: TextStyle(
-                                                        fontSize: 9,
-                                                        height: 1.2,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        color: Colors
-                                                            .deepOrange
-                                                            .shade700,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ],
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                        return SliverMainAxisGroup(
+                          slivers: [
+                            // STICKY HEADER
+                            SliverPersistentHeader(
+                              pinned: true,
+                              delegate: _TeamHeaderDelegate(
+                                title:
+                                    '$team (Total: ${currencyFormatter.format(totalTeam)}) - ${items.length} orang',
                               ),
                             ),
 
-                          // TEAM LIST
-                          SliverList(
-                            delegate: SliverChildBuilderDelegate((
-                              context,
-                              index,
-                            ) {
-                              final item = items[index];
-                              final isHighlighted =
-                                  item['id'] == lastHighlightedId;
-
-                              return FadeTransition(
-                                opacity: _fadeAnimation,
-                                child: TweenAnimationBuilder<double>(
-                                  tween: Tween(begin: 30, end: 0),
-                                  duration: Duration(
-                                    milliseconds: 400 + (index * 50),
+                            // TEAM-DAY SUMMARY (chips) — only shown when there is scan data
+                            if (teamChips.isNotEmpty)
+                              SliverToBoxAdapter(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
                                   ),
-                                  curve: Curves.easeOut,
-                                  builder: (context, value, child) {
-                                    return Transform.translate(
-                                      offset: Offset(0, value),
-                                      child: child,
-                                    );
-                                  },
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 400),
-                                    curve: Curves.easeOut,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(16),
-                                      boxShadow: isHighlighted
-                                          ? [
-                                              BoxShadow(
-                                                color: Theme.of(context)
-                                                    .primaryColor
-                                                    .withValues(alpha: 0.35),
-                                                blurRadius: 16,
-                                                spreadRadius: 1,
+                                  child: SizedBox(
+                                    height: chipsHeight,
+                                    child: Stack(
+                                      children: [
+                                        ListView.separated(
+                                          scrollDirection: Axis.horizontal,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 4,
+                                          ),
+                                          itemCount:
+                                              (teamDayMap[team] ?? []).length,
+                                          separatorBuilder: (_, __) =>
+                                              const SizedBox(width: 8),
+                                          physics:
+                                              const BouncingScrollPhysics(),
+                                          itemBuilder: (context, index) {
+                                            final summary =
+                                                (teamDayMap[team] ?? [])[index];
+
+                                            final date = summary['date'] ?? '-';
+                                            final displayDate =
+                                                _formatDisplayDate(date);
+                                            final full =
+                                                summary['fullCount'] ?? 0;
+                                            final half =
+                                                summary['halfCount'] ?? 0;
+                                            final absent =
+                                                summary['absentCount'] ?? 0;
+                                            final share =
+                                                summary['sharePerFull'] ?? 0.0;
+
+                                            // Burden value from Masak H/A at the same date
+                                            final masakExtra = isChefTeam
+                                                ? ((summary['extraFromMasakBurden']
+                                                              as num?)
+                                                          ?.toDouble() ??
+                                                      0.0)
+                                                : 0.0;
+
+                                            final today = DateFormat(
+                                              'yyyy-MM-dd',
+                                            ).format(DateTime.now());
+                                            final isToday = date == today;
+
+                                            return Container(
+                                              width: 140,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 8,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: isToday
+                                                    ? Theme.of(
+                                                        context,
+                                                      ).primaryColor.withValues(
+                                                        alpha: 0.15,
+                                                      )
+                                                    : Theme.of(
+                                                        context,
+                                                      ).primaryColor.withValues(
+                                                        alpha: 0.06,
+                                                      ),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                border: Border.all(
+                                                  color: isToday
+                                                      ? Theme.of(
+                                                          context,
+                                                        ).primaryColor
+                                                      : Theme.of(context)
+                                                            .primaryColor
+                                                            .withValues(
+                                                              alpha: 0.12,
+                                                            ),
+                                                  width: isToday ? 1.5 : 1,
+                                                ),
                                               ),
-                                            ]
-                                          : [],
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Text(
+                                                    displayDate,
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: Theme.of(
+                                                        context,
+                                                      ).primaryColor,
+                                                    ),
+                                                  ),
+                                                  if (isToday)
+                                                    Container(
+                                                      margin:
+                                                          const EdgeInsets.only(
+                                                            top: 4,
+                                                          ),
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 4,
+                                                            vertical: 2,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.green
+                                                            .withValues(
+                                                              alpha: 0.15,
+                                                            ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              6,
+                                                            ),
+                                                      ),
+                                                      child: const Text(
+                                                        'Today',
+                                                        style: TextStyle(
+                                                          fontSize: 6,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          color: Colors.green,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    'F:$full • H:$half • A:$absent',
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      color:
+                                                          Colors.grey.shade700,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    'Share: ${currencyFormatter.format((share).toInt())}',
+                                                    style: const TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+
+                                                  // Show burden from Masak at this date
+                                                  if (masakExtra > 0) ...[
+                                                    const SizedBox(height: 4),
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 6,
+                                                            vertical: 2,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.deepOrange
+                                                            .withValues(
+                                                              alpha: 0.12,
+                                                            ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              6,
+                                                            ),
+                                                      ),
+                                                      child: Text(
+                                                        '+${currencyFormatter.format(masakExtra.toInt())}\ndari Masak H/A',
+                                                        style: TextStyle(
+                                                          fontSize: 9,
+                                                          height: 1.2,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          color: Colors
+                                                              .deepOrange
+                                                              .shade700,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ],
                                     ),
-                                    child: Card(
-                                      elevation: isHighlighted ? 6 : 3,
-                                      shadowColor: Colors.black.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                      margin: const EdgeInsets.symmetric(
-                                        horizontal: AppSpacing.md,
-                                        vertical: AppSpacing.sm,
-                                      ),
-                                      child: Container(
+                                  ),
+                                ),
+                              ),
+
+                            // TEAM LIST
+                            SliverList(
+                              delegate: SliverChildBuilderDelegate((
+                                context,
+                                index,
+                              ) {
+                                final item = items[index];
+                                final isHighlighted =
+                                    item['id'] == lastHighlightedId;
+
+                                return AnimationConfiguration.staggeredList(
+                                  position: index,
+                                  duration: const Duration(milliseconds: 500),
+                                  child: SlideAnimation(
+                                    verticalOffset: 40.0,
+                                    curve: Curves.easeOutCubic,
+                                    child: FadeInAnimation(
+                                      curve: Curves.easeIn,
+                                      child: AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 400,
+                                        ),
+                                        curve: Curves.easeOut,
                                         decoration: BoxDecoration(
                                           borderRadius: BorderRadius.circular(
                                             16,
                                           ),
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              Theme.of(context).cardColor,
-                                              Theme.of(context).cardColor
-                                                  .withValues(alpha: 0.95),
-                                            ],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          ),
+                                          boxShadow: isHighlighted
+                                              ? [
+                                                  BoxShadow(
+                                                    color: Theme.of(context)
+                                                        .primaryColor
+                                                        .withValues(
+                                                          alpha: 0.35,
+                                                        ),
+                                                    blurRadius: 16,
+                                                    spreadRadius: 1,
+                                                  ),
+                                                ]
+                                              : [],
                                         ),
-                                        child: ListTile(
-                                          onTap: () {
-                                            Navigator.pushNamed(
-                                              context,
-                                              '/payroll-detail-page',
-                                              arguments: item['id'],
-                                            );
-                                          },
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                horizontal: 16,
-                                                vertical: 12,
-                                              ),
-                                          leading: CircleAvatar(
-                                            backgroundColor: Theme.of(context)
-                                                .primaryColor
-                                                .withValues(
-                                                  alpha: isHighlighted
-                                                      ? 0.25
-                                                      : 0.1,
-                                                ),
-                                            child: Text(
-                                              (item['nama'] ?? '?')[0],
-                                              style: TextStyle(
-                                                color: Theme.of(
-                                                  context,
-                                                ).primaryColor,
-                                                fontWeight: FontWeight.bold,
-                                              ),
+                                        child: Card(
+                                          elevation: isHighlighted ? 6 : 3,
+                                          shadowColor: Colors.black.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              16,
                                             ),
                                           ),
-                                          title: Row(
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  item['nama'] ?? '-',
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.w700,
-                                                    fontSize: 14,
-                                                  ),
-                                                ),
-                                              ),
-                                              if ((item['isPIC'] ?? false) ==
-                                                  true)
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 6,
-                                                        vertical: 2,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.orange
-                                                        .withValues(
-                                                          alpha: 0.15,
-                                                        ),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          6,
-                                                        ),
-                                                  ),
-
-                                                  child: const Text(
-                                                    'PIC',
-                                                    style: TextStyle(
-                                                      fontSize: 10,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: Colors.orange,
-                                                    ),
-                                                  ),
-                                                ),
-                                            ],
+                                          margin: const EdgeInsets.symmetric(
+                                            horizontal: AppSpacing.md,
+                                            vertical: AppSpacing.sm,
                                           ),
-                                          subtitle: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              const SizedBox(
-                                                height: AppSpacing.sm,
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  Theme.of(context).cardColor,
+                                                  Theme.of(context).cardColor
+                                                      .withValues(alpha: 0.95),
+                                                ],
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
                                               ),
-                                              // SALARY (moved here for better layout)
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 6,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: Theme.of(context)
-                                                      .primaryColor
-                                                      .withValues(
-                                                        alpha: isHighlighted
-                                                            ? 0.2
-                                                            : 0.1,
-                                                      ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                ),
-                                                child: Text(
-                                                  currencyFormatter.format(
-                                                    item['totalGaji'] ?? 0,
+                                            ),
+                                            child: ListTile(
+                                              onTap: () {
+                                                Navigator.pushNamed(
+                                                  context,
+                                                  '/payroll-detail-page',
+                                                  arguments: item['id'],
+                                                );
+                                              },
+                                              contentPadding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 16,
+                                                    vertical: 12,
                                                   ),
+                                              leading: CircleAvatar(
+                                                backgroundColor:
+                                                    Theme.of(
+                                                      context,
+                                                    ).primaryColor.withValues(
+                                                      alpha: isHighlighted
+                                                          ? 0.25
+                                                          : 0.1,
+                                                    ),
+                                                child: Text(
+                                                  (item['nama'] ?? '?')[0],
                                                   style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 12,
                                                     color: Theme.of(
                                                       context,
                                                     ).primaryColor,
+                                                    fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
                                               ),
-                                              const SizedBox(
-                                                height: AppSpacing.sm,
-                                              ),
-                                              Wrap(
-                                                spacing: 6,
-                                                runSpacing: 2,
-                                                crossAxisAlignment:
-                                                    WrapCrossAlignment.center,
+                                              title: Row(
                                                 children: [
-                                                  Text(
-                                                    (item['totalScan'] ?? 0) > 0
-                                                        ? '${item['totalScan']} scan'
-                                                        : 'No scan',
-                                                    style: const TextStyle(
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    '/ ${_formatEffectiveAttendance(item['effectiveScan'])} day(s)',
-                                                    style: const TextStyle(
-                                                      fontSize: 13,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      color: Colors.teal,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Row(
-                                                children: [
-                                                  const Icon(
-                                                    Icons.qr_code_scanner,
-                                                    size: 12,
-                                                    color: Colors.grey,
-                                                  ),
-                                                  const SizedBox(width: 4),
                                                   Expanded(
                                                     child: Text(
-                                                      item['scannedByEmail'] ??
-                                                          '-',
+                                                      item['nama'] ?? '-',
                                                       style: const TextStyle(
-                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        fontSize: 14,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  if ((item['isPIC'] ??
+                                                          false) ==
+                                                      true)
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 6,
+                                                            vertical: 2,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.orange
+                                                            .withValues(
+                                                              alpha: 0.15,
+                                                            ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              6,
+                                                            ),
+                                                      ),
+
+                                                      child: const Text(
+                                                        'PIC',
+                                                        style: TextStyle(
+                                                          fontSize: 10,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          color: Colors.orange,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                              subtitle: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  const SizedBox(
+                                                    height: AppSpacing.sm,
+                                                  ),
+                                                  // SALARY (moved here for better layout)
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 10,
+                                                          vertical: 6,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: Theme.of(context)
+                                                          .primaryColor
+                                                          .withValues(
+                                                            alpha: isHighlighted
+                                                                ? 0.2
+                                                                : 0.1,
+                                                          ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            10,
+                                                          ),
+                                                    ),
+                                                    child: Text(
+                                                      currencyFormatter.format(
+                                                        item['totalGaji'] ?? 0,
+                                                      ),
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 12,
+                                                        color: Theme.of(
+                                                          context,
+                                                        ).primaryColor,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(
+                                                    height: AppSpacing.sm,
+                                                  ),
+                                                  Wrap(
+                                                    spacing: 6,
+                                                    runSpacing: 2,
+                                                    crossAxisAlignment:
+                                                        WrapCrossAlignment
+                                                            .center,
+                                                    children: [
+                                                      Text(
+                                                        (item['totalScan'] ??
+                                                                    0) >
+                                                                0
+                                                            ? '${item['totalScan']} scan'
+                                                            : 'No scan',
+                                                        style: const TextStyle(
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        '/ ${_formatEffectiveAttendance(item['effectiveScan'])} day(s)',
+                                                        style: const TextStyle(
+                                                          fontSize: 13,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          color: Colors.teal,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Row(
+                                                    children: [
+                                                      const Icon(
+                                                        Icons.qr_code_scanner,
+                                                        size: 12,
                                                         color: Colors.grey,
                                                       ),
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
+                                                      const SizedBox(width: 4),
+                                                      Expanded(
+                                                        child: Text(
+                                                          item['scannedByEmail'] ??
+                                                              '-',
+                                                          style:
+                                                              const TextStyle(
+                                                                fontSize: 10,
+                                                                color:
+                                                                    Colors.grey,
+                                                              ),
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                              trailing: PopupMenuButton<String>(
+                                                onSelected: (value) {
+                                                  if (value == 'set_pic') {
+                                                    _handleSetPIC(
+                                                      context,
+                                                      item,
+                                                    );
+                                                  } else if (value ==
+                                                      'history') {
+                                                    _showScanHistory(
+                                                      context,
+                                                      item,
+                                                    );
+                                                  }
+                                                },
+                                                itemBuilder: (context) => [
+                                                  const PopupMenuItem(
+                                                    value: 'history',
+                                                    child: Text(
+                                                      'View Scan History',
+                                                    ),
+                                                  ),
+                                                  PopupMenuItem(
+                                                    value: 'set_pic',
+                                                    child: Text(
+                                                      item['isPIC'] == true
+                                                          ? 'Remove PIC'
+                                                          : 'Set as PIC',
                                                     ),
                                                   ),
                                                 ],
                                               ),
-                                            ],
-                                          ),
-                                          trailing: PopupMenuButton<String>(
-                                            onSelected: (value) {
-                                              if (value == 'set_pic') {
-                                                _handleSetPIC(context, item);
-                                              } else if (value == 'history') {
-                                                _showScanHistory(context, item);
-                                              }
-                                            },
-                                            itemBuilder: (context) => [
-                                              const PopupMenuItem(
-                                                value: 'history',
-                                                child: Text(
-                                                  'View Scan History',
-                                                ),
-                                              ),
-                                              PopupMenuItem(
-                                                value: 'set_pic',
-                                                child: Text(
-                                                  item['isPIC'] == true
-                                                      ? 'Remove PIC'
-                                                      : 'Set as PIC',
-                                                ),
-                                              ),
-                                            ],
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              );
-                            }, childCount: items.length),
-                          ),
-                        ],
-                      );
-                    }),
-                  ],
+                                );
+                              }, childCount: items.length),
+                            ),
+                          ],
+                        );
+                      }),
+                    ],
+                  ),
                 );
               },
             ),
@@ -1393,12 +1477,6 @@ class _PayrollPageState extends State<PayrollPage>
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
   }
 }
 

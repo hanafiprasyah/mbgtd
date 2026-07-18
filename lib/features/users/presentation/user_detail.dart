@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
+import 'package:mbg_test/core/helper/global_scaffold_messenger.dart';
 import 'package:mbg_test/features/users/bloc/user_bloc.dart';
 import 'package:mbg_test/features/users/bloc/user_event.dart';
 import 'package:mbg_test/features/users/bloc/user_state.dart';
@@ -95,7 +96,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
   }
 
   void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    GlobalScaffoldMessenger.showSnackBar(
       SnackBar(
         content: Row(
           children: [
@@ -113,7 +114,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
   }
 
   void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    GlobalScaffoldMessenger.showSnackBar(
       SnackBar(
         content: Row(
           children: [

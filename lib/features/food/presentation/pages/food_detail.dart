@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mbg_test/core/helper/global_scaffold_messenger.dart';
 import 'package:mbg_test/features/food/bloc/food_bloc.dart';
 import 'package:mbg_test/features/food/bloc/food_event.dart';
 import 'package:mbg_test/features/food/bloc/food_state.dart';
@@ -48,7 +49,7 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
         if (_isDeleting) {
           if (state.status == FoodStatus.success) {
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              GlobalScaffoldMessenger.showSnackBar(
                 SnackBar(
                   content: Text('Success deleted ${food.name}'),
                   duration: const Duration(seconds: 1),
@@ -61,8 +62,11 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
           }
           if (state.status == FoodStatus.error) {
             _isDeleting = false;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error: ${state.errorMessage}')),
+            GlobalScaffoldMessenger.showSnackBar(
+              SnackBar(
+                content: Text('Error: ${state.errorMessage}'),
+                duration: Duration(seconds: 1),
+              ),
             );
             return;
           }

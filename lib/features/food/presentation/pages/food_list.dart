@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mbg_test/core/helper/global_scaffold_messenger.dart';
 import 'package:mbg_test/features/food/bloc/food_bloc.dart';
 import 'package:mbg_test/features/food/bloc/food_event.dart';
 import 'package:mbg_test/features/food/bloc/food_state.dart';
@@ -102,7 +103,7 @@ class _FoodListScreenState extends State<FoodListScreen> {
       body: BlocConsumer<FoodBloc, FoodState>(
         listener: (context, state) {
           if (state.status == FoodStatus.error) {
-            ScaffoldMessenger.of(context).showSnackBar(
+            GlobalScaffoldMessenger.showSnackBar(
               SnackBar(
                 content: Text(
                   'Error: ${state.errorMessage ?? 'Something went wrong'}',

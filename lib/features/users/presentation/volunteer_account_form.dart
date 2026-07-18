@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
+import 'package:mbg_test/core/helper/global_scaffold_messenger.dart';
 import 'package:mbg_test/features/users/bloc/volunteer_account_bloc.dart';
 import 'package:mbg_test/features/users/bloc/volunteer_account_event.dart';
 import 'package:mbg_test/features/users/bloc/volunteer_account_state.dart';
@@ -88,8 +89,11 @@ class _VolunteerAccountFormPageState extends State<VolunteerAccountFormPage> {
 
   void _submit(BuildContext context) {
     if (_selectedVolunteerId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a volunteer first.')),
+      GlobalScaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text('Please select a volunteer first.'),
+          duration: Duration(seconds: 1),
+        ),
       );
       return;
     }
@@ -115,8 +119,8 @@ class _VolunteerAccountFormPageState extends State<VolunteerAccountFormPage> {
         body: BlocConsumer<VolunteerAccountBloc, VolunteerAccountState>(
           listener: (context, state) {
             if (state is VolunteerAccountSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
+              GlobalScaffoldMessenger.showSnackBar(
+                SnackBar(
                   content: Text(
                     'Volunteer login created and linked successfully',
                   ),
@@ -127,7 +131,7 @@ class _VolunteerAccountFormPageState extends State<VolunteerAccountFormPage> {
               Navigator.pop(context, state.user);
             }
             if (state is VolunteerAccountError) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              GlobalScaffoldMessenger.showSnackBar(
                 SnackBar(
                   content: Text(state.message),
                   backgroundColor: Colors.red,

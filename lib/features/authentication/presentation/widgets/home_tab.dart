@@ -293,6 +293,10 @@ Widget _buildAttendanceReminderBanners(BuildContext context) {
   return StreamBuilder<Map<String, List<Map<String, dynamic>>>>(
     stream: AttendanceRepository().getAbsenceReminders(),
     builder: (context, snapshot) {
+      // Swallow permission-denied errors that fire during logout, when the
+      // auth token is cleared while this stream (kept alive by
+      // PersistentTabView's stateManagement) is still attached.
+      if (snapshot.hasError) return const SizedBox.shrink();
       if (!snapshot.hasData) return const SizedBox.shrink();
 
       final notToday = snapshot.data!['notScannedToday'] ?? [];

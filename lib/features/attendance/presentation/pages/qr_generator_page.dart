@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:mbg_test/core/helper/global_scaffold_messenger.dart';
 import 'package:mbg_test/core/services/permission_service.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -82,13 +83,13 @@ class _QrGeneratorPageState extends State<QrGeneratorPage>
     );
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      GlobalScaffoldMessenger.showSnackBar(
         SnackBar(
           duration: const Duration(seconds: 1),
           content: Text(
             result['isSuccess'] == true
                 ? 'QR saved to gallery'
-                : 'Failed to save QR',
+                : 'Failed to save QR, please check your permission.',
           ),
         ),
       );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
+import 'package:mbg_test/core/helper/global_scaffold_messenger.dart';
 
 Widget buildInfoCard(List<Widget> children) {
   return Card(
@@ -118,8 +119,11 @@ Widget buildBankInfoItem(BuildContext context, String bank, String noRek) {
               ? null
               : () async {
                   await Clipboard.setData(ClipboardData(text: noRek));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Account number copied')),
+                  GlobalScaffoldMessenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Account number copied'),
+                      duration: Duration(seconds: 1),
+                    ),
                   );
                 },
           icon: const Icon(Icons.copy, size: 18),

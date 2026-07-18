@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
+import 'package:mbg_test/core/helper/global_scaffold_messenger.dart';
 import 'package:mbg_test/features/volunteer/bloc/volunteer_bloc.dart';
 import 'package:mbg_test/features/volunteer/bloc/volunteer_event.dart';
 import 'package:mbg_test/features/volunteer/bloc/volunteer_state.dart';
@@ -11,6 +12,14 @@ import 'package:mbg_test/features/volunteer/data/models/volunteer_model.dart';
 import 'package:mbg_test/features/volunteer/presentation/widgets/chip.dart';
 import 'package:mbg_test/features/volunteer/presentation/widgets/field.dart';
 import 'package:mbg_test/features/volunteer/presentation/widgets/state_widget.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+
+/// Watches route changes so we can dismiss the keyboard whenever a new
+/// route (e.g. the volunteer detail page) is pushed on top of this page.
+/// Register this in your app's `MaterialApp(navigatorObservers: [...])` —
+/// see note in `_VolunteerListPageState.didChangeDependencies`.
+final RouteObserver<ModalRoute<void>> volunteerRouteObserver =
+    RouteObserver<ModalRoute<void>>();
 
 const _teamOptions = [
   'Chef',
@@ -34,7 +43,7 @@ class VolunteerListPage extends StatefulWidget {
   State<VolunteerListPage> createState() => _VolunteerListPageState();
 }
 
-class _VolunteerListPageState extends State<VolunteerListPage> {
+class _VolunteerListPageState extends State<VolunteerListPage> with RouteAware {
   final _searchController = TextEditingController();
 
   String? _selectedTim;
@@ -286,11 +295,9 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text(message), duration: const Duration(seconds: 1)),
-      );
+    GlobalScaffoldMessenger.showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 1)),
+    );
   }
 
   Future<Map<String, dynamic>?> _getUserRole(String uid) async {
@@ -321,9 +328,27 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route != null) {
+      volunteerRouteObserver.subscribe(this, route);
+    }
+  }
+
+  @override
   void dispose() {
+    volunteerRouteObserver.unsubscribe(this);
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didPushNext() {
+    // Fires when a new route (e.g. volunteer detail page) is pushed on top
+    // of this page, no matter where that push is triggered from (including
+    // inside VolunteerTile). Dismiss the keyboard so it doesn't linger.
+    FocusScope.of(context).unfocus();
   }
 
   @override
@@ -378,48 +403,66 @@ class _VolunteerListPageState extends State<VolunteerListPage> {
         onTap: () => FocusScope.of(context).unfocus(),
         child: Column(
           children: [
-            AnimatedSize(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeInOut,
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 280),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: SizeTransition(
+                  sizeFactor: animation,
+                  axisAlignment: -1,
+                  child: child,
+                ),
+              ),
               child: _isSearchVisible
                   ? SearchField(
+                      key: const ValueKey('search-field'),
                       controller: _searchController,
                       isSearching: _isSearching,
                       onChanged: _onSearchChanged,
                       onClear: _clearSearch,
                     )
+                  : const SizedBox.shrink(key: ValueKey('search-hidden')),
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: _activeFilterCount > 0
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ActiveFilterChips(
+                          selectedTim: _selectedTim,
+                          selectedGender: _selectedGender,
+                          onRemoveTim: () {
+                            setState(() => _selectedTim = null);
+                            _applyCurrentCriteria();
+                          },
+                          onRemoveGender: () {
+                            setState(() => _selectedGender = null);
+                            _applyCurrentCriteria();
+                          },
+                        ),
+                        if (_selectedIsActive != null)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                            child: InputChip(
+                              label: Text(
+                                _selectedIsActive == true
+                                    ? 'Active'
+                                    : 'Inactive',
+                              ),
+                              onDeleted: () {
+                                setState(() => _selectedIsActive = null);
+                              },
+                            ),
+                          ),
+                      ],
+                    )
                   : const SizedBox.shrink(),
             ),
-            if (_activeFilterCount > 0)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ActiveFilterChips(
-                    selectedTim: _selectedTim,
-                    selectedGender: _selectedGender,
-                    onRemoveTim: () {
-                      setState(() => _selectedTim = null);
-                      _applyCurrentCriteria();
-                    },
-                    onRemoveGender: () {
-                      setState(() => _selectedGender = null);
-                      _applyCurrentCriteria();
-                    },
-                  ),
-                  if (_selectedIsActive != null)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                      child: InputChip(
-                        label: Text(
-                          _selectedIsActive == true ? 'Active' : 'Inactive',
-                        ),
-                        onDeleted: () {
-                          setState(() => _selectedIsActive = null);
-                        },
-                      ),
-                    ),
-                ],
-              ),
             Expanded(
               child: BlocConsumer<VolunteerBloc, VolunteerState>(
                 listener: (context, state) {
@@ -586,21 +629,38 @@ class _VolunteerList extends StatelessWidget {
       return const EmptyState();
     }
 
-    return ListView.builder(
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      scrollCacheExtent: ScrollCacheExtent.pixels(500),
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-      itemCount: volunteers.length,
-      itemBuilder: (context, index) {
-        final volunteer = volunteers[index];
+    return AnimationLimiter(
+      child: ListView.builder(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        scrollCacheExtent: ScrollCacheExtent.pixels(500),
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+        itemCount: volunteers.length,
+        itemBuilder: (context, index) {
+          final volunteer = volunteers[index];
 
-        return VolunteerTile(
-          volunteer: volunteer,
-          index: index,
-          onDelete: () => onDelete(volunteer),
-          isDeveloper: isDeveloper,
-        );
-      },
+          return AnimationConfiguration.staggeredList(
+            position: index,
+            duration: const Duration(milliseconds: 300),
+            child: SlideAnimation(
+              verticalOffset: 60.0,
+              curve: Curves.easeOutCubic,
+              child: FadeInAnimation(
+                curve: Curves.easeIn,
+                child: ScaleAnimation(
+                  scale: 0.94,
+                  curve: Curves.easeOutBack,
+                  child: VolunteerTile(
+                    volunteer: volunteer,
+                    index: index,
+                    onDelete: () => onDelete(volunteer),
+                    isDeveloper: isDeveloper,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -613,15 +673,17 @@ class _SearchFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOut,
+      curve: Curves.easeOutCubic,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         boxShadow: isActive
             ? [
                 BoxShadow(
-                  color: Colors.blueAccent.withValues(alpha: 0.5),
+                  color: colorScheme.primary.withValues(alpha: 0.4),
                   blurRadius: 16,
                   spreadRadius: 2,
                 ),
@@ -631,12 +693,16 @@ class _SearchFab extends StatelessWidget {
       child: FloatingActionButton(
         onPressed: onPressed,
         tooltip: isActive ? 'Hide Search' : 'Search',
-        backgroundColor: isActive ? Colors.blueAccent : null,
-        foregroundColor: isActive ? Colors.white : null,
+        backgroundColor: isActive ? colorScheme.primary : null,
+        foregroundColor: isActive ? colorScheme.onPrimary : null,
         elevation: isActive ? 0 : 4,
         mini: true,
         child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 220),
+          transitionBuilder: (child, animation) => ScaleTransition(
+            scale: animation,
+            child: FadeTransition(opacity: animation, child: child),
+          ),
           child: Icon(
             isActive ? Icons.search_off_rounded : Icons.search_rounded,
             key: ValueKey(isActive),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
+import 'package:mbg_test/core/helper/global_scaffold_messenger.dart';
 import 'package:mbg_test/features/users/bloc/user_bloc.dart';
 import 'package:mbg_test/features/users/bloc/user_state.dart';
 import 'package:mbg_test/features/users/bloc/user_event.dart';
@@ -211,7 +212,7 @@ class _UserFormPageState extends State<UserFormPage> {
         body: BlocConsumer<UserBloc, UserState>(
           listener: (context, state) {
             if (state is UserSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              GlobalScaffoldMessenger.showSnackBar(
                 SnackBar(
                   content: Text(
                     isEdit
@@ -225,7 +226,7 @@ class _UserFormPageState extends State<UserFormPage> {
               Navigator.pop(context, state.user);
             }
             if (state is UserError) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              GlobalScaffoldMessenger.showSnackBar(
                 SnackBar(
                   content: Text(state.message),
                   backgroundColor: Colors.red,

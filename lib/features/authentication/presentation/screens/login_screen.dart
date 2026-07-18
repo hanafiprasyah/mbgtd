@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mbg_test/core/helper/global_scaffold_messenger.dart';
 import 'package:mbg_test/features/authentication/logic/login/login_bloc.dart';
 import 'package:mbg_test/features/authentication/logic/login/login_event.dart';
 import 'package:mbg_test/features/authentication/logic/login/login_state.dart';
@@ -87,9 +88,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           prev.error != curr.error,
                       listener: (context, state) {
                         if (state.error != null) {
-                          ScaffoldMessenger.of(
-                            context,
-                          ).showSnackBar(SnackBar(content: Text(state.error!)));
+                          GlobalScaffoldMessenger.showSnackBar(
+                            SnackBar(
+                              content: Text(state.error!),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
                         }
                       },
                       builder: (context, state) {

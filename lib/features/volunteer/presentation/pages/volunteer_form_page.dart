@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:mbg_test/core/helper/global_scaffold_messenger.dart';
 import 'package:mbg_test/features/volunteer/bloc/volunteer_bloc.dart';
 import 'package:mbg_test/features/volunteer/bloc/volunteer_event.dart';
 import 'package:mbg_test/features/volunteer/bloc/volunteer_state.dart';
@@ -101,8 +102,11 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_selectedDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a birth date.')),
+      GlobalScaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text('Please select a birth date.'),
+          duration: Duration(seconds: 1),
+        ),
       );
       return;
     }
@@ -320,14 +324,17 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
 
   void _handleState(BuildContext context, VolunteerState state) {
     if (state is VolunteerSuccess) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Saved successfully.')));
+      GlobalScaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text('Saved successfully.'),
+          duration: Duration(seconds: 1),
+        ),
+      );
       Navigator.pop(context, state.volunteer);
     } else if (state is VolunteerError) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(state.message)));
+      GlobalScaffoldMessenger.showSnackBar(
+        SnackBar(content: Text(state.message), duration: Duration(seconds: 1)),
+      );
     }
   }
 }

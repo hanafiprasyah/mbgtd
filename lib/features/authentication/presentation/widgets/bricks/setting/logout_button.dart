@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mbg_test/core/helper/global_scaffold_messenger.dart';
 import 'package:mbg_test/features/authentication/logic/auth/auth_bloc.dart';
 import 'package:mbg_test/features/authentication/logic/auth/auth_event.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
@@ -32,8 +33,8 @@ Widget buildLogoutButton(BuildContext context) {
 
         if (confirm == true) {
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
+            GlobalScaffoldMessenger.showSnackBar(
+              SnackBar(
                 content: Text('Logging out...'),
                 duration: Duration(milliseconds: 1500),
               ),

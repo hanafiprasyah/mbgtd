@@ -112,67 +112,74 @@ class AttendanceRepository {
     final attendanceStream = firestore.collection('attendances').snapshots();
 
     return Rx.combineLatest2<
-      QuerySnapshot,
-      QuerySnapshot,
-      Map<String, List<Map<String, dynamic>>>
-    >(volunteersStream, attendanceStream, (volunteersSnap, attendanceSnap) {
-      final now = DateTime.now();
-      final todayStr = _dateKey(now);
+          QuerySnapshot,
+          QuerySnapshot,
+          Map<String, List<Map<String, dynamic>>>
+        >(volunteersStream, attendanceStream, (volunteersSnap, attendanceSnap) {
+          final now = DateTime.now();
+          final todayStr = _dateKey(now);
 
-      // Last scan date per volunteer
-      final Map<String, String> lastScanDate = {};
-      for (var doc in attendanceSnap.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        final volunteerId = data['volunteerId']?.toString();
-        final date = (data['date'] ?? '').toString();
-        if (volunteerId == null || date.isEmpty) continue;
-        final current = lastScanDate[volunteerId];
-        if (current == null || date.compareTo(current) > 0) {
-          lastScanDate[volunteerId] = date;
-        }
-      }
+          // Last scan date per volunteer
+          final Map<String, String> lastScanDate = {};
+          for (var doc in attendanceSnap.docs) {
+            final data = doc.data() as Map<String, dynamic>;
+            final volunteerId = data['volunteerId']?.toString();
+            final date = (data['date'] ?? '').toString();
+            if (volunteerId == null || date.isEmpty) continue;
+            final current = lastScanDate[volunteerId];
+            if (current == null || date.compareTo(current) > 0) {
+              lastScanDate[volunteerId] = date;
+            }
+          }
 
-      final notScannedToday = <Map<String, dynamic>>[];
-      final notScanned2Days = <Map<String, dynamic>>[];
+          final notScannedToday = <Map<String, dynamic>>[];
+          final notScanned2Days = <Map<String, dynamic>>[];
 
-      for (var doc in volunteersSnap.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        final id = doc.id;
-        final last = lastScanDate[id];
-        final scannedToday = last == todayStr;
-        if (scannedToday) continue;
+          for (var doc in volunteersSnap.docs) {
+            final data = doc.data() as Map<String, dynamic>;
+            final id = doc.id;
+            final last = lastScanDate[id];
+            final scannedToday = last == todayStr;
+            if (scannedToday) continue;
 
-        final daysSince = last == null
-            ? null
-            : now.difference(DateTime.parse(last)).inDays;
+            final daysSince = last == null
+                ? null
+                : now.difference(DateTime.parse(last)).inDays;
 
-        final item = {
-          'id': id,
-          'nama': (data['namaLengkap'] ?? '-').toString(),
-          'tim': (data['tim'] ?? '').toString().trim(),
-          'lastScanDate': last,
-          'daysSince': daysSince,
-        };
+            final item = {
+              'id': id,
+              'nama': (data['namaLengkap'] ?? '-').toString(),
+              'tim': (data['tim'] ?? '').toString().trim(),
+              'lastScanDate': last,
+              'daysSince': daysSince,
+            };
 
-        notScannedToday.add(item);
-        if (last == null || daysSince! >= 2) {
-          notScanned2Days.add(item);
-        }
-      }
+            notScannedToday.add(item);
+            if (last == null || daysSince! >= 2) {
+              notScanned2Days.add(item);
+            }
+          }
 
-      notScannedToday.sort(
-        (a, b) => (a['nama'] as String).compareTo(b['nama'] as String),
-      );
-      notScanned2Days.sort(
-        (a, b) =>
-            (b['daysSince'] ?? 9999).compareTo(a['daysSince'] ?? 9999) as int,
-      );
+          notScannedToday.sort(
+            (a, b) => (a['nama'] as String).compareTo(b['nama'] as String),
+          );
+          notScanned2Days.sort(
+            (a, b) =>
+                (b['daysSince'] ?? 9999).compareTo(a['daysSince'] ?? 9999)
+                    as int,
+          );
 
-      return {
-        'notScannedToday': notScannedToday,
-        'notScanned2Days': notScanned2Days,
-      };
-    });
+          return {
+            'notScannedToday': notScannedToday,
+            'notScanned2Days': notScanned2Days,
+          };
+        })
+        .handleError((error, stack) {
+          if (error is FirebaseException && error.code == 'permission-denied') {
+            return;
+          }
+          throw error;
+        });
   }
 
   String _dateKey(DateTime d) =>

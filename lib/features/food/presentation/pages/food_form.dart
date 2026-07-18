@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:mbg_test/core/helper/global_scaffold_messenger.dart';
 import 'package:mbg_test/features/food/bloc/food_bloc.dart';
 import 'package:mbg_test/features/food/bloc/food_event.dart';
 import 'package:mbg_test/features/food/bloc/food_state.dart';
@@ -136,10 +137,11 @@ class _FoodFormScreenState extends State<FoodFormScreen> {
     }
 
     setState(() => _isSubmitting = false);
-    ScaffoldMessenger.of(context).showSnackBar(
+    GlobalScaffoldMessenger.showSnackBar(
       SnackBar(
         content: Text(result.errorMessage ?? 'Failed to save menu.'),
         backgroundColor: Colors.redAccent,
+        duration: Duration(seconds: 1),
       ),
     );
   }

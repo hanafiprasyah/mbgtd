@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:mbg_test/core/helper/global_scaffold_messenger.dart';
 import 'package:mbg_test/core/services/camera_prewarm.dart';
 import 'package:mbg_test/features/authentication/presentation/widgets/home_tab.dart';
 import 'package:mbg_test/features/authentication/presentation/widgets/report_tab.dart';
@@ -32,8 +33,11 @@ class _HomeScreenState extends State<HomeScreen> {
       ).whenComplete(() => user?.reload());
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Failed to load user data")),
+        GlobalScaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text("Failed to load user data"),
+            duration: Duration(seconds: 1),
+          ),
         );
       }
     }
