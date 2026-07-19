@@ -14,10 +14,6 @@ import 'package:mbg_test/features/volunteer/presentation/widgets/field.dart';
 import 'package:mbg_test/features/volunteer/presentation/widgets/state_widget.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
-/// Watches route changes so we can dismiss the keyboard whenever a new
-/// route (e.g. the volunteer detail page) is pushed on top of this page.
-/// Register this in your app's `MaterialApp(navigatorObservers: [...])` —
-/// see note in `_VolunteerListPageState.didChangeDependencies`.
 final RouteObserver<ModalRoute<void>> volunteerRouteObserver =
     RouteObserver<ModalRoute<void>>();
 
@@ -55,6 +51,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> with RouteAware {
   bool _sortAscending = true;
   bool _isSearchVisible = false;
   Map<String, dynamic>? userData;
+  List<Volunteer>? _cachedVolunteers;
 
   int get _activeFilterCount {
     var count = 0;
@@ -345,10 +342,17 @@ class _VolunteerListPageState extends State<VolunteerListPage> with RouteAware {
 
   @override
   void didPushNext() {
-    // Fires when a new route (e.g. volunteer detail page) is pushed on top
-    // of this page, no matter where that push is triggered from (including
-    // inside VolunteerTile). Dismiss the keyboard so it doesn't linger.
-    FocusScope.of(context).unfocus();
+    _dismissKeyboard();
+  }
+
+  @override
+  void didPopNext() {
+    _dismissKeyboard();
+  }
+
+  void _dismissKeyboard() {
+    if (!mounted) return;
+    FocusScope.of(context).requestFocus(FocusNode());
   }
 
   @override
@@ -411,7 +415,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> with RouteAware {
                 opacity: animation,
                 child: SizeTransition(
                   sizeFactor: animation,
-                  axisAlignment: -1,
+                  alignment: Alignment.topCenter,
                   child: child,
                 ),
               ),
@@ -466,7 +470,8 @@ class _VolunteerListPageState extends State<VolunteerListPage> with RouteAware {
             Expanded(
               child: BlocConsumer<VolunteerBloc, VolunteerState>(
                 listener: (context, state) {
-                  if (state is VolunteerLoaded || state is VolunteerError) {
+                  if ((state is VolunteerLoaded || state is VolunteerError) &&
+                      _isSearching) {
                     setState(() => _isSearching = false);
                   }
 
@@ -485,21 +490,27 @@ class _VolunteerListPageState extends State<VolunteerListPage> with RouteAware {
                 },
                 builder: (context, state) {
                   if (state is VolunteerLoaded) {
-                    return _VolunteerList(
-                      volunteers: _sortVolunteers(
-                        _filterByStatus(state.volunteer),
-                      ),
-                      onDelete: _confirmDelete,
-                      isDeveloper: isDeveloper,
-                    );
+                    _cachedVolunteers = state.volunteer;
                   }
 
                   if (state is VolunteerError) {
                     return ErrorState(message: state.message);
                   }
 
-                  return const Center(
-                    child: CircularProgressIndicator(strokeWidth: 3),
+                  final volunteers = state is VolunteerLoaded
+                      ? state.volunteer
+                      : _cachedVolunteers;
+
+                  if (volunteers == null) {
+                    return const Center(
+                      child: CircularProgressIndicator(strokeWidth: 3),
+                    );
+                  }
+
+                  return _VolunteerList(
+                    volunteers: _sortVolunteers(_filterByStatus(volunteers)),
+                    onDelete: _confirmDelete,
+                    isDeveloper: isDeveloper,
                   );
                 },
               ),

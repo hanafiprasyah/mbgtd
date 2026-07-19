@@ -37,7 +37,6 @@ class SearchField extends StatelessWidget {
         child: TextField(
           controller: controller,
           autofocus: true,
-          focusNode: FocusNode(),
           decoration: InputDecoration(
             hintText: 'Search volunteer...',
             prefixIcon: Padding(

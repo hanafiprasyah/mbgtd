@@ -80,6 +80,20 @@ class VolunteerRepository {
     }
   }
 
+  /// Clears `userId` on any volunteer doc(s) linked to [userId]. Called when
+  /// a user account is deleted, so the volunteer becomes selectable again in
+  /// the "Add Volunteer Account" picker instead of staying orphaned-linked.
+  Future<void> unlinkVolunteerByUserId(String userId) async {
+    final snapshot = await firestore
+        .collection('volunteers')
+        .where('userId', isEqualTo: userId)
+        .get();
+
+    for (final doc in snapshot.docs) {
+      await doc.reference.update({'userId': FieldValue.delete()});
+    }
+  }
+
   // ── Account-linking helpers ─────────────────────────────────────────────
 
   /// Volunteers that don't yet have a Firebase Auth account linked
