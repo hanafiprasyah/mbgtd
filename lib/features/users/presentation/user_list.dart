@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
 import 'package:mbg_test/core/helper/global_scaffold_messenger.dart';
 import 'package:mbg_test/features/users/bloc/user_bloc.dart';
@@ -488,34 +489,52 @@ class _UserListPageState extends State<UserListPage> {
   }
 
   Widget _buildUserList(List<UserModel> users) {
-    return ListView.separated(
+    return AnimationLimiter(
       key: const ValueKey('list'),
-      itemCount: users.length,
-      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-      itemBuilder: (context, index) {
-        final user = users[index];
-        return _UserCard(
-          user: user,
-          onTap: () async {
-            await Navigator.pushNamed(
-              context,
-              '/user-detail',
-              arguments: user.id,
-            );
-            if (mounted) _applyCriteria();
-          },
-          onEdit: () async {
-            await Navigator.pushNamed(context, '/user-edit', arguments: user);
-            if (mounted) _applyCriteria();
-          },
-          onDelete: () async {
-            final confirmed = await _confirmDelete(user);
-            if (mounted && confirmed) {
-              context.read<UserBloc>().add(DeleteUser(user.id));
-            }
-          },
-        );
-      },
+      child: ListView.separated(
+        padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+        itemCount: users.length,
+        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+        itemBuilder: (context, index) {
+          final user = users[index];
+          return AnimationConfiguration.staggeredList(
+            position: index,
+            duration: const Duration(milliseconds: 375),
+            child: SlideAnimation(
+              verticalOffset: 40,
+              curve: Curves.easeOutCubic,
+              child: FadeInAnimation(
+                curve: Curves.easeOut,
+                child: _UserCard(
+                  user: user,
+                  onTap: () async {
+                    await Navigator.pushNamed(
+                      context,
+                      '/user-detail',
+                      arguments: user.id,
+                    );
+                    if (mounted) _applyCriteria();
+                  },
+                  onEdit: () async {
+                    await Navigator.pushNamed(
+                      context,
+                      '/user-edit',
+                      arguments: user,
+                    );
+                    if (mounted) _applyCriteria();
+                  },
+                  onDelete: () async {
+                    final confirmed = await _confirmDelete(user);
+                    if (mounted && confirmed) {
+                      context.read<UserBloc>().add(DeleteUser(user.id));
+                    }
+                  },
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -547,99 +566,116 @@ class _UserCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final initials = _getInitials(user.fullname);
 
-    return Card(
-      elevation: AppElevation.low,
-      shadowColor: Colors.transparent,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
-            children: [
-              // Avatar with gradient background
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      colorScheme.primaryContainer,
-                      colorScheme.secondaryContainer,
-                    ],
-                  ),
-                  shape: BoxShape.circle,
-                ),
-                child: CircleAvatar(
-                  radius: 28,
-                  backgroundColor: Colors.transparent,
-                  child: Text(
-                    initials,
-                    style: TextStyle(
-                      color: colorScheme.onPrimaryContainer,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              // User info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user.fullname,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.apps_rounded,
-                          size: 16,
-                          color: colorScheme.primary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          user.role.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: colorScheme.primary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Row(
+              children: [
+                // Avatar with gradient background
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        colorScheme.primaryContainer,
+                        colorScheme.secondaryContainer,
                       ],
                     ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: CircleAvatar(
+                    radius: 28,
+                    backgroundColor: Colors.transparent,
+                    child: Text(
+                      initials,
+                      style: TextStyle(
+                        color: colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                // User info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user.fullname,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.apps_rounded,
+                            size: 16,
+                            color: colorScheme.primary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            user.role.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: colorScheme.primary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Action buttons
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      tooltip: 'Edit user',
+                      style: IconButton.styleFrom(
+                        backgroundColor: colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.5),
+                        foregroundColor: colorScheme.primary,
+                      ),
+                      onPressed: onEdit,
+                    ),
+                    // IconButton(
+                    //   icon: const Icon(Icons.delete_outline),
+                    //   tooltip: 'Delete user',
+                    //   color: Colors.redAccent,
+                    //   onPressed: onDelete,
+                    // ),
                   ],
                 ),
-              ),
-              // Action buttons
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    tooltip: 'Edit user',
-                    onPressed: onEdit,
-                  ),
-                  // IconButton(
-                  //   icon: const Icon(Icons.delete_outline),
-                  //   tooltip: 'Delete user',
-                  //   color: Colors.redAccent,
-                  //   onPressed: onDelete,
-                  // ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

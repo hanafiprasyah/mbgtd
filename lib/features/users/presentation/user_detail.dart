@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
 import 'package:mbg_test/core/helper/global_scaffold_messenger.dart';
 import 'package:mbg_test/features/users/bloc/user_bloc.dart';
@@ -35,12 +36,19 @@ class _UserDetailPageState extends State<UserDetailPage> {
   }
 
   Future<bool> _confirmDelete(UserModel user) async {
+    final isVolunteer = user.role.trim().toLowerCase() == 'volunteer';
     return await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Delete User'),
             content: Text(
-              'Are you sure you want to delete "${user.fullname}"?',
+              isVolunteer
+                  ? 'Are you sure you want to delete "${user.fullname}"?\n\n'
+                        'This will remove their user record and unlink their '
+                        'volunteer profile. Their Firebase Authentication '
+                        'login still needs to be removed manually from the '
+                        'Firebase Console.'
+                  : 'Are you sure you want to delete "${user.fullname}"?',
             ),
             actions: [
               TextButton(
@@ -85,9 +93,16 @@ class _UserDetailPageState extends State<UserDetailPage> {
         },
         builder: (context, state) {
           return AnimatedSwitcher(
-            duration: const Duration(milliseconds: 250),
-            transitionBuilder: (child, animation) =>
-                FadeTransition(opacity: animation, child: child),
+            duration: const Duration(milliseconds: 300),
+            switchInCurve: Curves.easeOut,
+            switchOutCurve: Curves.easeIn,
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: Tween<double>(begin: 0.98, end: 1).animate(animation),
+                child: child,
+              ),
+            ),
             child: _buildContent(state),
           );
         },
@@ -133,10 +148,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
 
   Widget _buildContent(UserState state) {
     if (state is UserLoading) {
-      return const Center(
-        key: ValueKey('loading'),
-        child: CircularProgressIndicator(),
-      );
+      return _buildLoadingSkeleton();
     }
     if (state is UserDetailLoaded) {
       return _buildUserDetailContent(state.user);
@@ -144,9 +156,82 @@ class _UserDetailPageState extends State<UserDetailPage> {
     if (state is UserError) {
       return _buildErrorContent(state.message);
     }
-    return const Center(
-      key: ValueKey('initial'),
-      child: CircularProgressIndicator(),
+    return _buildLoadingSkeleton();
+  }
+
+  Widget _buildLoadingSkeleton() {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    Widget bar({double? width, double height = 14, double radius = 8}) {
+      return Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(radius),
+        ),
+      );
+    }
+
+    return _ShimmerLoading(
+      key: const ValueKey('loading'),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        physics: const NeverScrollableScrollPhysics(),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Column(
+              children: [
+                Container(
+                  width: 112,
+                  height: 112,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: colorScheme.surfaceContainerHighest,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(
+                      color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      bar(width: 180, height: 22),
+                      const SizedBox(height: AppSpacing.sm),
+                      bar(width: 100, height: 26, radius: 20),
+                      const SizedBox(height: AppSpacing.lg),
+                      bar(width: double.infinity),
+                      const SizedBox(height: AppSpacing.sm),
+                      bar(width: double.infinity),
+                      const SizedBox(height: AppSpacing.md),
+                      bar(width: double.infinity),
+                      const SizedBox(height: AppSpacing.sm),
+                      bar(width: 160),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                Row(
+                  children: [
+                    Expanded(child: bar(height: 48, radius: AppRadius.md)),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(child: bar(height: 48, radius: AppRadius.md)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -160,141 +245,167 @@ class _UserDetailPageState extends State<UserDetailPage> {
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 600),
-          child: Column(
-            children: [
-              // Avatar Section with gradient
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      colorScheme.primaryContainer,
-                      colorScheme.secondaryContainer,
-                    ],
-                  ),
-                  shape: BoxShape.circle,
+          child: AnimationLimiter(
+            child: Column(
+              children: AnimationConfiguration.toStaggeredList(
+                duration: const Duration(milliseconds: 375),
+                childAnimationBuilder: (child) => SlideAnimation(
+                  verticalOffset: 30,
+                  curve: Curves.easeOutCubic,
+                  child: FadeInAnimation(curve: Curves.easeOut, child: child),
                 ),
-                child: CircleAvatar(
-                  radius: 56,
-                  backgroundColor: colorScheme.surface,
-                  child: Text(
-                    _getInitials(user.fullname),
-                    style: textTheme.displaySmall?.copyWith(
-                      color: colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-
-              // User Info Card
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        user.fullname,
-                        style: textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-
-                      // Role Chip
-                      Chip(
-                        label: Text(user.role.toUpperCase()),
-                        backgroundColor: colorScheme.primaryContainer,
-                        labelStyle: TextStyle(
-                          color: colorScheme.onPrimaryContainer,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        avatar: Icon(
-                          Icons.badge,
-                          size: 18,
-                          color: colorScheme.onPrimaryContainer,
-                        ),
-                      ),
-                      const Divider(height: AppSpacing.lg),
-
-                      // Detail Items
-                      _buildInfoTile(
-                        icon: Icons.email_outlined,
-                        label: 'Email',
-                        value: user.email,
-                        colorScheme: colorScheme,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      _buildInfoTile(
-                        icon: Icons.person_outline,
-                        label: 'Username',
-                        value: user.username,
-                        colorScheme: colorScheme,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-
-              // Action Buttons
-              Row(
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.edit),
-                      label: const Text('Edit'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.md),
+                  // Avatar Section with gradient
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          colorScheme.primaryContainer,
+                          colorScheme.secondaryContainer,
+                        ],
+                      ),
+                      shape: BoxShape.circle,
+                    ),
+                    child: CircleAvatar(
+                      radius: 56,
+                      backgroundColor: colorScheme.surface,
+                      child: Text(
+                        _getInitials(user.fullname),
+                        style: textTheme.displaySmall?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      onPressed: () async {
-                        final updated = await Navigator.pushNamed(
-                          context,
-                          '/user-edit',
-                          arguments: user,
-                        );
-                        if (!mounted) return;
-                        if (updated != null) _loadUser();
-                      },
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.delete),
-                      label: const Text('Delete'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.md),
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // User Info Card
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: colorScheme.surface,
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      border: Border.all(
+                        color: colorScheme.outlineVariant.withValues(
+                          alpha: 0.4,
                         ),
                       ),
-                      onPressed: () async {
-                        final confirmed = await _confirmDelete(user);
-                        if (!mounted) return;
-                        if (confirmed) {
-                          context.read<UserBloc>().add(DeleteUser(user.id));
-                        }
-                      },
+                      boxShadow: [
+                        BoxShadow(
+                          color: colorScheme.shadow.withValues(alpha: 0.04),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
                     ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            user.fullname,
+                            style: textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+
+                          // Role Chip
+                          Chip(
+                            label: Text(user.role.toUpperCase()),
+                            backgroundColor: colorScheme.primaryContainer,
+                            side: BorderSide.none,
+                            labelStyle: TextStyle(
+                              color: colorScheme.onPrimaryContainer,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                            avatar: Icon(
+                              Icons.badge,
+                              size: 18,
+                              color: colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                          const Divider(height: AppSpacing.lg),
+
+                          // Detail Items
+                          _buildInfoTile(
+                            icon: Icons.email_outlined,
+                            label: 'Email',
+                            value: user.email,
+                            colorScheme: colorScheme,
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          _buildInfoTile(
+                            icon: Icons.person_outline,
+                            label: 'Username',
+                            value: user.username,
+                            colorScheme: colorScheme,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+
+                  // Action Buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.edit),
+                          label: const Text('Edit'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                            ),
+                          ),
+                          onPressed: () async {
+                            final updated = await Navigator.pushNamed(
+                              context,
+                              '/user-edit',
+                              arguments: user,
+                            );
+                            if (!mounted) return;
+                            if (updated != null) _loadUser();
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.delete),
+                          label: const Text('Delete'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                            ),
+                          ),
+                          onPressed: () async {
+                            final confirmed = await _confirmDelete(user);
+                            if (!mounted) return;
+                            if (confirmed) {
+                              context.read<UserBloc>().add(DeleteUser(user.id));
+                            }
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -336,34 +447,106 @@ class _UserDetailPageState extends State<UserDetailPage> {
     final colorScheme = Theme.of(context).colorScheme;
     return Center(
       key: const ValueKey('error'),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.error_outline, size: 80, color: colorScheme.error),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'Failed to load user',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(color: colorScheme.error),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              decoration: BoxDecoration(
+                color: colorScheme.errorContainer.withValues(alpha: 0.4),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.error_outline_rounded,
+                size: 56,
+                color: colorScheme.error,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'Failed to load user',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
               message,
               textAlign: TextAlign.center,
               style: TextStyle(color: colorScheme.onSurfaceVariant),
             ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          FilledButton.icon(
-            onPressed: _loadUser,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Retry'),
-          ),
-        ],
+            const SizedBox(height: AppSpacing.lg),
+            FilledButton.icon(
+              onPressed: _loadUser,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Retry'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+// ==================== Lightweight shimmer for loading skeleton ====================
+
+class _ShimmerLoading extends StatefulWidget {
+  final Widget child;
+
+  const _ShimmerLoading({super.key, required this.child});
+
+  @override
+  State<_ShimmerLoading> createState() => _ShimmerLoadingState();
+}
+
+class _ShimmerLoadingState extends State<_ShimmerLoading>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return ShaderMask(
+          blendMode: BlendMode.srcATop,
+          shaderCallback: (bounds) {
+            final dx = _controller.value * 2 - 1;
+            return LinearGradient(
+              colors: [
+                Colors.grey.shade300,
+                Colors.grey.shade100,
+                Colors.grey.shade300,
+              ],
+              stops: const [0.35, 0.5, 0.65],
+              begin: Alignment(dx - 1, 0),
+              end: Alignment(dx + 1, 0),
+            ).createShader(bounds);
+          },
+          child: child,
+        );
+      },
+      child: widget.child,
     );
   }
 }

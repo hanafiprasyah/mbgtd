@@ -178,12 +178,22 @@ class _UserFormPageState extends State<UserFormPage> {
               IconButton(
                 icon: const Icon(Icons.delete_outline),
                 onPressed: () {
+                  final isVolunteer =
+                      widget.existing!.role.trim().toLowerCase() == 'volunteer';
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
                       title: const Text('Delete User'),
-                      content: const Text(
-                        'Are you sure you want to delete this user? This action cannot be undone.',
+                      content: Text(
+                        isVolunteer
+                            ? 'Are you sure you want to delete this user? '
+                                  'This action cannot be undone.\n\n'
+                                  'This will remove their user record and '
+                                  'unlink their volunteer profile. Their '
+                                  'Firebase Authentication login still needs '
+                                  'to be removed manually from the Firebase '
+                                  'Console.'
+                            : 'Are you sure you want to delete this user? This action cannot be undone.',
                       ),
                       actions: [
                         TextButton(
