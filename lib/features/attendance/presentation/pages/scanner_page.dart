@@ -84,8 +84,8 @@ class _ScannerPageState extends State<ScannerPage>
       // (called from wherever "Scan" was tapped) should already have this running
       // by the time we get here. This is just the safety net for deep links / cold
       // starts that skip that step.
-      if (mounted && !_controller.value.isRunning) {
-        await _controller.start();
+      if (mounted) {
+        await CameraPrewarmService.ensureStarted();
       }
       if (mounted && _cameraError != null) {
         setState(() => _cameraError = null);
@@ -214,18 +214,16 @@ class _ScannerPageState extends State<ScannerPage>
               behavior: HitTestBehavior.translucent,
               onPointerDown: (_) async {
                 _resetIdleTimer();
-                if (!_controller.value.isRunning) {
-                  try {
-                    await _controller.start();
-                    if (mounted && _cameraError != null) {
-                      setState(() => _cameraError = null);
-                    }
-                  } on MobileScannerException catch (e) {
-                    if (!mounted) return;
-                    setState(() => _cameraError = _describeCameraError(e));
-                  } catch (_) {
-                    // Non-fatal: user can still tap the frame again.
+                try {
+                  await CameraPrewarmService.ensureStarted();
+                  if (mounted && _cameraError != null) {
+                    setState(() => _cameraError = null);
                   }
+                } on MobileScannerException catch (e) {
+                  if (!mounted) return;
+                  setState(() => _cameraError = _describeCameraError(e));
+                } catch (_) {
+                  // Non-fatal: user can still tap the frame again.
                 }
               },
               child: GestureDetector(
@@ -632,7 +630,7 @@ class _ScannerPageState extends State<ScannerPage>
       case AppLifecycleState.resumed:
         _resetIdleTimer();
         if (!_controller.value.isRunning) {
-          _controller.start().catchError((e) {
+          CameraPrewarmService.ensureStarted().catchError((e) {
             if (!mounted) return;
             setState(
               () => _cameraError = 'Camera failed to start. Please try again.',

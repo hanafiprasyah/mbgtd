@@ -217,14 +217,7 @@ Widget buildHomeTab(
   // A logged-in user with none of the admin-type roles above is treated as a
   // plain volunteer: instead of an empty menu grid, show their personal
   // realtime dashboard (total scan, attendance timeline, total salary).
-  final hasAdminRole =
-      isDeveloper ||
-      isScanner ||
-      isAccountant ||
-      isSPPI ||
-      isAslap ||
-      isAdmin ||
-      isNutritionist;
+  final hasAdminRole = isDeveloper || isAccountant || isSPPI || isNutritionist;
 
   if (user != null && !hasAdminRole) {
     return Scaffold(
