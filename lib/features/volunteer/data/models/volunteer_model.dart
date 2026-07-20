@@ -13,6 +13,10 @@ class Volunteer {
   final String? namaBank;
   final bool isPIC;
 
+  /// Warning/punishment level: 0 = none, 1 = SP 1, 2 = SP 2, 3 = SP 3.
+  /// Reaching SP 3 automatically deactivates the volunteer (isActive: false).
+  final int spLevel;
+
   Volunteer({
     required this.id,
     required this.namaLengkap,
@@ -25,6 +29,7 @@ class Volunteer {
     this.noRek = '',
     this.namaBank = '',
     this.isPIC = false,
+    this.spLevel = 0,
   });
 
   factory Volunteer.fromFirestore(DocumentSnapshot doc) {
@@ -43,6 +48,7 @@ class Volunteer {
       noRek: data['noRek'] ?? '',
       namaBank: data['namaBank'] ?? '',
       isPIC: data['isPIC'] ?? false,
+      spLevel: data['spLevel'] ?? 0,
     );
   }
 
@@ -58,6 +64,7 @@ class Volunteer {
       'noRek': noRek,
       'namaBank': namaBank,
       'isPIC': isPIC,
+      'spLevel': spLevel,
       'createdAt': FieldValue.serverTimestamp(),
     };
   }
@@ -74,6 +81,7 @@ class Volunteer {
     String? noRek,
     String? namaBank,
     bool? isPIC,
+    int? spLevel,
   }) {
     return Volunteer(
       id: id ?? this.id,
@@ -87,6 +95,7 @@ class Volunteer {
       noRek: noRek ?? this.noRek,
       namaBank: namaBank ?? this.namaBank,
       isPIC: isPIC ?? this.isPIC,
+      spLevel: spLevel ?? this.spLevel,
     );
   }
 }

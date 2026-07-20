@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
 import 'package:mbg_test/features/attendance/data/repositories/attendance_payroll_repository.dart';
+import 'package:mbg_test/features/volunteer/data/models/volunteer_sp_history_model.dart';
+import 'package:mbg_test/features/volunteer/data/repositories/volunteer_repository.dart';
 
 /// Self-service dashboard shown to a logged-in volunteer with no admin-type
 /// role (developer/admin/accountant/sppi/aslap/nutritionist/scanner).
@@ -150,7 +152,86 @@ class VolunteerDashboard extends StatelessWidget {
                       effectiveScan: effectiveScan,
                       totalGaji: totalGaji,
                     ),
-                    const SizedBox(height: AppSpacing.xl),
+                  ],
+                ),
+              ),
+            ),
+            StreamBuilder<List<VolunteerSpHistory>>(
+              stream: VolunteerRepository().getMySPHistory(authUid),
+              builder: (context, spSnapshot) {
+                if (spSnapshot.connectionState == ConnectionState.waiting) {
+                  return const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                  );
+                }
+
+                if (spSnapshot.hasError) {
+                  debugPrint("Error loading SP history: ${spSnapshot.error}");
+                  return SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      child: Text(
+                        "Failed to load your SP history.",
+                        style: TextStyle(color: colorScheme.error),
+                      ),
+                    ),
+                  );
+                }
+
+                final spHistory = spSnapshot.data ?? [];
+                // History is newest-first, so the latest entry's newLevel
+                // is the volunteer's current SP status.
+                final currentLevel = spHistory.isNotEmpty
+                    ? spHistory.first.newLevel
+                    : 0;
+
+                return SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "SP Warning History",
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        if (currentLevel > 0) ...[
+                          _buildSPStatusBanner(context, currentLevel),
+                          const SizedBox(height: AppSpacing.md),
+                        ],
+                        if (spHistory.isEmpty)
+                          _buildSPEmptyState(context)
+                        else
+                          Column(
+                            children: [
+                              for (int i = 0; i < spHistory.length; i++)
+                                _buildSPTimelineTile(
+                                  context,
+                                  spHistory[i],
+                                  isLast: i == spHistory.length - 1,
+                                ),
+                            ],
+                          ),
+                        const SizedBox(height: AppSpacing.xl),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
                       "Attendance timeline",
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -366,6 +447,172 @@ class VolunteerDashboard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       "Scanned by $scannedByEmail",
+                      style: const TextStyle(fontSize: 10, color: Colors.grey),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── SP (Surat Peringatan / warning) history ─────────────────────────────
+
+  Color _spColor(int level) {
+    switch (level) {
+      case 1:
+        return const Color(0xFFFBC02D); // yellow — SP 1
+      case 2:
+        return const Color(0xFFFF9800); // orange — SP 2
+      case 3:
+        return const Color(0xFFF44336); // red — SP 3
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Widget _buildSPStatusBanner(BuildContext context, int level) {
+    final color = _spColor(level);
+    final isSuspended = level >= 3;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isSuspended ? Icons.block : Icons.warning_amber_rounded,
+            color: color,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              isSuspended
+                  ? "You currently have an active SP 3 warning and your account is suspended."
+                  : "You currently have an active SP $level warning.",
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSPEmptyState(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(Icons.verified_outlined, size: 18, color: colorScheme.outline),
+          const SizedBox(width: 8),
+          Text(
+            "No warnings on record.",
+            style: TextStyle(color: colorScheme.outline, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSPTimelineTile(
+    BuildContext context,
+    VolunteerSpHistory entry, {
+    required bool isLast,
+  }) {
+    final isUndo = entry.action == SpAction.undo;
+    final color = isUndo
+        ? Theme.of(context).colorScheme.primary
+        : _spColor(entry.newLevel);
+    final title = isUndo
+        ? "Undo — SP ${entry.previousLevel} cleared"
+        : "SP ${entry.newLevel} Warning Issued";
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Timeline rail: dot + connecting line — same visual language as
+          // the attendance timeline above.
+          Column(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isUndo ? Icons.undo : Icons.warning_amber_rounded,
+                  size: 16,
+                  color: color,
+                ),
+              ),
+              if (!isLast)
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    color: Colors.grey.withValues(alpha: 0.25),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          // Content
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: color,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        DateFormat(
+                          'dd MMM yyyy, HH:mm',
+                        ).format(entry.createdAt),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (entry.reason.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      entry.reason,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                  if ((entry.performedBy ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      "By ${entry.performedBy}",
                       style: const TextStyle(fontSize: 10, color: Colors.grey),
                     ),
                   ],

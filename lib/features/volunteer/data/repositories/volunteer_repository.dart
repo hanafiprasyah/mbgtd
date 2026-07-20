@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mbg_test/features/volunteer/data/models/volunteer_model.dart';
+import 'package:mbg_test/features/volunteer/data/models/volunteer_sp_history_model.dart';
 
 class VolunteerRepository {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
@@ -38,6 +39,119 @@ class VolunteerRepository {
     await firestore.collection('volunteers').doc(id).update({
       'isActive': !currentStatus,
     });
+  }
+
+  /// Escalates a volunteer's warning level (SP 1 → SP 2 → SP 3) and logs
+  /// the action, with [reason], to the `volunteer_sp_history` collection.
+  /// [currentLevel] is the level the volunteer is on *before* this call
+  /// (0 = none, 1 = SP 1, 2 = SP 2). Reaching SP 3 also sets isActive
+  /// to false. Already at SP 3 is a no-op (SP 3 is a terminal state that
+  /// only clears through an explicit undo).
+  Future<void> escalateVolunteerSP(
+    String id,
+    int currentLevel,
+    String reason, {
+    String? volunteerName,
+    String? performedBy,
+  }) async {
+    if (currentLevel >= 3) return;
+
+    final newLevel = currentLevel + 1;
+    final batch = firestore.batch();
+
+    final volunteerRef = firestore.collection('volunteers').doc(id);
+    final updateData = <String, dynamic>{'spLevel': newLevel};
+    if (newLevel >= 3) {
+      updateData['isActive'] = false;
+    }
+    batch.update(volunteerRef, updateData);
+
+    final historyRef = firestore.collection('volunteer_sp_history').doc();
+    batch.set(historyRef, {
+      'volunteerId': id,
+      'volunteerName': volunteerName ?? '',
+      'action': 'issued',
+      'previousLevel': currentLevel,
+      'newLevel': newLevel,
+      'reason': reason,
+      'performedBy': performedBy,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    await batch.commit();
+  }
+
+  /// Undoes a volunteer's SP record back to a clean state (spLevel: 0),
+  /// logging [reason] to the history collection. If the volunteer was at
+  /// SP 3 (and therefore deactivated by the earlier escalation), undoing
+  /// it also reactivates them (isActive: true) — SP 3's deactivation and
+  /// its undo are treated as a single reversible unit.
+  Future<void> resetVolunteerSP(
+    String id,
+    int currentLevel,
+    String reason, {
+    String? volunteerName,
+    String? performedBy,
+  }) async {
+    if (currentLevel <= 0) return;
+
+    final batch = firestore.batch();
+
+    final volunteerRef = firestore.collection('volunteers').doc(id);
+    final updateData = <String, dynamic>{'spLevel': 0};
+    if (currentLevel >= 3) {
+      updateData['isActive'] = true;
+    }
+    batch.update(volunteerRef, updateData);
+
+    final historyRef = firestore.collection('volunteer_sp_history').doc();
+    batch.set(historyRef, {
+      'volunteerId': id,
+      'volunteerName': volunteerName ?? '',
+      'action': 'undo',
+      'previousLevel': currentLevel,
+      'newLevel': 0,
+      'reason': reason,
+      'performedBy': performedBy,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    await batch.commit();
+  }
+
+  /// Full SP timeline for a volunteer, newest first — every issue and
+  /// undo action with its date, level change, and reason.
+  Stream<List<VolunteerSpHistory>> getVolunteerSPHistory(String volunteerId) {
+    return firestore
+        .collection('volunteer_sp_history')
+        .where('volunteerId', isEqualTo: volunteerId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => VolunteerSpHistory.fromFirestore(doc))
+              .toList(),
+        );
+  }
+
+  /// Same as [getVolunteerSPHistory], but for self-service screens that
+  /// only know the signed-in Firebase Auth uid, not the volunteer doc id.
+  /// Resolves the linked volunteer (`volunteers.userId == userId`) first,
+  /// then streams its SP history. Emits an empty list if the account
+  /// isn't linked to a volunteer record.
+  Stream<List<VolunteerSpHistory>> getMySPHistory(String userId) async* {
+    final query = await firestore
+        .collection('volunteers')
+        .where('userId', isEqualTo: userId)
+        .limit(1)
+        .get();
+
+    if (query.docs.isEmpty) {
+      yield [];
+      return;
+    }
+
+    yield* getVolunteerSPHistory(query.docs.first.id);
   }
 
   // Get volunteer by ID

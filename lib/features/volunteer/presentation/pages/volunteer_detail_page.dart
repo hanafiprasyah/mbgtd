@@ -5,6 +5,8 @@ import 'package:mbg_test/features/attendance/data/repositories/attendance_payrol
 import 'package:mbg_test/features/volunteer/bloc/volunteer_bloc.dart';
 import 'package:mbg_test/features/volunteer/bloc/volunteer_event.dart';
 import 'package:mbg_test/features/volunteer/data/models/volunteer_model.dart';
+import 'package:mbg_test/features/volunteer/data/models/volunteer_sp_history_model.dart';
+import 'package:mbg_test/features/volunteer/data/repositories/volunteer_repository.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
 import 'package:mbg_test/features/volunteer/presentation/widgets/info_widget.dart';
 
@@ -39,6 +41,11 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
         backgroundColor: colorScheme.surfaceContainerLowest,
         surfaceTintColor: Colors.transparent,
         actions: [
+          IconButton(
+            tooltip: 'SP History',
+            icon: const Icon(Icons.history_edu_outlined),
+            onPressed: () => _showSPHistory(context),
+          ),
           IconButton(
             tooltip: 'Attendance History',
             icon: const Icon(Icons.calendar_month_outlined),
@@ -108,6 +115,46 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
                               color: volunteer!.isActive
                                   ? Colors.green
                                   : Colors.grey,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Warning Level'),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        transitionBuilder: (child, animation) => FadeTransition(
+                          opacity: animation,
+                          child: ScaleTransition(
+                            scale: animation,
+                            child: child,
+                          ),
+                        ),
+                        child: Container(
+                          key: ValueKey(volunteer!.spLevel),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _spStatusColor(
+                              volunteer!.spLevel,
+                            ).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            _spStatusLabel(volunteer!.spLevel),
+                            style: TextStyle(
+                              color: _spStatusColor(volunteer!.spLevel),
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -246,6 +293,27 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
             ],
           ),
         ),
+        const SizedBox(height: AppSpacing.sm),
+
+        // SP warning escalation button
+        _buildSPButton(context),
+
+        // Undo — only shown once a warning has actually been issued
+        if (volunteer!.spLevel > 0) ...[
+          const SizedBox(height: 4),
+          Center(
+            child: TextButton.icon(
+              onPressed: () => _confirmUndoSP(context, volunteer!.spLevel),
+              icon: const Icon(Icons.undo, size: 16),
+              label: Text('Undo SP ${volunteer!.spLevel}'),
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -290,6 +358,186 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
     );
   }
 
+  // ── SP (Surat Peringatan / warning) escalation ──────────────────────────
+
+  Widget _buildSPButton(BuildContext context) {
+    final level = volunteer!.spLevel;
+    final isSuspended = level >= 3;
+    final color = _spButtonColor(level);
+
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color.withValues(alpha: isSuspended ? 0.12 : 0.15),
+          foregroundColor: color,
+          disabledBackgroundColor: color.withValues(alpha: 0.12),
+          disabledForegroundColor: color,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: color.withValues(alpha: 0.4)),
+          ),
+        ),
+        onPressed: isSuspended
+            ? null
+            : () => _confirmEscalateSP(context, level),
+        icon: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          transitionBuilder: (child, animation) =>
+              FadeTransition(opacity: animation, child: child),
+          child: Icon(
+            isSuspended ? Icons.block : Icons.warning_amber_rounded,
+            key: ValueKey(level),
+          ),
+        ),
+        label: Text(
+          _spButtonLabel(level),
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmEscalateSP(
+    BuildContext context,
+    int currentLevel,
+  ) async {
+    final nextLevel = currentLevel + 1;
+    final isFinal = nextLevel >= 3;
+    final nextColor = _spButtonColor(nextLevel);
+
+    final reason = await _showSPReasonDialog(
+      context,
+      title: 'Issue SP $nextLevel Warning?',
+      description: isFinal
+          ? 'This will issue a final SP 3 warning to ${volunteer!.namaLengkap} and automatically deactivate this volunteer. This action cannot be undone from this screen.'
+          : 'This will issue an SP $nextLevel warning to ${volunteer!.namaLengkap}.',
+      hint: 'e.g. Repeated late arrival without notice',
+      confirmLabel: 'Issue SP $nextLevel',
+      confirmColor: nextColor,
+    );
+
+    if (reason == null || !context.mounted) return;
+
+    context.read<VolunteerBloc>().add(
+      EscalateVolunteerSP(
+        volunteer!.id,
+        currentLevel,
+        reason,
+        volunteer!.namaLengkap,
+      ),
+    );
+
+    setState(() {
+      volunteer = volunteer!.copyWith(
+        spLevel: nextLevel,
+        isActive: isFinal ? false : volunteer!.isActive,
+      );
+    });
+  }
+
+  Future<void> _confirmUndoSP(BuildContext context, int currentLevel) async {
+    final willReactivate = currentLevel >= 3 && !volunteer!.isActive;
+
+    final reason = await _showSPReasonDialog(
+      context,
+      title: 'Undo SP $currentLevel?',
+      description: willReactivate
+          ? 'This clears ${volunteer!.namaLengkap}\'s warning level back to none '
+                'and automatically reactivates this volunteer. The current SP '
+                '$currentLevel and this undo will both stay on record in the SP '
+                'history.'
+          : 'This clears ${volunteer!.namaLengkap}\'s warning level back to none. '
+                'The current SP $currentLevel and this undo will both stay on record '
+                'in the SP history.',
+      hint: 'e.g. Warning issued in error / appeal approved',
+      confirmLabel: 'Undo SP $currentLevel',
+      confirmColor: Theme.of(context).colorScheme.primary,
+    );
+
+    if (reason == null || !context.mounted) return;
+
+    context.read<VolunteerBloc>().add(
+      ResetVolunteerSP(
+        volunteer!.id,
+        currentLevel,
+        reason,
+        volunteer!.namaLengkap,
+      ),
+    );
+
+    setState(() {
+      volunteer = volunteer!.copyWith(
+        spLevel: 0,
+        isActive: willReactivate ? true : volunteer!.isActive,
+      );
+    });
+  }
+
+  /// Shared dialog for both escalate and undo actions: a short explanation
+  /// plus a required reason field. Returns the trimmed reason, or null if
+  /// cancelled / left empty.
+  Future<String?> _showSPReasonDialog(
+    BuildContext context, {
+    required String title,
+    required String description,
+    required String hint,
+    required String confirmLabel,
+    required Color confirmColor,
+  }) async {
+    final controller = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(description),
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: controller,
+                autofocus: true,
+                minLines: 2,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  labelText: 'Reason',
+                  hintText: hint,
+                  border: const OutlineInputBorder(),
+                ),
+                validator: (value) => (value == null || value.trim().isEmpty)
+                    ? 'A reason is required'
+                    : null,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: confirmColor),
+            onPressed: () {
+              if (formKey.currentState?.validate() ?? false) {
+                Navigator.pop(dialogContext, controller.text.trim());
+              }
+            },
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showAttendanceHistory(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -299,6 +547,17 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
         volunteer: volunteer!,
         repository: _attendanceRepo,
       ),
+    );
+  }
+
+  void _showSPHistory(BuildContext context) {
+    final repository = context.read<VolunteerBloc>().repository;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) =>
+          _SPHistorySheet(volunteer: volunteer!, repository: repository),
     );
   }
 }
@@ -736,6 +995,243 @@ class _AttendanceHistorySheet extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SP (warning) History Bottom Sheet
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SPHistorySheet extends StatelessWidget {
+  const _SPHistorySheet({required this.volunteer, required this.repository});
+
+  final Volunteer volunteer;
+  final VolunteerRepository repository;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.72,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (_, scrollController) {
+        return Container(
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              // Drag handle
+              const SizedBox(height: 12),
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: colorScheme.outline.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Header row
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'SP History',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            volunteer.namaLengkap,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.55,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 8),
+              const Divider(height: 1),
+
+              // Stream content
+              Expanded(
+                child: StreamBuilder<List<VolunteerSpHistory>>(
+                  stream: repository.getVolunteerSPHistory(volunteer.id),
+                  builder: (context, snap) {
+                    if (snap.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snap.hasError) {
+                      return _buildError(context, snap.error);
+                    }
+
+                    final entries = snap.data ?? [];
+                    if (entries.isEmpty) return _buildEmpty(context);
+                    return ListView.separated(
+                      controller: scrollController,
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      itemCount: entries.length,
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: AppSpacing.sm),
+                      itemBuilder: (context, index) =>
+                          _SPHistoryTile(entry: entries[index]),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmpty(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.verified_outlined,
+            size: 56,
+            color: colorScheme.outline.withValues(alpha: 0.4),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'No SP warnings on record',
+            style: TextStyle(
+              color: colorScheme.onSurface.withValues(alpha: 0.5),
+              fontSize: 15,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildError(BuildContext context, Object? error) {
+    debugPrint('$error');
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(
+          'Failed to load SP history.\n${error ?? ''}',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
+        ),
+      ),
+    );
+  }
+}
+
+class _SPHistoryTile extends StatelessWidget {
+  const _SPHistoryTile({required this.entry});
+
+  final VolunteerSpHistory entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isUndo = entry.action == SpAction.undo;
+    final color = isUndo ? colorScheme.primary : _spStatusColor(entry.newLevel);
+    final title = isUndo
+        ? 'Undo — SP ${entry.previousLevel} cleared'
+        : 'SP ${entry.newLevel} Warning Issued';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            isUndo ? Icons.undo : Icons.warning_amber_rounded,
+            size: 18,
+            color: color,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: color,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      DateFormat('dd MMM yyyy, HH:mm').format(entry.createdAt),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: colorScheme.onSurface.withValues(alpha: 0.45),
+                      ),
+                    ),
+                  ],
+                ),
+                if (entry.reason.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    entry.reason,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+                if ((entry.performedBy ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'By ${entry.performedBy}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: colorScheme.onSurface.withValues(alpha: 0.45),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Timeline item widget
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -930,6 +1426,63 @@ class _TimelineItem extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared helpers
 // ─────────────────────────────────────────────────────────────────────────────
+
+// SP (warning) status shown in the info card — reflects the volunteer's
+// *current* level.
+Color _spStatusColor(int level) {
+  switch (level) {
+    case 1:
+      return const Color(0xFFFBC02D); // yellow
+    case 2:
+      return const Color(0xFFFF9800); // orange
+    case 3:
+      return const Color(0xFFF44336); // red
+    default:
+      return Colors.grey;
+  }
+}
+
+String _spStatusLabel(int level) {
+  switch (level) {
+    case 1:
+      return 'SP 1';
+    case 2:
+      return 'SP 2';
+    case 3:
+      return 'SP 3 — Suspended';
+    default:
+      return 'No Warning';
+  }
+}
+
+// SP escalation button — colored by the level it currently represents.
+// Level 0 → neutral (about to issue SP 1). Level 1 → yellow. Level 2 →
+// orange. Level 3 → red and disabled.
+Color _spButtonColor(int level) {
+  switch (level) {
+    case 1:
+      return const Color(0xFFFBC02D); // yellow
+    case 2:
+      return const Color(0xFFFF9800); // orange
+    case 3:
+      return const Color(0xFFF44336); // red
+    default:
+      return const Color(0xFF9E9E9E); // neutral grey
+  }
+}
+
+String _spButtonLabel(int level) {
+  switch (level) {
+    case 1:
+      return 'SP 1 Warning — Escalate to SP 2';
+    case 2:
+      return 'SP 2 Warning — Escalate to SP 3';
+    case 3:
+      return 'SP 3 — Volunteer Suspended';
+    default:
+      return 'Issue SP 1 Warning';
+  }
+}
 
 Widget _buildSectionTitle(String title) {
   return Padding(

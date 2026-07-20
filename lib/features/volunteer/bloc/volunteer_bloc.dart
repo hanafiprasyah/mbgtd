@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mbg_test/core/helper/firebase_crud_error.dart';
 import 'package:mbg_test/features/volunteer/data/models/volunteer_model.dart';
@@ -25,6 +26,8 @@ class VolunteerBloc extends Bloc<VolunteerEvent, VolunteerState> {
     on<ToggleVolunteerStatus>(_onToggleVolunteerStatus);
     on<GetVolunteerById>(_onGetVolunteerById);
     on<ToggleVolunteerPIC>(_onToggleVolunteerPIC);
+    on<EscalateVolunteerSP>(_onEscalateVolunteerSP);
+    on<ResetVolunteerSP>(_onResetVolunteerSP);
   }
 
   final VolunteerRepository repository;
@@ -191,6 +194,52 @@ class VolunteerBloc extends Bloc<VolunteerEvent, VolunteerState> {
     } catch (e) {
       emit(VolunteerError(mapFirebaseError(e)));
     }
+  }
+
+  Future<void> _onEscalateVolunteerSP(
+    EscalateVolunteerSP event,
+    Emitter<VolunteerState> emit,
+  ) async {
+    try {
+      await repository.escalateVolunteerSP(
+        event.id,
+        event.currentLevel,
+        event.reason,
+        volunteerName: event.volunteerName,
+        performedBy: _currentUserLabel(),
+      );
+
+      final updated = await repository.getVolunteerById(event.id);
+      emit(VolunteerDetailLoaded(updated));
+    } catch (e) {
+      emit(VolunteerError(mapFirebaseError(e)));
+    }
+  }
+
+  Future<void> _onResetVolunteerSP(
+    ResetVolunteerSP event,
+    Emitter<VolunteerState> emit,
+  ) async {
+    try {
+      await repository.resetVolunteerSP(
+        event.id,
+        event.currentLevel,
+        event.reason,
+        volunteerName: event.volunteerName,
+        performedBy: _currentUserLabel(),
+      );
+
+      final updated = await repository.getVolunteerById(event.id);
+      emit(VolunteerDetailLoaded(updated));
+    } catch (e) {
+      emit(VolunteerError(mapFirebaseError(e)));
+    }
+  }
+
+  String? _currentUserLabel() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return null;
+    return user.email ?? user.uid;
   }
 
   Future<void> _watchVolunteerStream(

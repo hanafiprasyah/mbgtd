@@ -67,3 +67,32 @@ class ToggleVolunteerPIC extends VolunteerEvent {
 
   ToggleVolunteerPIC(this.id, this.currentStatus, this.tim);
 }
+
+/// Escalates a volunteer's warning level by one step (SP 1 → SP 2 → SP 3).
+/// [currentLevel] must be the volunteer's SP level *before* escalation.
+/// [reason] is required and is logged to the SP history collection.
+class EscalateVolunteerSP extends VolunteerEvent {
+  final String id;
+  final int currentLevel;
+  final String reason;
+  final String volunteerName;
+
+  EscalateVolunteerSP(
+    this.id,
+    this.currentLevel,
+    this.reason,
+    this.volunteerName,
+  );
+}
+
+/// Undoes a volunteer's SP record back to 0. [currentLevel] must be the
+/// volunteer's SP level *before* the undo. [reason] is required and is
+/// logged to the SP history collection alongside the escalation entries.
+class ResetVolunteerSP extends VolunteerEvent {
+  final String id;
+  final int currentLevel;
+  final String reason;
+  final String volunteerName;
+
+  ResetVolunteerSP(this.id, this.currentLevel, this.reason, this.volunteerName);
+}
