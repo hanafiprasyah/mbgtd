@@ -18,6 +18,21 @@ class UserDetailPage extends StatefulWidget {
 }
 
 class _UserDetailPageState extends State<UserDetailPage> {
+  // Local copies of what THIS page cares about. We deliberately do not
+  // render straight off the shared UserBloc's state anymore: that bloc is
+  // also used by the Users List page, whose `LoadUser` handler keeps a
+  // live Firestore `.snapshots()` listener running for as long as the
+  // bloc is alive (nothing cancels it when you leave the List page). Any
+  // edit made here causes that listener to fire a `UserLoaded` (list)
+  // state into the SAME bloc shortly after our own `GetUserById` result
+  // comes back — and previously that stray state fell through to the
+  // loading-skeleton fallback, causing the shimmer flash. Now we only
+  // react to states that are actually about this detail load/delete and
+  // ignore everything else.
+  UserModel? _user;
+  String? _errorMessage;
+  bool _isDeleting = false;
+
   @override
   void initState() {
     super.initState();
@@ -25,6 +40,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
   }
 
   void _loadUser() {
+    setState(() => _errorMessage = null);
     context.read<UserBloc>().add(GetUserById(widget.id));
   }
 
@@ -81,31 +97,60 @@ class _UserDetailPageState extends State<UserDetailPage> {
         backgroundColor: colorScheme.surfaceContainerLowest,
         foregroundColor: colorScheme.onSurface,
       ),
-      body: BlocConsumer<UserBloc, UserState>(
+      body: BlocListener<UserBloc, UserState>(
         listener: (context, state) {
-          if (state is UserError) {
-            _showErrorSnackBar(state.message);
+          if (state is UserDetailLoaded && state.user.id == widget.id) {
+            setState(() {
+              _user = state.user;
+              _errorMessage = null;
+            });
+            return;
           }
-          if (state is UserSuccess && state.user == null) {
+          if (_isDeleting && state is UserSuccess && state.user == null) {
+            _isDeleting = false;
             _showSuccessSnackBar('User deleted successfully');
             Navigator.pop(context, true);
+            return;
           }
+          if (state is UserError) {
+            // Only an error we care about if it's either the very first
+            // load (we have no user yet) or a delete we just triggered.
+            // Errors from unrelated bloc activity (list page, other
+            // screens sharing this bloc) must not blank this page out.
+            if (_user == null || _isDeleting) {
+              _isDeleting = false;
+              setState(() => _errorMessage = state.message);
+              _showErrorSnackBar(state.message);
+            }
+            return;
+          }
+          // Anything else (UserLoaded list snapshots, UserSuccess from an
+          // add/update happening elsewhere, UserLoading from unrelated
+          // events, etc.) is not about this page — ignore it so the UI
+          // doesn't flicker back to a loading skeleton.
         },
-        builder: (context, state) {
-          return AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            switchInCurve: Curves.easeOut,
-            switchOutCurve: Curves.easeIn,
-            transitionBuilder: (child, animation) => FadeTransition(
-              opacity: animation,
-              child: ScaleTransition(
-                scale: Tween<double>(begin: 0.98, end: 1).animate(animation),
-                child: child,
+        child: Stack(
+          children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.98, end: 1).animate(animation),
+                  child: child,
+                ),
               ),
+              child: _buildContent(),
             ),
-            child: _buildContent(state),
-          );
-        },
+            if (_isDeleting)
+              Container(
+                color: Colors.black.withValues(alpha: 0.3),
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -146,15 +191,17 @@ class _UserDetailPageState extends State<UserDetailPage> {
     );
   }
 
-  Widget _buildContent(UserState state) {
-    if (state is UserLoading) {
-      return _buildLoadingSkeleton();
+  Widget _buildContent() {
+    if (_user != null) {
+      // We already have data — always prefer showing it. This is what
+      // stops the shimmer from flashing back in on unrelated bloc
+      // activity: once loaded, only an explicit reload (_loadUser, which
+      // clears _errorMessage but keeps the old _user visible until the
+      // new one arrives) or a delete changes what's on screen.
+      return _buildUserDetailContent(_user!);
     }
-    if (state is UserDetailLoaded) {
-      return _buildUserDetailContent(state.user);
-    }
-    if (state is UserError) {
-      return _buildErrorContent(state.message);
+    if (_errorMessage != null) {
+      return _buildErrorContent(_errorMessage!);
     }
     return _buildLoadingSkeleton();
   }
@@ -396,6 +443,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
                             final confirmed = await _confirmDelete(user);
                             if (!mounted) return;
                             if (confirmed) {
+                              setState(() => _isDeleting = true);
                               context.read<UserBloc>().add(DeleteUser(user.id));
                             }
                           },

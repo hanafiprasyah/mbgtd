@@ -3,6 +3,10 @@ import 'package:mbg_test/auth_gate.dart';
 import 'package:mbg_test/features/food/data/models/food_model.dart';
 import 'package:mbg_test/features/food/presentation/pages/food_form.dart';
 import 'package:mbg_test/features/food/presentation/pages/food_list.dart';
+import 'package:mbg_test/features/kitchen/data/models/kitchen_model.dart';
+import 'package:mbg_test/features/kitchen/presentation/pages/kitchen_detail.dart';
+import 'package:mbg_test/features/kitchen/presentation/pages/kitchen_form.dart';
+import 'package:mbg_test/features/kitchen/presentation/pages/kitchen_list.dart';
 import 'package:mbg_test/features/users/presentation/developer_guard.dart';
 import 'package:mbg_test/features/authentication/presentation/screens/home_screen.dart';
 import 'package:mbg_test/features/users/data/models/user_model.dart';
@@ -95,6 +99,29 @@ class AppRoutes {
       case '/volunteer-account-form':
         return MaterialPageRoute(
           builder: (_) => VolunteerAccountFormPage(),
+          settings: settings,
+        );
+      case '/manage-kitchens':
+        return MaterialPageRoute(
+          builder: (_) => DeveloperRouteGuard(child: const KitchenListScreen()),
+        );
+      case '/kitchen-add':
+        return MaterialPageRoute(
+          builder: (_) => DeveloperRouteGuard(child: const KitchenFormScreen()),
+          settings: settings,
+        );
+      case '/kitchen-edit':
+        final kitchen = settings.arguments as KitchenModel;
+        return MaterialPageRoute(
+          builder: (_) =>
+              DeveloperRouteGuard(child: KitchenFormScreen(existing: kitchen)),
+          settings: settings,
+        );
+      case '/kitchen-detail':
+        final id = settings.arguments as String;
+        return MaterialPageRoute(
+          builder: (_) =>
+              DeveloperRouteGuard(child: KitchenDetailScreen(id: id)),
           settings: settings,
         );
       default:

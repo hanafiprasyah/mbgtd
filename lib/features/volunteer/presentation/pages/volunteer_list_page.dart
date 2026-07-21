@@ -41,6 +41,7 @@ class VolunteerListPage extends StatefulWidget {
 
 class _VolunteerListPageState extends State<VolunteerListPage> with RouteAware {
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
 
   String? _selectedTim;
   String? _selectedGender;
@@ -50,8 +51,31 @@ class _VolunteerListPageState extends State<VolunteerListPage> with RouteAware {
   VolunteerSortField _sortField = VolunteerSortField.none;
   bool _sortAscending = true;
   bool _isSearchVisible = false;
+  bool _isFabGroupVisible = true;
+  double _lastScrollOffset = 0;
   Map<String, dynamic>? userData;
   List<Volunteer>? _cachedVolunteers;
+
+  void _handleScroll() {
+    if (!_scrollController.hasClients) return;
+    final offset = _scrollController.position.pixels;
+
+    // Always show the floating group near the top of the list.
+    if (offset <= 20) {
+      if (!_isFabGroupVisible) setState(() => _isFabGroupVisible = true);
+      _lastScrollOffset = offset;
+      return;
+    }
+
+    final delta = offset - _lastScrollOffset;
+    const threshold = 8.0;
+    if (delta > threshold && _isFabGroupVisible) {
+      setState(() => _isFabGroupVisible = false);
+    } else if (delta < -threshold && !_isFabGroupVisible) {
+      setState(() => _isFabGroupVisible = true);
+    }
+    _lastScrollOffset = offset;
+  }
 
   int get _activeFilterCount {
     var count = 0;
@@ -321,6 +345,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> with RouteAware {
     super.initState();
     context.read<VolunteerBloc>().add(LoadVolunteer());
     _startLoadingSequence();
+    _scrollController.addListener(_handleScroll);
     if (!mounted) return;
   }
 
@@ -337,6 +362,8 @@ class _VolunteerListPageState extends State<VolunteerListPage> with RouteAware {
   void dispose() {
     volunteerRouteObserver.unsubscribe(this);
     _searchController.dispose();
+    _scrollController.removeListener(_handleScroll);
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -375,32 +402,6 @@ class _VolunteerListPageState extends State<VolunteerListPage> with RouteAware {
         backgroundColor: colorScheme.surfaceContainerLowest,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        leadingWidth: Navigator.canPop(context) ? 96 : 48,
-        leading: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (Navigator.canPop(context)) const BackButton(),
-            _SortActionButton(
-              selectedField: _sortField,
-              ascending: _sortAscending,
-              onSelected: _onSortSelected,
-            ),
-          ],
-        ),
-        actions: [
-          FilterActionButton(
-            count: _activeFilterCount,
-            onPressed: _openFilterDialog,
-            onLongPress: _resetFilters,
-          ),
-
-          if (isAslap || isDeveloper)
-            IconButton(
-              icon: const Icon(Icons.add),
-              tooltip: 'Add Volunteer',
-              onPressed: () => Navigator.pushNamed(context, '/volunteer-add'),
-            ),
-        ],
       ),
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
@@ -511,6 +512,7 @@ class _VolunteerListPageState extends State<VolunteerListPage> with RouteAware {
                     volunteers: _sortVolunteers(_filterByStatus(volunteers)),
                     onDelete: _confirmDelete,
                     isDeveloper: isDeveloper,
+                    scrollController: _scrollController,
                   );
                 },
               ),
@@ -518,9 +520,18 @@ class _VolunteerListPageState extends State<VolunteerListPage> with RouteAware {
           ],
         ),
       ),
-      floatingActionButton: _SearchFab(
-        isActive: _isSearchVisible,
-        onPressed: _toggleSearch,
+      floatingActionButton: _FloatingActionGroup(
+        isVisible: _isFabGroupVisible,
+        sortField: _sortField,
+        sortAscending: _sortAscending,
+        onSortSelected: _onSortSelected,
+        filterCount: _activeFilterCount,
+        onFilterPressed: _openFilterDialog,
+        onFilterLongPress: _resetFilters,
+        showAddButton: isAslap || isDeveloper,
+        onAddPressed: () => Navigator.pushNamed(context, '/volunteer-add'),
+        isSearchActive: _isSearchVisible,
+        onSearchPressed: _toggleSearch,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
@@ -540,11 +551,16 @@ class _SortActionButton extends StatelessWidget {
     required this.selectedField,
     required this.ascending,
     required this.onSelected,
+    this.brightIcon = false,
   });
 
   final VolunteerSortField selectedField;
   final bool ascending;
   final ValueChanged<VolunteerSortField> onSelected;
+
+  /// When true, forces a bright white, bold-looking icon suited for
+  /// sitting on top of the semi-transparent primary-color floating pill.
+  final bool brightIcon;
 
   String _labelFor(VolunteerSortField field) {
     final isSelected = selectedField == field;
@@ -565,11 +581,30 @@ class _SortActionButton extends StatelessWidget {
     final isActive = selectedField != VolunteerSortField.none;
     final colorScheme = Theme.of(context).colorScheme;
 
+    final icon = Icon(
+      Icons.sort_rounded,
+      color: brightIcon
+          ? Colors.white
+          : (isActive ? colorScheme.primary : null),
+      size: brightIcon ? 24 : null,
+      shadows: brightIcon
+          ? const [Shadow(color: Colors.black45, blurRadius: 4)]
+          : null,
+    );
+
     return PopupMenuButton<VolunteerSortField>(
       tooltip: 'Sort',
       initialValue: selectedField,
       onSelected: onSelected,
-      icon: Icon(Icons.sort, color: isActive ? colorScheme.primary : null),
+      icon: brightIcon && isActive
+          ? Stack(
+              clipBehavior: Clip.none,
+              children: [
+                icon,
+                const Positioned(right: -1, top: -1, child: _ActiveDot()),
+              ],
+            )
+          : icon,
       itemBuilder: (context) => [
         CheckedPopupMenuItem(
           value: VolunteerSortField.none,
@@ -623,16 +658,61 @@ class _SortMenuLabel extends StatelessWidget {
   }
 }
 
+/// Represents a single row rendered inside the volunteer list: either a
+/// section header (e.g. "Active Volunteer") or an actual volunteer entry.
+class _VolunteerListRow {
+  _VolunteerListRow.header(this.headerLabel) : volunteer = null;
+  _VolunteerListRow.volunteer(Volunteer this.volunteer) : headerLabel = null;
+
+  final String? headerLabel;
+  final Volunteer? volunteer;
+
+  bool get isHeader => headerLabel != null;
+}
+
+class _VolunteerSectionHeader extends StatelessWidget {
+  const _VolunteerSectionHeader({
+    required this.label,
+    required this.topSpacing,
+  });
+
+  final String label;
+  final double topSpacing;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(4, topSpacing, 4, 8),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _VolunteerList extends StatelessWidget {
   const _VolunteerList({
     required this.volunteers,
     required this.onDelete,
     required this.isDeveloper,
+    required this.scrollController,
   });
 
   final List<Volunteer> volunteers;
   final Future<void> Function(Volunteer volunteer) onDelete;
   final bool isDeveloper;
+  final ScrollController scrollController;
 
   @override
   Widget build(BuildContext context) {
@@ -640,14 +720,46 @@ class _VolunteerList extends StatelessWidget {
       return const EmptyState();
     }
 
+    // Keep active volunteers up top and inactive ones in their own section
+    // at the bottom. `volunteers` may already be sorted/filtered/searched
+    // by the caller — partitioning here preserves that order within each
+    // group, so sort/search/filter keep working exactly as before.
+    final activeVolunteers = volunteers.where((v) => v.isActive).toList();
+    final inactiveVolunteers = volunteers.where((v) => !v.isActive).toList();
+    final showSections =
+        activeVolunteers.isNotEmpty && inactiveVolunteers.isNotEmpty;
+
+    final rows = <_VolunteerListRow>[
+      if (showSections)
+        _VolunteerListRow.header(
+          'Active Volunteer (${activeVolunteers.length})',
+        ),
+      for (final v in activeVolunteers) _VolunteerListRow.volunteer(v),
+      if (showSections)
+        _VolunteerListRow.header(
+          'Inactive Volunteer (${inactiveVolunteers.length})',
+        ),
+      for (final v in inactiveVolunteers) _VolunteerListRow.volunteer(v),
+    ];
+
     return AnimationLimiter(
       child: ListView.builder(
+        controller: scrollController,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         scrollCacheExtent: ScrollCacheExtent.pixels(500),
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-        itemCount: volunteers.length,
+        itemCount: rows.length,
         itemBuilder: (context, index) {
-          final volunteer = volunteers[index];
+          final row = rows[index];
+
+          if (row.isHeader) {
+            return _VolunteerSectionHeader(
+              label: row.headerLabel!,
+              topSpacing: index == 0 ? 0 : 20,
+            );
+          }
+
+          final volunteer = row.volunteer!;
 
           return AnimationConfiguration.staggeredList(
             position: index,
@@ -660,11 +772,14 @@ class _VolunteerList extends StatelessWidget {
                 child: ScaleAnimation(
                   scale: 0.94,
                   curve: Curves.easeOutBack,
-                  child: VolunteerTile(
-                    volunteer: volunteer,
-                    index: index,
-                    onDelete: () => onDelete(volunteer),
-                    isDeveloper: isDeveloper,
+                  child: Opacity(
+                    opacity: volunteer.isActive ? 1 : 0.6,
+                    child: VolunteerTile(
+                      volunteer: volunteer,
+                      index: index,
+                      onDelete: () => onDelete(volunteer),
+                      isDeveloper: isDeveloper,
+                    ),
                   ),
                 ),
               ),
@@ -676,49 +791,180 @@ class _VolunteerList extends StatelessWidget {
   }
 }
 
-class _SearchFab extends StatelessWidget {
-  const _SearchFab({required this.isActive, required this.onPressed});
+/// A pill-shaped floating group that combines the sort, filter, add
+/// volunteer, and search actions. It sits on a semi-transparent primary
+/// color background and hides itself when the list is scrolled down,
+/// reappearing when scrolled back up.
+class _FloatingActionGroup extends StatelessWidget {
+  const _FloatingActionGroup({
+    required this.isVisible,
+    required this.sortField,
+    required this.sortAscending,
+    required this.onSortSelected,
+    required this.filterCount,
+    required this.onFilterPressed,
+    required this.onFilterLongPress,
+    required this.showAddButton,
+    required this.onAddPressed,
+    required this.isSearchActive,
+    required this.onSearchPressed,
+  });
 
-  final bool isActive;
-  final VoidCallback onPressed;
+  final bool isVisible;
+  final VolunteerSortField sortField;
+  final bool sortAscending;
+  final ValueChanged<VolunteerSortField> onSortSelected;
+  final int filterCount;
+  final VoidCallback onFilterPressed;
+  final VoidCallback onFilterLongPress;
+  final bool showAddButton;
+  final VoidCallback onAddPressed;
+  final bool isSearchActive;
+  final VoidCallback onSearchPressed;
+
+  static const _iconColor = Colors.white;
+  static const _iconShadows = [Shadow(color: Colors.black45, blurRadius: 4)];
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOutCubic,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: isActive
-            ? [
+    return IgnorePointer(
+      ignoring: !isVisible,
+      child: AnimatedSlide(
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+        offset: isVisible ? Offset.zero : const Offset(0, 1.6),
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          opacity: isVisible ? 1 : 0,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(32),
+              boxShadow: [
                 BoxShadow(
-                  color: colorScheme.primary.withValues(alpha: 0.4),
-                  blurRadius: 16,
-                  spreadRadius: 2,
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
                 ),
-              ]
-            : [],
-      ),
-      child: FloatingActionButton(
-        onPressed: onPressed,
-        tooltip: isActive ? 'Hide Search' : 'Search',
-        backgroundColor: isActive ? colorScheme.primary : null,
-        foregroundColor: isActive ? colorScheme.onPrimary : null,
-        elevation: isActive ? 0 : 4,
-        mini: true,
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 220),
-          transitionBuilder: (child, animation) => ScaleTransition(
-            scale: animation,
-            child: FadeTransition(opacity: animation, child: child),
-          ),
-          child: Icon(
-            isActive ? Icons.search_off_rounded : Icons.search_rounded,
-            key: ValueKey(isActive),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _SortActionButton(
+                  selectedField: sortField,
+                  ascending: sortAscending,
+                  onSelected: onSortSelected,
+                  brightIcon: true,
+                ),
+                IconButton(
+                  tooltip: 'Filter',
+                  onPressed: onFilterPressed,
+                  onLongPress: onFilterLongPress,
+                  icon: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(
+                        Icons.filter_alt_rounded,
+                        color: _iconColor,
+                        size: 24,
+                        shadows: _iconShadows,
+                      ),
+                      if (filterCount > 0)
+                        Positioned(
+                          right: -4,
+                          top: -4,
+                          child: _CountBadge(count: filterCount),
+                        ),
+                    ],
+                  ),
+                ),
+                if (showAddButton)
+                  IconButton(
+                    tooltip: 'Add Volunteer',
+                    onPressed: onAddPressed,
+                    icon: const Icon(
+                      Icons.person_add_alt_1_rounded,
+                      color: _iconColor,
+                      size: 24,
+                      shadows: _iconShadows,
+                    ),
+                  ),
+                IconButton(
+                  tooltip: isSearchActive ? 'Hide Search' : 'Search',
+                  onPressed: onSearchPressed,
+                  icon: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    transitionBuilder: (child, animation) => ScaleTransition(
+                      scale: animation,
+                      child: FadeTransition(opacity: animation, child: child),
+                    ),
+                    child: Icon(
+                      isSearchActive
+                          ? Icons.search_off_rounded
+                          : Icons.search_rounded,
+                      key: ValueKey(isSearchActive),
+                      color: _iconColor,
+                      size: 24,
+                      shadows: _iconShadows,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Small circular badge showing an active filter count, styled to stay
+/// legible against the bright icons on the semi-transparent pill.
+class _CountBadge extends StatelessWidget {
+  const _CountBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+      ),
+      child: Text(
+        '$count',
+        style: const TextStyle(
+          color: Colors.black87,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          height: 1,
+        ),
+      ),
+    );
+  }
+}
+
+/// Small dot indicating an action (e.g. sort) is currently active.
+class _ActiveDot extends StatelessWidget {
+  const _ActiveDot();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
       ),
     );
   }

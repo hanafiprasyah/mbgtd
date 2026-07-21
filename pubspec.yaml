@@ -57,6 +57,7 @@ dependencies:
   crypto: ^3.0.7
   dio: ^5.9.2
   flutter_staggered_animations: ^1.1.1
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:

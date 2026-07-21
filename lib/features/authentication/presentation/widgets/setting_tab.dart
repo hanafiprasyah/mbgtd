@@ -110,6 +110,23 @@ Widget _userSetting(BuildContext context) {
             ),
           ),
         ),
+        const SizedBox(height: AppSpacing.sm),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pushNamed(context, '/manage-kitchens');
+            },
+            icon: const Icon(Icons.storefront_rounded),
+            label: const Text("Manage Kitchens"),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+              ),
+            ),
+          ),
+        ),
       ],
     ),
   );

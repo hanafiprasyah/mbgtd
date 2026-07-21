@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mbg_test/core/helper/global_scaffold_messenger.dart';
 import 'package:mbg_test/features/attendance/data/repositories/attendance_payroll_repository.dart';
 import 'package:mbg_test/features/volunteer/bloc/volunteer_bloc.dart';
 import 'package:mbg_test/features/volunteer/bloc/volunteer_event.dart';
@@ -1095,8 +1096,10 @@ class _SPHistorySheet extends StatelessWidget {
                       itemCount: entries.length,
                       separatorBuilder: (_, __) =>
                           const SizedBox(height: AppSpacing.sm),
-                      itemBuilder: (context, index) =>
-                          _SPHistoryTile(entry: entries[index]),
+                      itemBuilder: (context, index) => _SPHistoryTile(
+                        entry: entries[index],
+                        onEdit: () => _editReason(context, entries[index]),
+                      ),
                     );
                   },
                 ),
@@ -1145,12 +1148,96 @@ class _SPHistorySheet extends StatelessWidget {
       ),
     );
   }
+
+  /// Lets an admin correct the wording of an existing SP history entry's
+  /// reason — works the same way for SP 1, SP 2, SP 3, and undo entries.
+  /// Only the `reason` field is touched; level, action, and date are
+  /// immutable once recorded.
+  Future<void> _editReason(
+    BuildContext context,
+    VolunteerSpHistory entry,
+  ) async {
+    final controller = TextEditingController(text: entry.reason);
+    final formKey = GlobalKey<FormState>();
+    final isUndo = entry.action == SpAction.undo;
+    final label = isUndo
+        ? 'Undo — SP ${entry.previousLevel} cleared'
+        : 'SP ${entry.newLevel} Warning';
+
+    final newReason = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Edit Reason'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: controller,
+                autofocus: true,
+                minLines: 2,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Reason',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) => (value == null || value.trim().isEmpty)
+                    ? 'A reason is required'
+                    : null,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() ?? false) {
+                Navigator.pop(dialogContext, controller.text.trim());
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (newReason == null || newReason == entry.reason || !context.mounted) {
+      return;
+    }
+
+    try {
+      await repository.updateSPHistoryReason(entry.id, newReason);
+    } catch (e) {
+      if (!context.mounted) return;
+      GlobalScaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text('Failed to update reason: $e'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    }
+  }
 }
 
 class _SPHistoryTile extends StatelessWidget {
-  const _SPHistoryTile({required this.entry});
+  const _SPHistoryTile({required this.entry, required this.onEdit});
 
   final VolunteerSpHistory entry;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -1223,6 +1310,19 @@ class _SPHistoryTile extends StatelessWidget {
                   ),
                 ],
               ],
+            ),
+          ),
+          const SizedBox(width: 4),
+          InkWell(
+            onTap: onEdit,
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(
+                Icons.edit_outlined,
+                size: 16,
+                color: colorScheme.onSurface.withValues(alpha: 0.4),
+              ),
             ),
           ),
         ],

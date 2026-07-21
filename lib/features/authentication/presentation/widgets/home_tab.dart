@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
-import 'package:mbg_test/core/services/camera_prewarm.dart';
 import 'package:mbg_test/features/authentication/presentation/widgets/bricks/home/menu_card.dart';
 import 'package:mbg_test/features/attendance/data/repositories/attendance_repository.dart';
 import 'package:mbg_test/features/authentication/presentation/widgets/bricks/home/volunteer_dashboard.dart';
@@ -46,20 +45,6 @@ Widget buildHomeTab(
       );
     }
 
-    if (isScanner) {
-      addMenu(
-        index: 0,
-        icon: Icons.qr_code_scanner,
-        title: 'Scan',
-        subtitle: 'Attendance',
-        onTap: () {
-          CameraPrewarmService.warmBeforeNavigate();
-          Navigator.pushNamed(context, '/qr-scanner');
-        },
-      );
-      return items;
-    }
-
     if (isNutritionist) {
       addMenu(
         index: 0,
@@ -102,31 +87,6 @@ Widget buildHomeTab(
       return items;
     }
 
-    if (isAslap) {
-      addMenu(
-        index: 0,
-        icon: Icons.people,
-        title: 'Volunteers',
-        subtitle: 'Manage Volunteer',
-        onTap: () => Navigator.pushNamed(context, '/volunteers'),
-      );
-      addMenu(
-        index: 1,
-        icon: Icons.payments,
-        title: 'Payroll',
-        subtitle: 'Salary & Period',
-        onTap: () => Navigator.pushNamed(context, '/payroll'),
-      );
-      addMenu(
-        index: 0,
-        icon: Icons.food_bank_rounded,
-        title: 'Food Bank',
-        subtitle: 'Manage menu archive',
-        onTap: () => Navigator.pushNamed(context, '/food-bank'),
-      );
-      return items;
-    }
-
     if (isSPPI) {
       addMenu(
         index: 0,
@@ -141,31 +101,6 @@ Widget buildHomeTab(
         title: 'Payroll',
         subtitle: 'Salary & Period',
         onTap: () => Navigator.pushNamed(context, '/payroll'),
-      );
-      addMenu(
-        index: 0,
-        icon: Icons.food_bank_rounded,
-        title: 'Food Bank',
-        subtitle: 'Manage menu archive',
-        onTap: () => Navigator.pushNamed(context, '/food-bank'),
-      );
-      return items;
-    }
-
-    if (isAdmin) {
-      addMenu(
-        index: 0,
-        icon: Icons.people,
-        title: 'Volunteers',
-        subtitle: 'Manage Volunteer',
-        onTap: () => Navigator.pushNamed(context, '/volunteers'),
-      );
-      addMenu(
-        index: 2,
-        icon: Icons.qr_code_scanner,
-        title: 'Scan',
-        subtitle: 'Attendance',
-        onTap: () => Navigator.pushNamed(context, '/qr-scanner'),
       );
       addMenu(
         index: 0,
@@ -231,6 +166,13 @@ Widget buildHomeTab(
         authUid: user.uid,
         greeting: greeting,
         fullname: fullname,
+        // Admin keeps QR-scan access (like the scanner role); aslap keeps
+        // volunteer management; both keep food bank management. These used
+        // to be full menu-grid items — now they're quick actions inside the
+        // personal dashboard instead.
+        isScanner: isScanner || isAdmin,
+        canManageVolunteers: isAslap,
+        canManageFoodBank: isAslap || isAdmin,
       ),
     );
   }

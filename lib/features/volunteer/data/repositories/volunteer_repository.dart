@@ -139,19 +139,69 @@ class VolunteerRepository {
   /// Resolves the linked volunteer (`volunteers.userId == userId`) first,
   /// then streams its SP history. Emits an empty list if the account
   /// isn't linked to a volunteer record.
+  ///
+  /// Also guards against a common sign-out race: this stream's listener
+  /// can still be open for a moment after the user logs out (widget not
+  /// torn down yet), so Firestore re-evaluates security rules against a
+  /// now-null auth token and reports `permission-denied`. That's expected
+  /// SDK behaviour, not a rules problem — we treat it as "nothing to show"
+  /// rather than surfacing a scary error to an already-logged-out user.
   Stream<List<VolunteerSpHistory>> getMySPHistory(String userId) async* {
-    final query = await firestore
-        .collection('volunteers')
-        .where('userId', isEqualTo: userId)
-        .limit(1)
-        .get();
+    if (userId.isEmpty) {
+      yield [];
+      return;
+    }
+
+    QuerySnapshot<Map<String, dynamic>> query;
+    try {
+      query = await firestore
+          .collection('volunteers')
+          .where('userId', isEqualTo: userId)
+          .limit(1)
+          .get();
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        yield [];
+        return;
+      }
+      rethrow;
+    }
 
     if (query.docs.isEmpty) {
       yield [];
       return;
     }
 
-    yield* getVolunteerSPHistory(query.docs.first.id);
+    final volunteerId = query.docs.first.id;
+
+    try {
+      await for (final snapshot
+          in firestore
+              .collection('volunteer_sp_history')
+              .where('volunteerId', isEqualTo: volunteerId)
+              .orderBy('createdAt', descending: true)
+              .snapshots()) {
+        yield snapshot.docs
+            .map((doc) => VolunteerSpHistory.fromFirestore(doc))
+            .toList();
+      }
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        yield [];
+        return;
+      }
+      rethrow;
+    }
+  }
+
+  /// Edits only the `reason` text of an existing SP history entry (an
+  /// issue at SP 1/2/3, or an undo). Nothing else about that entry —
+  /// level, action, date, performedBy — is touched; this exists purely to
+  /// correct or clarify wording after the fact.
+  Future<void> updateSPHistoryReason(String historyId, String reason) async {
+    await firestore.collection('volunteer_sp_history').doc(historyId).update({
+      'reason': reason,
+    });
   }
 
   // Get volunteer by ID
@@ -247,38 +297,37 @@ class VolunteerRepository {
     });
   }
 
-  // Search volunteers
+  // Search volunteers (client-side substring match — works for any part of the name)
   Stream<List<Volunteer>> searchVolunteer(
     String query,
     String? tim,
     String? jenisKelamin,
   ) {
-    Query q = firestore.collection('volunteers');
+    final lowerQuery = query.trim().toLowerCase();
 
-    if (query.isNotEmpty) {
-      // Assuming 'namaSearch' is a field in Firestore that contains the lowercase version of the volunteer's name for search purposes
-      q = q
-          .where('namaSearch', isGreaterThanOrEqualTo: query.toLowerCase())
-          .where(
-            'namaSearch',
-            isLessThanOrEqualTo: '${query.toLowerCase()}\uf8ff',
-          );
-    }
+    return firestore.collection('volunteers').snapshots().map((snapshot) {
+      var volunteers = snapshot.docs
+          .map((doc) => Volunteer.fromFirestore(doc))
+          .toList();
 
-    // Filter by tim if provided
-    if (tim != null && tim.isNotEmpty) {
-      q = q.where('tim', isEqualTo: tim);
-    }
+      if (lowerQuery.isNotEmpty) {
+        volunteers = volunteers
+            .where((v) => v.namaLengkap.toLowerCase().contains(lowerQuery))
+            .toList();
+      }
 
-    // Filter by jenisKelamin if provided
-    if (jenisKelamin != null && jenisKelamin.isNotEmpty) {
-      q = q.where('jenisKelamin', isEqualTo: jenisKelamin);
-    }
+      if (tim != null && tim.isNotEmpty) {
+        volunteers = volunteers.where((v) => v.tim == tim).toList();
+      }
 
-    return q.snapshots().map(
-      (snapshot) =>
-          snapshot.docs.map((doc) => Volunteer.fromFirestore(doc)).toList(),
-    );
+      if (jenisKelamin != null && jenisKelamin.isNotEmpty) {
+        volunteers = volunteers
+            .where((v) => v.jenisKelamin == jenisKelamin)
+            .toList();
+      }
+
+      return volunteers;
+    });
   }
 
   // Filter volunteers by tim and jenisKelamin

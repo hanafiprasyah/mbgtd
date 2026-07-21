@@ -96,61 +96,6 @@ class SearchField extends StatelessWidget {
   }
 }
 
-class FilterActionButton extends StatelessWidget {
-  const FilterActionButton({
-    super.key,
-    required this.count,
-    required this.onPressed,
-    required this.onLongPress,
-  });
-
-  final int count;
-  final VoidCallback onPressed;
-  final VoidCallback onLongPress;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        IconButton(
-          icon: Icon(
-            Icons.tune_rounded,
-            color: count > 0 ? colorScheme.primary : null,
-          ),
-          tooltip: 'Filter',
-          onPressed: onPressed,
-          onLongPress: onLongPress,
-        ),
-        if (count > 0)
-          Positioned(
-            right: 8,
-            top: 8,
-            child: Container(
-              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: colorScheme.primary,
-                shape: BoxShape.circle,
-              ),
-              child: Text(
-                count.toString(),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: colorScheme.onPrimary,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
 class VolunteerTile extends StatelessWidget {
   const VolunteerTile({
     super.key,

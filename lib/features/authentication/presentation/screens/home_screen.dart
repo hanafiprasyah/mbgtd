@@ -195,10 +195,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = FirebaseAuth.instance.currentUser;
 
     final role = userData?['role'] as String?;
-    final isScanner =
-        user != null && (role)?.toLowerCase().contains('scanner') == true;
-    final isVolunteer =
-        user != null && (role)?.toLowerCase().contains('volunteer') == true;
+    final isAccountant =
+        user != null && (role)?.toLowerCase().contains('accountant') == true;
+    final isSPPI =
+        user != null && (role)?.toLowerCase().contains('sppi') == true;
+    final isDeveloper =
+        user != null && (role)?.toLowerCase().contains('developer') == true;
 
     // Camera service prewarm with loading screen
     if (_isLoading) {
@@ -226,7 +228,7 @@ class _HomeScreenState extends State<HomeScreen> {
           item: ItemConfig(icon: const Icon(Icons.home), title: "Home"),
         ),
         // Report Tab
-        if (!isScanner && !isVolunteer)
+        if (isAccountant || isSPPI || isDeveloper)
           PersistentTabConfig(
             screen: buildReportTab(context),
             item: ItemConfig(
