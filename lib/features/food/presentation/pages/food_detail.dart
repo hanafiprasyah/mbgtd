@@ -265,7 +265,7 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
       context,
       PageRouteBuilder(
         opaque: false,
-        pageBuilder: (_, __, ___) => Scaffold(
+        pageBuilder: (_, _, _) => Scaffold(
           backgroundColor: Colors.black.withValues(alpha: 0.95),
           body: Stack(
             children: [
@@ -309,7 +309,7 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
             ],
           ),
         ),
-        transitionsBuilder: (_, animation, __, child) {
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),

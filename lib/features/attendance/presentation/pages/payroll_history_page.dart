@@ -462,7 +462,7 @@ void _showVolunteerDetail(
                       vertical: 8,
                     ),
                     itemCount: dailyDetails.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 6),
+                    separatorBuilder: (_, _) => const SizedBox(height: 6),
                     itemBuilder: (_, index) => _DailyDetailTile(
                       day: dailyDetails[index] as Map<String, dynamic>,
                     ),

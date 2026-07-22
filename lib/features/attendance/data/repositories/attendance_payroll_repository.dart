@@ -163,7 +163,7 @@ class AttendancePayrollRepository {
   ///     'effectiveScan': double,
   ///     'totalGaji': int,
   ///     'isPIC': bool,
-  ///     'timeline': List<Map<String, dynamic>>, // newest first, see
+  ///     'timeline': List MapString, dynamic, // newest first, see
   ///                                              // getVolunteerAttendanceStream
   ///   }
   ///

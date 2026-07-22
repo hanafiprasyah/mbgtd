@@ -352,7 +352,7 @@ void _showVolunteerListSheet(
                   controller: scrollController,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: volunteers.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (ctx, i) {
                     final v = volunteers[i];
                     final daysSince = v['daysSince'] as int?;

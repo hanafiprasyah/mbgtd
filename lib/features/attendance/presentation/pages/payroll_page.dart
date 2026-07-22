@@ -23,11 +23,61 @@ class _PayrollPageState extends State<PayrollPage> {
   String selectedTim = 'all';
   String? lastHighlightedId;
 
+  final _scrollController = ScrollController();
+  bool _isFabGroupVisible = true;
+  double _lastScrollOffset = 0;
+
   final currencyFormatter = NumberFormat.currency(
     locale: 'id_ID',
     symbol: 'Rp. ',
     decimalDigits: 0,
   );
+
+  late final Stream<Map<String, dynamic>> _payrollStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_handleScroll);
+    _payrollStream = Rx.combineLatest2(
+      AttendancePayrollRepository().getPayrollStream(),
+      AttendancePayrollRepository().getTeamDaySummaryStream(),
+      (
+        Map<String, dynamic> volunteersMap,
+        Map<String, Map<String, dynamic>> teamDaySummary,
+      ) {
+        return {'volunteers': volunteersMap, 'teamDaySummary': teamDaySummary};
+      },
+    ).debounceTime(const Duration(milliseconds: 300));
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_handleScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _handleScroll() {
+    if (!_scrollController.hasClients) return;
+    final offset = _scrollController.position.pixels;
+
+    // Always show the floating group near the top of the list.
+    if (offset <= 20) {
+      if (!_isFabGroupVisible) setState(() => _isFabGroupVisible = true);
+      _lastScrollOffset = offset;
+      return;
+    }
+
+    final delta = offset - _lastScrollOffset;
+    const threshold = 8.0;
+    if (delta > threshold && _isFabGroupVisible) {
+      setState(() => _isFabGroupVisible = false);
+    } else if (delta < -threshold && !_isFabGroupVisible) {
+      setState(() => _isFabGroupVisible = true);
+    }
+    _lastScrollOffset = offset;
+  }
 
   String _formatEffectiveAttendance(dynamic value) {
     final effectiveAttendance = value is num ? value.toDouble() : 0.0;
@@ -80,9 +130,11 @@ class _PayrollPageState extends State<PayrollPage> {
     final tim = item['tim'];
     if (volunteerId == null) return;
 
-    context.read<VolunteerBloc>().add(
-      ToggleVolunteerPIC(volunteerId, isPIC, tim),
-    );
+    if (mounted) {
+      context.read<VolunteerBloc>().add(
+        ToggleVolunteerPIC(volunteerId, isPIC, tim),
+      );
+    }
 
     GlobalScaffoldMessenger.showSnackBar(
       const SnackBar(
@@ -671,7 +723,7 @@ class _PayrollPageState extends State<PayrollPage> {
         title: const Text('Payroll Volunteer'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded, color: Colors.red),
             tooltip: 'Reset Period',
             onPressed: () async {
               final confirm = await showDialog<bool>(
@@ -702,54 +754,33 @@ class _PayrollPageState extends State<PayrollPage> {
               }
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.history_rounded),
-            tooltip: 'History',
-            onPressed: () => Navigator.pushNamed(context, '/payroll-history'),
-          ),
         ],
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: DropdownButtonFormField<String>(
-              initialValue: selectedTim,
-              decoration: const InputDecoration(
-                labelText: 'Filter by Team',
-                border: OutlineInputBorder(),
-              ),
-              items: [
-                const DropdownMenuItem(value: 'all', child: Text('All')),
-                ...payrollRules.keys.map(
-                  (tim) => DropdownMenuItem(
-                    value: tim,
-                    child: Text(tim.toString().trim()),
+          if (selectedTim != 'all')
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Chip(
+                  label: Text('Team: $selectedTim'),
+                  deleteIcon: const Icon(Icons.close_rounded, size: 18),
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer,
+                  labelStyle: TextStyle(
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.w600,
                   ),
+                  side: BorderSide.none,
+                  onDeleted: () => setState(() => selectedTim = 'all'),
                 ),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  selectedTim = value!;
-                });
-              },
+              ),
             ),
-          ),
           Expanded(
             child: StreamBuilder<Map<String, dynamic>>(
-              stream: Rx.combineLatest2(
-                AttendancePayrollRepository().getPayrollStream(),
-                AttendancePayrollRepository().getTeamDaySummaryStream(),
-                (
-                  Map<String, dynamic> volunteersMap,
-                  Map<String, Map<String, dynamic>> teamDaySummary,
-                ) {
-                  return {
-                    'volunteers': volunteersMap,
-                    'teamDaySummary': teamDaySummary,
-                  };
-                },
-              ).debounceTime(const Duration(milliseconds: 300)),
+              stream: _payrollStream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
@@ -866,6 +897,7 @@ class _PayrollPageState extends State<PayrollPage> {
 
                 return AnimationLimiter(
                   child: CustomScrollView(
+                    controller: _scrollController,
                     physics: const BouncingScrollPhysics(),
                     slivers: [
                       // SUMMARY DASHBOARD
@@ -1002,7 +1034,7 @@ class _PayrollPageState extends State<PayrollPage> {
                                           ),
                                           itemCount:
                                               (teamDayMap[team] ?? []).length,
-                                          separatorBuilder: (_, __) =>
+                                          separatorBuilder: (_, _) =>
                                               const SizedBox(width: 8),
                                           physics:
                                               const BouncingScrollPhysics(),
@@ -1475,6 +1507,137 @@ class _PayrollPageState extends State<PayrollPage> {
             ),
           ),
         ],
+      ),
+      floatingActionButton: _FloatingActionGroup(
+        isVisible: _isFabGroupVisible,
+        selectedTim: selectedTim,
+        onTimSelected: (value) => setState(() => selectedTim = value),
+        onHistoryPressed: () =>
+            Navigator.pushNamed(context, '/payroll-history'),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+}
+
+/// A pill-shaped floating group that combines the "Filter by Team" and
+/// "History" actions, styled the same way as the one on the volunteer
+/// list page: a semi-transparent primary-color pill with bright, bold
+/// icons that hides on scroll down and reappears on scroll up.
+class _FloatingActionGroup extends StatelessWidget {
+  const _FloatingActionGroup({
+    required this.isVisible,
+    required this.selectedTim,
+    required this.onTimSelected,
+    required this.onHistoryPressed,
+  });
+
+  final bool isVisible;
+  final String selectedTim;
+  final ValueChanged<String> onTimSelected;
+  final VoidCallback onHistoryPressed;
+
+  static const _iconColor = Colors.white;
+  static const _iconShadows = [Shadow(color: Colors.black45, blurRadius: 4)];
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isFiltered = selectedTim != 'all';
+
+    return IgnorePointer(
+      ignoring: !isVisible,
+      child: AnimatedSlide(
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+        offset: isVisible ? Offset.zero : const Offset(0, 1.6),
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          opacity: isVisible ? 1 : 0,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(32),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                PopupMenuButton<String>(
+                  tooltip: 'Filter by Team',
+                  initialValue: selectedTim,
+                  onSelected: onTimSelected,
+                  icon: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(
+                        Icons.filter_list_rounded,
+                        color: _iconColor,
+                        size: 24,
+                        shadows: _iconShadows,
+                      ),
+                      if (isFiltered)
+                        const Positioned(
+                          right: -1,
+                          top: -1,
+                          child: _ActiveDot(),
+                        ),
+                    ],
+                  ),
+                  itemBuilder: (context) => [
+                    CheckedPopupMenuItem(
+                      value: 'all',
+                      checked: selectedTim == 'all',
+                      child: const Text('All'),
+                    ),
+                    ...payrollRules.keys.map(
+                      (tim) => CheckedPopupMenuItem(
+                        value: tim,
+                        checked: selectedTim == tim,
+                        child: Text(tim.toString().trim()),
+                      ),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  tooltip: 'History',
+                  onPressed: onHistoryPressed,
+                  icon: const Icon(
+                    Icons.history_rounded,
+                    color: _iconColor,
+                    size: 24,
+                    shadows: _iconShadows,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Small dot indicating an action (e.g. team filter) is currently active.
+class _ActiveDot extends StatelessWidget {
+  const _ActiveDot();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
       ),
     );
   }

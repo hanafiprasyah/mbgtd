@@ -362,7 +362,9 @@ class _SectionCard extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppSpacing.sm),
-        side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
+        side: BorderSide(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
@@ -385,7 +387,7 @@ class _SectionCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.md),
             Divider(
               height: 0,
-              color: colorScheme.outlineVariant.withOpacity(0.5),
+              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: AppSpacing.md),
             ...children,
@@ -462,7 +464,7 @@ class _StatusToggle extends StatelessWidget {
           Switch(
             value: value,
             onChanged: enabled ? onChanged : null,
-            activeColor: Colors.blueAccent,
+            activeThumbColor: Colors.blueAccent,
           ),
           const SizedBox(width: 4),
           AnimatedSwitcher(
@@ -499,7 +501,7 @@ class _SaveButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.blueAccent,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: Colors.blueAccent.withOpacity(0.5),
+          disabledBackgroundColor: Colors.blueAccent.withValues(alpha: 0.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppSpacing.sm),
           ),

@@ -494,7 +494,7 @@ class _UserListPageState extends State<UserListPage> {
       child: ListView.separated(
         padding: const EdgeInsets.only(bottom: AppSpacing.lg),
         itemCount: users.length,
-        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
         itemBuilder: (context, index) {
           final user = users[index];
           return AnimationConfiguration.staggeredList(

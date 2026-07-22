@@ -1,11 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class KitchenModel {
-  final String id; // Doc ID -> dipakai juga sebagai kitchenId (tenant key)
+  final String id; // Doc ID -> also used as kitchenId (tenant key)
   final String name;
   final String ketua;
   final String idKetua;
   final String address;
+  final String? ketuaWaNumb; // Head/SPPI WhatsApp number, optional
 
   const KitchenModel({
     required this.id,
@@ -13,6 +14,7 @@ class KitchenModel {
     required this.ketua,
     required this.idKetua,
     required this.address,
+    this.ketuaWaNumb,
   });
 
   factory KitchenModel.fromFirestore(
@@ -25,6 +27,7 @@ class KitchenModel {
       ketua: data['ketua'] ?? '',
       idKetua: data['id_ketua'] ?? '',
       address: data['address'] ?? '',
+      ketuaWaNumb: data['ketua_wa_numb'] as String?,
     );
   }
 
@@ -34,6 +37,7 @@ class KitchenModel {
       'ketua': ketua,
       'id_ketua': idKetua,
       'address': address,
+      'ketua_wa_numb': ketuaWaNumb,
     };
   }
 
@@ -43,6 +47,7 @@ class KitchenModel {
     String? ketua,
     String? idKetua,
     String? address,
+    String? ketuaWaNumb,
   }) {
     return KitchenModel(
       id: id ?? this.id,
@@ -50,6 +55,7 @@ class KitchenModel {
       ketua: ketua ?? this.ketua,
       idKetua: idKetua ?? this.idKetua,
       address: address ?? this.address,
+      ketuaWaNumb: ketuaWaNumb ?? this.ketuaWaNumb,
     );
   }
 }

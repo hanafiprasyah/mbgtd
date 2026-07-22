@@ -36,6 +36,7 @@ class _KitchenFormViewState extends State<_KitchenFormView> {
   late final TextEditingController _ketuaController;
   late final TextEditingController _idKetuaController;
   late final TextEditingController _addressController;
+  late final TextEditingController _waController;
 
   bool get _isEditing => widget.existing != null;
 
@@ -48,6 +49,7 @@ class _KitchenFormViewState extends State<_KitchenFormView> {
     _ketuaController = TextEditingController(text: existing?.ketua ?? '');
     _idKetuaController = TextEditingController(text: existing?.idKetua ?? '');
     _addressController = TextEditingController(text: existing?.address ?? '');
+    _waController = TextEditingController(text: existing?.ketuaWaNumb ?? '');
   }
 
   @override
@@ -57,11 +59,14 @@ class _KitchenFormViewState extends State<_KitchenFormView> {
     _ketuaController.dispose();
     _idKetuaController.dispose();
     _addressController.dispose();
+    _waController.dispose();
     super.dispose();
   }
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
+
+    final waNumber = _waController.text.trim();
 
     final kitchen = KitchenModel(
       id: _idController.text.trim(),
@@ -69,6 +74,7 @@ class _KitchenFormViewState extends State<_KitchenFormView> {
       ketua: _ketuaController.text.trim(),
       idKetua: _idKetuaController.text.trim(),
       address: _addressController.text.trim(),
+      ketuaWaNumb: waNumber.isEmpty ? null : waNumber,
     );
 
     if (_isEditing) {
@@ -196,6 +202,27 @@ class _KitchenFormViewState extends State<_KitchenFormView> {
                         'account before filling in this field.',
                         style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    TextFormField(
+                      controller: _waController,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: 'WhatsApp Number (optional)',
+                        hintText: 'e.g. 081234567890',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return null;
+                        }
+                        if (RegExp(r'[^0-9+\s-]').hasMatch(value.trim())) {
+                          return 'Enter a valid phone number';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: AppSpacing.md),
                     TextFormField(

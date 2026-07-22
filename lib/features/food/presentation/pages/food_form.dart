@@ -510,7 +510,7 @@ class _FoodFormScreenState extends State<FoodFormScreen> {
 
         final names = <String>{
           ...?snapshot.data?.map((u) => u.fullname),
-          if (value != null) value,
+          ?value,
         }.toList();
 
         final isLoading =

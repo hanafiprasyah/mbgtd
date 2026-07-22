@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
@@ -8,6 +9,7 @@ import 'package:mbg_test/features/kitchen/bloc/kitchen_event.dart';
 import 'package:mbg_test/features/kitchen/bloc/kitchen_state.dart';
 import 'package:mbg_test/features/kitchen/data/models/kitchen_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Tracks failed delete-confirmation attempts per kitchen and enforces a
 /// 24-hour lockout after 3 wrong attempts. Stored locally on-device via
@@ -64,6 +66,35 @@ class KitchenDetailScreen extends StatelessWidget {
 
 class _KitchenDetailView extends StatelessWidget {
   const _KitchenDetailView();
+
+  Future<void> _copyHeadId(BuildContext context, String value) async {
+    await Clipboard.setData(ClipboardData(text: value));
+    if (!context.mounted) return;
+    GlobalScaffoldMessenger.showSnackBar(
+      const SnackBar(
+        content: Text('Head ID copied to clipboard.'),
+        duration: Duration(seconds: 1),
+      ),
+    );
+  }
+
+  Future<void> _launchWhatsApp(BuildContext context, String rawNumber) async {
+    var digits = rawNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) return;
+    // Normalize Indonesian local format (0812...) to international (62812...)
+    if (digits.startsWith('0')) {
+      digits = '62${digits.substring(1)}';
+    }
+
+    final uri = Uri.parse('https://wa.me/$digits');
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    if (!launched && context.mounted) {
+      GlobalScaffoldMessenger.showSnackBar(
+        const SnackBar(content: Text('Could not open WhatsApp.')),
+      );
+    }
+  }
 
   Future<void> _confirmDelete(
     BuildContext context,
@@ -164,8 +195,37 @@ class _KitchenDetailView extends StatelessWidget {
                     children: [
                       _KitchenHeaderCard(kitchen: state.kitchen),
                       const SizedBox(height: AppSpacing.md),
-                      _KitchenInfoCard(kitchen: state.kitchen),
+                      _KitchenInfoCard(
+                        kitchen: state.kitchen,
+                        onCopyHeadId: () =>
+                            _copyHeadId(context, state.kitchen.idKetua),
+                      ),
                       const SizedBox(height: AppSpacing.lg),
+                      if (state.kitchen.ketuaWaNumb != null &&
+                          state.kitchen.ketuaWaNumb!.trim().isNotEmpty) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () => _launchWhatsApp(
+                              context,
+                              state.kitchen.ketuaWaNumb!,
+                            ),
+                            icon: const Icon(Icons.chat_rounded),
+                            label: const Text('Contact via WhatsApp'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF25D366),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.lg,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                      ],
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton.icon(
@@ -313,7 +373,8 @@ class _KitchenHeaderCard extends StatelessWidget {
 
 class _KitchenInfoCard extends StatelessWidget {
   final KitchenModel kitchen;
-  const _KitchenInfoCard({required this.kitchen});
+  final VoidCallback onCopyHeadId;
+  const _KitchenInfoCard({required this.kitchen, required this.onCopyHeadId});
 
   @override
   Widget build(BuildContext context) {
@@ -333,7 +394,22 @@ class _KitchenInfoCard extends StatelessWidget {
             icon: Icons.badge_outlined,
             label: 'Head ID',
             value: kitchen.idKetua,
+            trailing: IconButton(
+              icon: const Icon(Icons.copy_rounded, size: 18),
+              tooltip: 'Copy Head ID',
+              onPressed: onCopyHeadId,
+            ),
           ),
+          if (kitchen.ketuaWaNumb != null &&
+              kitchen.ketuaWaNumb!.trim().isNotEmpty) ...[
+            Divider(height: 1, color: colorScheme.outlineVariant),
+            _infoTile(
+              context,
+              icon: Icons.chat_outlined,
+              label: 'WhatsApp Number',
+              value: kitchen.ketuaWaNumb!,
+            ),
+          ],
           Divider(height: 1, color: colorScheme.outlineVariant),
           _infoTile(
             context,
@@ -351,6 +427,7 @@ class _KitchenInfoCard extends StatelessWidget {
     required IconData icon,
     required String label,
     required String value,
+    Widget? trailing,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
     return Padding(
@@ -378,6 +455,7 @@ class _KitchenInfoCard extends StatelessWidget {
               ],
             ),
           ),
+          if (trailing != null) trailing,
         ],
       ),
     );

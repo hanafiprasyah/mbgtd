@@ -1094,7 +1094,7 @@ class _SPHistorySheet extends StatelessWidget {
                       controller: scrollController,
                       padding: const EdgeInsets.all(AppSpacing.md),
                       itemCount: entries.length,
-                      separatorBuilder: (_, __) =>
+                      separatorBuilder: (_, _) =>
                           const SizedBox(height: AppSpacing.sm),
                       itemBuilder: (context, index) => _SPHistoryTile(
                         entry: entries[index],
