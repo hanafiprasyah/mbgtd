@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mbg_test/features/volunteer/bloc/volunteer_bloc.dart';
 import 'package:mbg_test/features/volunteer/bloc/volunteer_event.dart';
@@ -106,6 +107,17 @@ class _PayrollDetailPageState extends State<PayrollDetailPage>
       default:
         return 'assets/default_bank.png';
     }
+  }
+
+  void _copyAccountNumber(BuildContext context, String noRek) {
+    if (noRek.isEmpty) return;
+    Clipboard.setData(ClipboardData(text: noRek));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Nomor rekening disalin'),
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   String formatDate(String raw) {
@@ -1063,13 +1075,37 @@ class _PayrollDetailPageState extends State<PayrollDetailPage>
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  namaBank.isNotEmpty ? '$namaBank • $noRek' : 'Unregistered',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        namaBank.isNotEmpty
+                            ? '$namaBank • $noRek'
+                            : 'Unregistered',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (namaBank.isNotEmpty && noRek.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      InkWell(
+                        onTap: () => _copyAccountNumber(context, noRek),
+                        borderRadius: BorderRadius.circular(6),
+                        child: const Padding(
+                          padding: EdgeInsets.all(2.0),
+                          child: Icon(
+                            Icons.copy_rounded,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),

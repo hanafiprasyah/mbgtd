@@ -6,6 +6,7 @@ import 'package:mbg_test/core/services/permission_service.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
+import 'package:share_plus/share_plus.dart';
 import 'dart:typed_data';
 
 class QrGeneratorPage extends StatefulWidget {
@@ -62,19 +63,25 @@ class _QrGeneratorPageState extends State<QrGeneratorPage>
     return data;
   }
 
-  Future<void> saveQr() async {
-    final hasPermission = await PermissionService.requestGallery();
-    final status = await Permission.storage.request();
-
-    if (!hasPermission && !status.isGranted) return;
-
+  /// Captures the rendered QR code as PNG bytes, shared by both the save
+  /// and share actions so the capture logic only lives in one place.
+  Future<Uint8List> _captureQrImage() async {
     final boundary =
         repaintKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
 
     final image = await boundary.toImage(pixelRatio: 5);
     final byteData = await image.toByteData(format: ImageByteFormat.png);
 
-    final Uint8List pngBytes = byteData!.buffer.asUint8List();
+    return byteData!.buffer.asUint8List();
+  }
+
+  Future<void> saveQr() async {
+    final hasPermission = await PermissionService.requestGallery();
+    final status = await Permission.storage.request();
+
+    if (!hasPermission && !status.isGranted) return;
+
+    final pngBytes = await _captureQrImage();
 
     final result = await ImageGallerySaverPlus.saveImage(
       pngBytes,
@@ -93,6 +100,31 @@ class _QrGeneratorPageState extends State<QrGeneratorPage>
           ),
         ),
       );
+    }
+  }
+
+  Future<void> shareQr() async {
+    try {
+      final pngBytes = await _captureQrImage();
+
+      final file = XFile.fromData(
+        pngBytes,
+        name: 'qr_${widget.nama}.png',
+        mimeType: 'image/png',
+      );
+
+      await Share.shareXFiles([
+        file,
+      ], text: 'QR Code for ${widget.nama} (${widget.tim})');
+    } catch (_) {
+      if (mounted) {
+        GlobalScaffoldMessenger.showSnackBar(
+          const SnackBar(
+            duration: Duration(seconds: 1),
+            content: Text('Failed to share QR, please try again.'),
+          ),
+        );
+      }
     }
   }
 
@@ -158,26 +190,76 @@ class _QrGeneratorPageState extends State<QrGeneratorPage>
 
               const Spacer(),
 
-              // Save Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: saveQr,
-                  icon: const Icon(Icons.download_rounded),
-                  label: const Text('Save QR to Gallery'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
-              ),
-
               const SizedBox(height: 10),
             ],
           ),
         ),
+      ),
+      floatingActionButton: _FloatingActionGroup(
+        onSavePressed: saveQr,
+        onSharePressed: shareQr,
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+}
+
+/// A pill-shaped floating group that combines the Save and Share actions,
+/// styled the same way as the one on the volunteer list page: a
+/// semi-transparent primary-color pill with bright, bold icons.
+class _FloatingActionGroup extends StatelessWidget {
+  const _FloatingActionGroup({
+    required this.onSavePressed,
+    required this.onSharePressed,
+  });
+
+  final VoidCallback onSavePressed;
+  final VoidCallback onSharePressed;
+
+  static const _iconColor = Colors.white;
+  static const _iconShadows = [Shadow(color: Colors.black45, blurRadius: 4)];
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: colorScheme.primary.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.18),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: 'Save QR to Gallery',
+            onPressed: onSavePressed,
+            icon: const Icon(
+              Icons.download_rounded,
+              color: _iconColor,
+              size: 24,
+              shadows: _iconShadows,
+            ),
+          ),
+          IconButton(
+            tooltip: 'Share QR',
+            onPressed: onSharePressed,
+            icon: const Icon(
+              Icons.share_rounded,
+              color: _iconColor,
+              size: 24,
+              shadows: _iconShadows,
+            ),
+          ),
+        ],
       ),
     );
   }

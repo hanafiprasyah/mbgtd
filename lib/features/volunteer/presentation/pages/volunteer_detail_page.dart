@@ -22,6 +22,44 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
   Volunteer? volunteer;
   final _attendanceRepo = AttendancePayrollRepository();
 
+  final _scrollController = ScrollController();
+  bool _isFabGroupVisible = true;
+  double _lastScrollOffset = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_handleScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_handleScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _handleScroll() {
+    if (!_scrollController.hasClients) return;
+    final offset = _scrollController.position.pixels;
+
+    // Always show the floating group near the top of the page.
+    if (offset <= 20) {
+      if (!_isFabGroupVisible) setState(() => _isFabGroupVisible = true);
+      _lastScrollOffset = offset;
+      return;
+    }
+
+    final delta = offset - _lastScrollOffset;
+    const threshold = 8.0;
+    if (delta > threshold && _isFabGroupVisible) {
+      setState(() => _isFabGroupVisible = false);
+    } else if (delta < -threshold && !_isFabGroupVisible) {
+      setState(() => _isFabGroupVisible = true);
+    }
+    _lastScrollOffset = offset;
+  }
+
   @override
   Widget build(BuildContext context) {
     final args = ModalRoute.of(context)?.settings.arguments;
@@ -43,14 +81,22 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
         surfaceTintColor: Colors.transparent,
         actions: [
           IconButton(
-            tooltip: 'SP History',
-            icon: const Icon(Icons.history_edu_outlined),
-            onPressed: () => _showSPHistory(context),
-          ),
-          IconButton(
-            tooltip: 'Attendance History',
-            icon: const Icon(Icons.calendar_month_outlined),
-            onPressed: () => _showAttendanceHistory(context),
+            tooltip: volunteer!.isActive ? 'Deactivate' : 'Activate',
+            icon: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(scale: animation, child: child),
+              ),
+              child: Icon(
+                volunteer!.isActive
+                    ? Icons.power_settings_new
+                    : Icons.power_off,
+                key: ValueKey(volunteer!.isActive),
+                color: volunteer!.isActive ? Colors.red : null,
+              ),
+            ),
+            onPressed: () => _confirmToggleStatus(context),
           ),
           const SizedBox(width: 4),
         ],
@@ -69,6 +115,7 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
           );
         },
         child: SingleChildScrollView(
+          controller: _scrollController,
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -125,46 +172,6 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
                     ],
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Warning Level'),
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        transitionBuilder: (child, animation) => FadeTransition(
-                          opacity: animation,
-                          child: ScaleTransition(
-                            scale: animation,
-                            child: child,
-                          ),
-                        ),
-                        child: Container(
-                          key: ValueKey(volunteer!.spLevel),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _spStatusColor(
-                              volunteer!.spLevel,
-                            ).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            _spStatusLabel(volunteer!.spLevel),
-                            style: TextStyle(
-                              color: _spStatusColor(volunteer!.spLevel),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
                 const SizedBox(height: AppSpacing.sm),
                 const Divider(),
                 const SizedBox(height: AppSpacing.sm),
@@ -175,11 +182,28 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
                 ),
               ]),
               const SizedBox(height: AppSpacing.lg),
-              _buildActions(context),
+              _buildSectionTitle('Warning Status'),
+              _buildSPSection(context),
             ],
           ),
         ),
       ),
+      floatingActionButton: _FloatingActionGroup(
+        isVisible: _isFabGroupVisible,
+        onEditPressed: () async {
+          final result = await Navigator.pushNamed(
+            context,
+            '/volunteer-add',
+            arguments: volunteer,
+          );
+          if (result != null) {
+            setState(() => volunteer = result as Volunteer);
+          }
+        },
+        onSPHistoryPressed: () => _showSPHistory(context),
+        onAttendanceHistoryPressed: () => _showAttendanceHistory(context),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
@@ -242,6 +266,22 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
               ],
             ),
           ),
+          const SizedBox(width: AppSpacing.sm),
+          // QR Code — moved here so it sits alongside the volunteer's
+          // identity info instead of as a standalone full-width button.
+          Material(
+            color: Colors.white.withValues(alpha: 0.2),
+            shape: const CircleBorder(),
+            child: IconButton(
+              tooltip: 'QR Code',
+              onPressed: () => Navigator.pushNamed(
+                context,
+                '/qr-generator',
+                arguments: volunteer,
+              ),
+              icon: const Icon(Icons.qr_code, color: Colors.white),
+            ),
+          ),
         ],
       ),
     );
@@ -249,113 +289,112 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
-  Widget _buildActions(BuildContext context) {
-    return Column(
-      children: [
-        // Primary action
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: ElevatedButton.icon(
-            onPressed: () async {
-              final result = await Navigator.pushNamed(
-                context,
-                '/volunteer-add',
-                arguments: volunteer,
-              );
-              if (result != null) {
-                setState(() => volunteer = result as Volunteer);
-              }
-            },
-            icon: const Icon(Icons.edit),
-            label: const Text('Edit Volunteer'),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-
-        // Secondary actions row — equal height, equal width
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _SecondaryButton(
-                  icon: Icons.qr_code,
-                  label: 'QR Code',
-                  onPressed: () => Navigator.pushNamed(
-                    context,
-                    '/qr-generator',
-                    arguments: volunteer,
+  /// Dedicated "Warning Status" section — keeps the SP (Surat Peringatan)
+  /// badge, the escalation button, and the Undo action together, separate
+  /// from the Personal Information card.
+  Widget _buildSPSection(BuildContext context) {
+    return buildInfoCard([
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Warning Level'),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(scale: animation, child: child),
+              ),
+              child: Container(
+                key: ValueKey(volunteer!.spLevel),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: _spStatusColor(
+                    volunteer!.spLevel,
+                  ).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  _spStatusLabel(volunteer!.spLevel),
+                  style: TextStyle(
+                    color: _spStatusColor(volunteer!.spLevel),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(child: _buildToggleButton(context)),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-
-        // SP warning escalation button
-        _buildSPButton(context),
-
-        // Undo — only shown once a warning has actually been issued
-        if (volunteer!.spLevel > 0) ...[
-          const SizedBox(height: 4),
-          Center(
-            child: TextButton.icon(
-              onPressed: () => _confirmUndoSP(context, volunteer!.spLevel),
-              icon: const Icon(Icons.undo, size: 16),
-              label: Text('Undo SP ${volunteer!.spLevel}'),
-              style: TextButton.styleFrom(
-                foregroundColor: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildToggleButton(BuildContext context) {
-    return OutlinedButton(
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      onPressed: () {
-        final newStatus = !volunteer!.isActive;
-        setState(() {
-          volunteer = volunteer!.copyWith(isActive: newStatus);
-        });
-        context.read<VolunteerBloc>().add(
-          ToggleVolunteerStatus(volunteer!.id, !newStatus),
-        );
-      },
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 250),
-        transitionBuilder: (child, animation) => FadeTransition(
-          opacity: animation,
-          child: ScaleTransition(scale: animation, child: child),
-        ),
-        child: Column(
-          key: ValueKey(volunteer!.isActive),
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              volunteer!.isActive ? Icons.power_settings_new : Icons.power_off,
-              size: 22,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              volunteer!.isActive ? 'Deactivate' : 'Activate',
-              style: const TextStyle(fontSize: 13),
             ),
           ],
         ),
       ),
+      const SizedBox(height: AppSpacing.sm),
+      const Divider(),
+      const SizedBox(height: AppSpacing.sm),
+
+      // SP warning escalation button
+      _buildSPButton(context),
+
+      // Undo — only shown once a warning has actually been issued
+      if (volunteer!.spLevel > 0) ...[
+        const SizedBox(height: 4),
+        Center(
+          child: TextButton.icon(
+            onPressed: () => _confirmUndoSP(context, volunteer!.spLevel),
+            icon: const Icon(Icons.undo, size: 16),
+            label: Text('Undo SP ${volunteer!.spLevel}'),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+        ),
+      ],
+    ]);
+  }
+
+  /// Confirms deactivation with the volunteer's name before applying it.
+  /// Reactivating doesn't need confirmation — only the destructive action
+  /// (deactivating) does.
+  Future<void> _confirmToggleStatus(BuildContext context) async {
+    final isCurrentlyActive = volunteer!.isActive;
+    final newStatus = !isCurrentlyActive;
+
+    if (isCurrentlyActive) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Deactivate Volunteer?'),
+          content: Text(
+            'Are you sure you want to deactivate "${volunteer!.namaLengkap}"? '
+            'This volunteer will no longer be counted as active.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Deactivate'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true || !context.mounted) return;
+    }
+
+    setState(() {
+      volunteer = volunteer!.copyWith(isActive: newStatus);
+    });
+    context.read<VolunteerBloc>().add(
+      ToggleVolunteerStatus(volunteer!.id, !newStatus),
     );
   }
 
@@ -559,41 +598,6 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
       backgroundColor: Colors.transparent,
       builder: (_) =>
           _SPHistorySheet(volunteer: volunteer!, repository: repository),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Reusable secondary button
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _SecondaryButton extends StatelessWidget {
-  const _SecondaryButton({
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton(
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      onPressed: onPressed,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 22),
-          const SizedBox(height: 6),
-          Text(label, style: const TextStyle(fontSize: 13)),
-        ],
-      ),
     );
   }
 }
@@ -1592,4 +1596,94 @@ Widget _buildSectionTitle(String title) {
       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
     ),
   );
+}
+
+/// A pill-shaped floating group that combines the Edit, SP History, and
+/// Attendance History actions, styled the same way as the one on the
+/// volunteer list page: a semi-transparent primary-color pill with
+/// bright, bold icons that hides on scroll down and reappears on scroll
+/// up.
+class _FloatingActionGroup extends StatelessWidget {
+  const _FloatingActionGroup({
+    required this.isVisible,
+    required this.onEditPressed,
+    required this.onSPHistoryPressed,
+    required this.onAttendanceHistoryPressed,
+  });
+
+  final bool isVisible;
+  final VoidCallback onEditPressed;
+  final VoidCallback onSPHistoryPressed;
+  final VoidCallback onAttendanceHistoryPressed;
+
+  static const _iconColor = Colors.white;
+  static const _iconShadows = [Shadow(color: Colors.black45, blurRadius: 4)];
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return IgnorePointer(
+      ignoring: !isVisible,
+      child: AnimatedSlide(
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+        offset: isVisible ? Offset.zero : const Offset(0, 1.6),
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          opacity: isVisible ? 1 : 0,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(32),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Edit Volunteer',
+                  onPressed: onEditPressed,
+                  icon: const Icon(
+                    Icons.edit_rounded,
+                    color: _iconColor,
+                    size: 24,
+                    shadows: _iconShadows,
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'SP History',
+                  onPressed: onSPHistoryPressed,
+                  icon: const Icon(
+                    Icons.history_edu_rounded,
+                    color: _iconColor,
+                    size: 24,
+                    shadows: _iconShadows,
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Attendance History',
+                  onPressed: onAttendanceHistoryPressed,
+                  icon: const Icon(
+                    Icons.calendar_month_rounded,
+                    color: _iconColor,
+                    size: 24,
+                    shadows: _iconShadows,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

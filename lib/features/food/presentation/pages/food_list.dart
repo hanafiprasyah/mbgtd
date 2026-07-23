@@ -26,6 +26,7 @@ class _FoodListScreenState extends State<FoodListScreen> {
   final _storage = const FlutterSecureStorage();
   static const _viewKey = 'food_view_mode';
   String? _selectedFoodId;
+  String? _selectedPeriod;
 
   final _searchController = TextEditingController();
   Timer? _searchDebounce;
@@ -108,6 +109,83 @@ class _FoodListScreenState extends State<FoodListScreen> {
     _searchDebounce?.cancel();
     setState(() => _searchController.clear());
     context.read<FoodBloc>().add(SearchMenu(''));
+  }
+
+  static String _periodKey(String periode) => periode.split('-').first.trim();
+
+  static int _periodSortValue(String key) {
+    return int.tryParse(RegExp(r'\d+').firstMatch(key)?.group(0) ?? '') ?? 0;
+  }
+
+  void _onSelectPeriod(String? period) {
+    setState(() => _selectedPeriod = period);
+  }
+
+  Future<void> _showPeriodFilterSheet(List<String> periods) async {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              Text(
+                'Filter by Period',
+                style: textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ChoiceChip(
+                    label: const Text('All Periods'),
+                    selected: _selectedPeriod == null,
+                    onSelected: (_) {
+                      _onSelectPeriod(null);
+                      Navigator.pop(sheetContext);
+                    },
+                  ),
+                  ...periods.map((period) {
+                    return ChoiceChip(
+                      label: Text(period),
+                      selected: _selectedPeriod == period,
+                      onSelected: (_) {
+                        _onSelectPeriod(period);
+                        Navigator.pop(sheetContext);
+                      },
+                    );
+                  }),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -205,31 +283,63 @@ class _FoodListScreenState extends State<FoodListScreen> {
                   );
                 }
 
-                final foods = state.foods;
+                final allFoods = state.foods;
+
+                final foods = _selectedPeriod == null
+                    ? allFoods
+                    : allFoods
+                          .where(
+                            (f) => _periodKey(f.periode) == _selectedPeriod,
+                          )
+                          .toList();
+
                 final Map<String, List<Food>> groupedFoods = {};
                 for (var food in foods) {
-                  final key = food.periode.split('-').first.trim();
+                  final key = _periodKey(food.periode);
                   if (!groupedFoods.containsKey(key)) {
                     groupedFoods[key] = [];
                   }
                   groupedFoods[key]!.add(food);
                 }
                 final sortedKeys = groupedFoods.keys.toList()
-                  ..sort((a, b) {
-                    final numA =
-                        int.tryParse(
-                          RegExp(r'\d+').firstMatch(a)?.group(0) ?? '',
-                        ) ??
-                        0;
-                    final numB =
-                        int.tryParse(
-                          RegExp(r'\d+').firstMatch(b)?.group(0) ?? '',
-                        ) ??
-                        0;
-                    return numA.compareTo(numB);
-                  });
+                  ..sort(
+                    (a, b) =>
+                        _periodSortValue(a).compareTo(_periodSortValue(b)),
+                  );
 
-                if (foods.isEmpty) {
+                if (foods.isEmpty && _selectedPeriod != null) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.filter_alt_off_rounded,
+                            size: 72,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            'No menu items for "$_selectedPeriod"',
+                            style: textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                            onPressed: () => _onSelectPeriod(null),
+                            icon: const Icon(Icons.clear_rounded),
+                            label: const Text('Clear filter'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                if (allFoods.isEmpty) {
                   return Center(
                     child: Padding(
                       padding: const EdgeInsets.all(32.0),
@@ -712,19 +822,32 @@ class _FoodListScreenState extends State<FoodListScreen> {
           ),
         ],
       ),
-      floatingActionButton: _FloatingActionGroup(
-        isVisible: _isFabGroupVisible,
-        isGrid: _isGrid,
-        isSearchActive: _isSearchVisible,
-        onSearchPressed: _toggleSearch,
-        onToggleView: () async {
-          setState(() => _isGrid = !_isGrid);
-          await _saveViewMode();
-        },
-        onAddPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const FoodFormScreen()),
+      floatingActionButton: BlocBuilder<FoodBloc, FoodState>(
+        buildWhen: (previous, current) => previous.foods != current.foods,
+        builder: (context, state) {
+          final periods =
+              state.foods.map((f) => _periodKey(f.periode)).toSet().toList()
+                ..sort(
+                  (a, b) => _periodSortValue(a).compareTo(_periodSortValue(b)),
+                );
+
+          return _FloatingActionGroup(
+            isVisible: _isFabGroupVisible,
+            isGrid: _isGrid,
+            isSearchActive: _isSearchVisible,
+            isFilterActive: _selectedPeriod != null,
+            onSearchPressed: _toggleSearch,
+            onToggleView: () async {
+              setState(() => _isGrid = !_isGrid);
+              await _saveViewMode();
+            },
+            onFilterPressed: () => _showPeriodFilterSheet(periods),
+            onAddPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const FoodFormScreen()),
+              );
+            },
           );
         },
       ),
@@ -770,16 +893,20 @@ class _FloatingActionGroup extends StatelessWidget {
     required this.isVisible,
     required this.isGrid,
     required this.isSearchActive,
+    required this.isFilterActive,
     required this.onSearchPressed,
     required this.onToggleView,
+    required this.onFilterPressed,
     required this.onAddPressed,
   });
 
   final bool isVisible;
   final bool isGrid;
   final bool isSearchActive;
+  final bool isFilterActive;
   final VoidCallback onSearchPressed;
   final VoidCallback onToggleView;
+  final VoidCallback onFilterPressed;
   final VoidCallback onAddPressed;
 
   static const _iconColor = Colors.white;
@@ -853,6 +980,38 @@ class _FloatingActionGroup extends StatelessWidget {
                       size: 24,
                       shadows: _iconShadows,
                     ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: isFilterActive
+                      ? 'Filter active (tap to change)'
+                      : 'Filter by period',
+                  onPressed: onFilterPressed,
+                  icon: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Icon(
+                        isFilterActive
+                            ? Icons.filter_alt_rounded
+                            : Icons.filter_alt_outlined,
+                        color: _iconColor,
+                        size: 24,
+                        shadows: _iconShadows,
+                      ),
+                      if (isFilterActive)
+                        Positioned(
+                          top: -2,
+                          right: -2,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Colors.amberAccent,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 IconButton(
