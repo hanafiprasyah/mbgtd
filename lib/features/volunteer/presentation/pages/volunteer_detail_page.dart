@@ -182,26 +182,39 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
                 ),
               ]),
               const SizedBox(height: AppSpacing.lg),
-              _buildSectionTitle('Warning Status'),
-              _buildSPSection(context),
             ],
           ),
         ),
       ),
-      floatingActionButton: _FloatingActionGroup(
-        isVisible: _isFabGroupVisible,
-        onEditPressed: () async {
-          final result = await Navigator.pushNamed(
-            context,
-            '/volunteer-add',
-            arguments: volunteer,
-          );
-          if (result != null) {
-            setState(() => volunteer = result as Volunteer);
-          }
-        },
-        onSPHistoryPressed: () => _showSPHistory(context),
-        onAttendanceHistoryPressed: () => _showAttendanceHistory(context),
+      floatingActionButton: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _FloatingActionGroup(
+            isVisible: _isFabGroupVisible,
+            onEditPressed: () async {
+              final result = await Navigator.pushNamed(
+                context,
+                '/volunteer-add',
+                arguments: volunteer,
+              );
+              if (result != null) {
+                setState(() => volunteer = result as Volunteer);
+              }
+            },
+            onSPHistoryPressed: () => _showSPHistory(context),
+            onAttendanceHistoryPressed: () => _showAttendanceHistory(context),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          _SPFloatingActionGroup(
+            isVisible: _isFabGroupVisible,
+            spLevel: volunteer!.spLevel,
+            onEscalatePressed: () =>
+                _confirmEscalateSP(context, volunteer!.spLevel),
+            onUndoPressed: volunteer!.spLevel > 0
+                ? () => _confirmUndoSP(context, volunteer!.spLevel)
+                : null,
+          ),
+        ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
@@ -216,12 +229,7 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [
-            colorScheme.primary,
-            colorScheme.primary.withValues(alpha: 0.7),
-          ],
-        ),
+        gradient: _headerGradient(colorScheme, volunteer!.spLevel),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -263,6 +271,51 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                const SizedBox(height: 8),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: ScaleTransition(scale: animation, child: child),
+                  ),
+                  child: Container(
+                    key: ValueKey(volunteer!.spLevel),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          volunteer!.spLevel == 0
+                              ? Icons.verified_outlined
+                              : volunteer!.spLevel >= 3
+                              ? Icons.block
+                              : Icons.warning_amber_rounded,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _spStatusLabel(volunteer!.spLevel),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -288,74 +341,6 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
   }
 
   // ── Actions ───────────────────────────────────────────────────────────────
-
-  /// Dedicated "Warning Status" section — keeps the SP (Surat Peringatan)
-  /// badge, the escalation button, and the Undo action together, separate
-  /// from the Personal Information card.
-  Widget _buildSPSection(BuildContext context) {
-    return buildInfoCard([
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('Warning Level'),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              transitionBuilder: (child, animation) => FadeTransition(
-                opacity: animation,
-                child: ScaleTransition(scale: animation, child: child),
-              ),
-              child: Container(
-                key: ValueKey(volunteer!.spLevel),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: _spStatusColor(
-                    volunteer!.spLevel,
-                  ).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  _spStatusLabel(volunteer!.spLevel),
-                  style: TextStyle(
-                    color: _spStatusColor(volunteer!.spLevel),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      const SizedBox(height: AppSpacing.sm),
-      const Divider(),
-      const SizedBox(height: AppSpacing.sm),
-
-      // SP warning escalation button
-      _buildSPButton(context),
-
-      // Undo — only shown once a warning has actually been issued
-      if (volunteer!.spLevel > 0) ...[
-        const SizedBox(height: 4),
-        Center(
-          child: TextButton.icon(
-            onPressed: () => _confirmUndoSP(context, volunteer!.spLevel),
-            icon: const Icon(Icons.undo, size: 16),
-            label: Text('Undo SP ${volunteer!.spLevel}'),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.6),
-            ),
-          ),
-        ),
-      ],
-    ]);
-  }
 
   /// Confirms deactivation with the volunteer's name before applying it.
   /// Reactivating doesn't need confirmation — only the destructive action
@@ -399,46 +384,6 @@ class _VolunteerDetailPageState extends State<VolunteerDetailPage> {
   }
 
   // ── SP (Surat Peringatan / warning) escalation ──────────────────────────
-
-  Widget _buildSPButton(BuildContext context) {
-    final level = volunteer!.spLevel;
-    final isSuspended = level >= 3;
-    final color = _spButtonColor(level);
-
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: ElevatedButton.icon(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color.withValues(alpha: isSuspended ? 0.12 : 0.15),
-          foregroundColor: color,
-          disabledBackgroundColor: color.withValues(alpha: 0.12),
-          disabledForegroundColor: color,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: color.withValues(alpha: 0.4)),
-          ),
-        ),
-        onPressed: isSuspended
-            ? null
-            : () => _confirmEscalateSP(context, level),
-        icon: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 250),
-          transitionBuilder: (child, animation) =>
-              FadeTransition(opacity: animation, child: child),
-          child: Icon(
-            isSuspended ? Icons.block : Icons.warning_amber_rounded,
-            key: ValueKey(level),
-          ),
-        ),
-        label: Text(
-          _spButtonLabel(level),
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-      ),
-    );
-  }
 
   Future<void> _confirmEscalateSP(
     BuildContext context,
@@ -1531,6 +1476,36 @@ class _TimelineItem extends StatelessWidget {
 // Shared helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Header card background gradient — reflects the volunteer's *current* SP
+// level without touching any existing text colors (name/team/QR stay white
+// or theme-based exactly as before; only the backdrop changes).
+LinearGradient _headerGradient(ColorScheme colorScheme, int level) {
+  switch (level) {
+    case 1:
+      // Dark luxury orange/amber
+      return const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF8A5A1E), Color(0xFF2E1B08)],
+      );
+    case 2:
+    case 3:
+      // Dark luxury red/maroon
+      return const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF7A1F1F), Color(0xFF230808)],
+      );
+    default:
+      return LinearGradient(
+        colors: [
+          colorScheme.primary,
+          colorScheme.primary.withValues(alpha: 0.7),
+        ],
+      );
+  }
+}
+
 // SP (warning) status shown in the info card — reflects the volunteer's
 // *current* level.
 Color _spStatusColor(int level) {
@@ -1675,6 +1650,92 @@ class _FloatingActionGroup extends StatelessWidget {
                   icon: const Icon(
                     Icons.calendar_month_rounded,
                     color: _iconColor,
+                    size: 24,
+                    shadows: _iconShadows,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A second, visually distinct floating action group dedicated to SP
+/// (Surat Peringatan) actions — escalate and undo. It sits beside the main
+/// [_FloatingActionGroup] and uses the current SP-level color (yellow /
+/// orange / red) instead of the app's primary color, so it reads as a
+/// separate, warning-toned control cluster.
+class _SPFloatingActionGroup extends StatelessWidget {
+  const _SPFloatingActionGroup({
+    required this.isVisible,
+    required this.spLevel,
+    required this.onEscalatePressed,
+    required this.onUndoPressed,
+  });
+
+  final bool isVisible;
+  final int spLevel;
+  final VoidCallback onEscalatePressed;
+  final VoidCallback? onUndoPressed;
+
+  static const _iconColor = Colors.white;
+  static const _iconShadows = [Shadow(color: Colors.black45, blurRadius: 4)];
+
+  @override
+  Widget build(BuildContext context) {
+    final isSuspended = spLevel >= 3;
+    final color = _spButtonColor(spLevel);
+
+    return IgnorePointer(
+      ignoring: !isVisible,
+      child: AnimatedSlide(
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+        offset: isVisible ? Offset.zero : const Offset(0, 1.6),
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          opacity: isVisible ? 1 : 0,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(32),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: isSuspended
+                      ? 'Volunteer Suspended'
+                      : _spButtonLabel(spLevel),
+                  onPressed: isSuspended ? null : onEscalatePressed,
+                  icon: Icon(
+                    isSuspended ? Icons.block : Icons.warning_amber_rounded,
+                    color: _iconColor,
+                    size: 24,
+                    shadows: _iconShadows,
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Undo SP $spLevel',
+                  onPressed: onUndoPressed,
+                  icon: Icon(
+                    Icons.undo_rounded,
+                    color: onUndoPressed == null
+                        ? _iconColor.withValues(alpha: 0.4)
+                        : _iconColor,
                     size: 24,
                     shadows: _iconShadows,
                   ),

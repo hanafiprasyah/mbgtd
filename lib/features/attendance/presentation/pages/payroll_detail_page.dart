@@ -114,7 +114,7 @@ class _PayrollDetailPageState extends State<PayrollDetailPage>
     Clipboard.setData(ClipboardData(text: noRek));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Nomor rekening disalin'),
+        content: Text('Account number copied to clipboard'),
         duration: Duration(seconds: 2),
       ),
     );
