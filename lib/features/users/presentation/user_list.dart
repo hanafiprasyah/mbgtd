@@ -31,9 +31,15 @@ class _UserListPageState extends State<UserListPage> {
     'volunteer',
   ];
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
 
   String? _selectedRole;
   bool _isSearching = false;
+  bool _isSearchFieldVisible = false;
+
+  final _scrollController = ScrollController();
+  bool _isFabGroupVisible = true;
+  double _lastScrollOffset = 0;
 
   int get _activeFilterCount {
     var count = 0;
@@ -45,13 +51,38 @@ class _UserListPageState extends State<UserListPage> {
   void initState() {
     super.initState();
     _applyCriteria();
+    _scrollController.addListener(_handleScroll);
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose();
     _debounce?.cancel();
+    _scrollController.removeListener(_handleScroll);
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _handleScroll() {
+    if (!_scrollController.hasClients) return;
+    final offset = _scrollController.position.pixels;
+
+    // Always show the floating group near the top of the list.
+    if (offset <= 20) {
+      if (!_isFabGroupVisible) setState(() => _isFabGroupVisible = true);
+      _lastScrollOffset = offset;
+      return;
+    }
+
+    final delta = offset - _lastScrollOffset;
+    const threshold = 8.0;
+    if (delta > threshold && _isFabGroupVisible) {
+      setState(() => _isFabGroupVisible = false);
+    } else if (delta < -threshold && !_isFabGroupVisible) {
+      setState(() => _isFabGroupVisible = true);
+    }
+    _lastScrollOffset = offset;
   }
 
   void _applyCriteria() {
@@ -79,6 +110,28 @@ class _UserListPageState extends State<UserListPage> {
     });
 
     _applyCriteria();
+  }
+
+  void _toggleSearchField() {
+    final willShow = !_isSearchFieldVisible;
+
+    setState(() => _isSearchFieldVisible = willShow);
+
+    if (willShow) {
+      // Wait for the field to be laid out before requesting focus, so we
+      // never focus a node that isn't attached to the tree yet.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _isSearchFieldVisible) {
+          _searchFocusNode.requestFocus();
+        }
+      });
+    } else {
+      // Drop focus first to dismiss the keyboard, then clear any active
+      // query so the list isn't left silently filtered while the field
+      // is hidden.
+      _searchFocusNode.unfocus();
+      _clearSearch();
+    }
   }
 
   Future<void> _showRoleFilterSheet() async {
@@ -230,50 +283,6 @@ class _UserListPageState extends State<UserListPage> {
         elevation: 0,
         title: const Text('Manage Users'),
         centerTitle: true,
-        actions: [
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              IconButton(
-                icon: Icon(
-                  Icons.tune_rounded,
-                  color: _activeFilterCount > 0
-                      ? Theme.of(context).colorScheme.primary
-                      : null,
-                ),
-                onPressed: _showRoleFilterSheet,
-                onLongPress: () {
-                  setState(() => _selectedRole = null);
-                  _applyCriteria();
-                },
-              ),
-              if (_activeFilterCount > 0)
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      _activeFilterCount.toString(),
-                      style: const TextStyle(fontSize: 10, color: Colors.white),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          IconButton(
-            icon: const Icon(Icons.person_add_alt_1),
-            tooltip: 'Add staff user',
-            onPressed: () async {
-              await Navigator.pushNamed(context, '/user-add');
-              if (mounted) _applyCriteria();
-            },
-          ),
-        ],
       ),
       body: RefreshIndicator(
         onRefresh: () async => _applyCriteria(),
@@ -281,74 +290,89 @@ class _UserListPageState extends State<UserListPage> {
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: _onSearchChanged,
-                    style: const TextStyle(fontSize: 14),
-                    decoration: InputDecoration(
-                      hintText: 'Search users, email, role...',
-                      hintStyle: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontSize: 14,
-                      ),
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Icon(
-                          Icons.search_rounded,
-                          size: 20,
-                          color: _isSearching
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.onSurfaceVariant,
+              AnimatedSize(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.topCenter,
+                child: _isSearchFieldVisible
+                    ? Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: TextField(
+                            controller: _searchController,
+                            focusNode: _searchFocusNode,
+                            onChanged: _onSearchChanged,
+                            style: const TextStyle(fontSize: 14),
+                            decoration: InputDecoration(
+                              hintText: 'Search users, email, role...',
+                              hintStyle: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                                fontSize: 14,
+                              ),
+                              prefixIcon: Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: Icon(
+                                  Icons.search_rounded,
+                                  size: 20,
+                                  color: _isSearching
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              suffixIcon: _isSearching
+                                  ? IconButton(
+                                      icon: const Icon(
+                                        Icons.close_rounded,
+                                        size: 20,
+                                      ),
+                                      onPressed: _clearSearch,
+                                    )
+                                  : null,
+                              filled: true,
+                              fillColor: Colors.transparent,
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 14,
+                                horizontal: 12,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.primary.withValues(alpha: 0.3),
+                                  width: 1.2,
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                      suffixIcon: _isSearching
-                          ? IconButton(
-                              icon: const Icon(Icons.close_rounded, size: 20),
-                              onPressed: _clearSearch,
-                            )
-                          : null,
-                      filled: true,
-                      fillColor: Colors.transparent,
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 14,
-                        horizontal: 12,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.primary.withValues(alpha: 0.3),
-                          width: 1.2,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                      )
+                    : const SizedBox(width: double.infinity),
               ),
-              SizedBox(height: AppSpacing.md),
+              if (_isSearchFieldVisible) SizedBox(height: AppSpacing.md),
               if (isFilterActive)
                 Padding(
                   padding: const EdgeInsets.only(
@@ -399,6 +423,22 @@ class _UserListPageState extends State<UserListPage> {
           ),
         ),
       ),
+      floatingActionButton: _FloatingActionGroup(
+        isVisible: _isFabGroupVisible,
+        filterCount: _activeFilterCount,
+        isSearchActive: _isSearchFieldVisible,
+        onSearchPressed: _toggleSearchField,
+        onFilterPressed: _showRoleFilterSheet,
+        onFilterLongPress: () {
+          setState(() => _selectedRole = null);
+          _applyCriteria();
+        },
+        onAddPressed: () async {
+          await Navigator.pushNamed(context, '/user-add');
+          if (mounted) _applyCriteria();
+        },
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
@@ -492,6 +532,7 @@ class _UserListPageState extends State<UserListPage> {
     return AnimationLimiter(
       key: const ValueKey('list'),
       child: ListView.separated(
+        controller: _scrollController,
         padding: const EdgeInsets.only(bottom: AppSpacing.lg),
         itemCount: users.length,
         separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
@@ -677,6 +718,149 @@ class _UserCard extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A pill-shaped floating group that combines the "Filter by Role" and
+/// "Add Staff User" actions, styled the same way as the one on the
+/// volunteer list page: a semi-transparent primary-color pill with
+/// bright, bold icons that hides on scroll down and reappears on scroll
+/// up.
+class _FloatingActionGroup extends StatelessWidget {
+  const _FloatingActionGroup({
+    required this.isVisible,
+    required this.filterCount,
+    required this.isSearchActive,
+    required this.onSearchPressed,
+    required this.onFilterPressed,
+    required this.onFilterLongPress,
+    required this.onAddPressed,
+  });
+
+  final bool isVisible;
+  final int filterCount;
+  final bool isSearchActive;
+  final VoidCallback onSearchPressed;
+  final VoidCallback onFilterPressed;
+  final VoidCallback onFilterLongPress;
+  final VoidCallback onAddPressed;
+
+  static const _iconColor = Colors.white;
+  static const _iconShadows = [Shadow(color: Colors.black45, blurRadius: 4)];
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return IgnorePointer(
+      ignoring: !isVisible,
+      child: AnimatedSlide(
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+        offset: isVisible ? Offset.zero : const Offset(0, 1.6),
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          opacity: isVisible ? 1 : 0,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(32),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: isSearchActive ? 'Close search' : 'Search users',
+                  onPressed: onSearchPressed,
+                  style: isSearchActive
+                      ? IconButton.styleFrom(
+                          backgroundColor: Colors.white.withValues(alpha: 0.22),
+                        )
+                      : null,
+                  icon: Icon(
+                    isSearchActive ? Icons.close_rounded : Icons.search_rounded,
+                    color: _iconColor,
+                    size: 24,
+                    shadows: _iconShadows,
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Filter by Role',
+                  onPressed: onFilterPressed,
+                  onLongPress: onFilterLongPress,
+                  icon: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(
+                        Icons.tune_rounded,
+                        color: _iconColor,
+                        size: 24,
+                        shadows: _iconShadows,
+                      ),
+                      if (filterCount > 0)
+                        Positioned(
+                          right: -4,
+                          top: -4,
+                          child: _CountBadge(count: filterCount),
+                        ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Add staff user',
+                  onPressed: onAddPressed,
+                  icon: const Icon(
+                    Icons.person_add_alt_1_rounded,
+                    color: _iconColor,
+                    size: 24,
+                    shadows: _iconShadows,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Small circular badge showing an active filter count, styled to stay
+/// legible against the bright icons on the semi-transparent pill.
+class _CountBadge extends StatelessWidget {
+  const _CountBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+      ),
+      child: Text(
+        '$count',
+        style: const TextStyle(
+          color: Colors.black87,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          height: 1,
         ),
       ),
     );

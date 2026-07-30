@@ -268,8 +268,10 @@ class VolunteerRepository {
     return firestore.collection('volunteers').snapshots().map((snapshot) {
       final unlinked = snapshot.docs
           .where((doc) {
-            final userId = (doc.data()['userId'] ?? '').toString().trim();
-            return userId.isEmpty;
+            final data = doc.data();
+            final userId = (data['userId'] ?? '').toString().trim();
+            final isActive = data['isActive'] ?? true;
+            return userId.isEmpty && isActive == true;
           })
           .map((doc) {
             final data = doc.data();
@@ -277,6 +279,7 @@ class VolunteerRepository {
               'id': doc.id,
               'namaLengkap': (data['namaLengkap'] ?? '').toString(),
               'tim': (data['tim'] ?? '').toString(),
+              'isActive': data['isActive'] ?? true,
             };
           })
           .toList();

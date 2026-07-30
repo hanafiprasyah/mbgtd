@@ -70,64 +70,178 @@ Widget buildSettingTab(
 }
 
 Widget _userSetting(BuildContext context) {
+  final colorScheme = Theme.of(context).colorScheme;
+
+  final actions = <_AdminAction>[
+    _AdminAction(
+      icon: Icons.manage_accounts_rounded,
+      label: "Manage Users",
+      subtitle: "View, edit, and remove user accounts",
+      color: colorScheme.primary,
+      route: '/manage-users',
+    ),
+    _AdminAction(
+      icon: Icons.volunteer_activism_rounded,
+      label: "Add Volunteer Account",
+      subtitle: "Create a login for an existing volunteer",
+      color: colorScheme.tertiary,
+      route: '/volunteer-account-form',
+    ),
+    _AdminAction(
+      icon: Icons.storefront_rounded,
+      label: "Manage Kitchens",
+      subtitle: "Configure kitchens across the program",
+      color: colorScheme.secondary,
+      route: '/manage-kitchens',
+    ),
+  ];
+
   return Padding(
     padding: const EdgeInsets.symmetric(
       horizontal: AppSpacing.md,
       vertical: AppSpacing.sm,
     ),
     child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pushNamed(context, '/manage-users');
-            },
-            icon: const Icon(Icons.manage_accounts_rounded),
-            label: const Text("Manage Users"),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-              ),
+        Padding(
+          padding: const EdgeInsets.only(
+            left: AppSpacing.sm,
+            bottom: AppSpacing.sm,
+          ),
+          child: Text(
+            "ADMIN TOOLS",
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.8,
             ),
           ),
         ),
-        const SizedBox(height: AppSpacing.sm),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pushNamed(context, '/volunteer-account-form');
-            },
-            icon: const Icon(Icons.volunteer_activism_rounded),
-            label: const Text("Add Volunteer Account"),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-              ),
+        Container(
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.4),
             ),
           ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pushNamed(context, '/manage-kitchens');
-            },
-            icon: const Icon(Icons.storefront_rounded),
-            label: const Text("Manage Kitchens"),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-              ),
-            ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              for (int i = 0; i < actions.length; i++) ...[
+                _AdminActionTile(action: actions[i]),
+                if (i != actions.length - 1)
+                  Divider(
+                    height: 1,
+                    indent: 68,
+                    endIndent: AppSpacing.md,
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                  ),
+              ],
+            ],
           ),
         ),
       ],
     ),
   );
+}
+
+class _AdminAction {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final Color color;
+  final String route;
+
+  const _AdminAction({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.color,
+    required this.route,
+  });
+}
+
+class _AdminActionTile extends StatefulWidget {
+  final _AdminAction action;
+
+  const _AdminActionTile({required this.action});
+
+  @override
+  State<_AdminActionTile> createState() => _AdminActionTileState();
+}
+
+class _AdminActionTileState extends State<_AdminActionTile> {
+  bool _pressed = false;
+
+  void _setPressed(bool value) {
+    if (_pressed != value) setState(() => _pressed = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final action = widget.action;
+
+    return InkWell(
+      onTap: () => Navigator.pushNamed(context, action.route),
+      onTapDown: (_) => _setPressed(true),
+      onTapCancel: () => _setPressed(false),
+      onTapUp: (_) => _setPressed(false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        color: _pressed
+            ? colorScheme.onSurface.withValues(alpha: 0.04)
+            : Colors.transparent,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm + 4,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: action.color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(action.icon, color: action.color, size: 20),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    action.label,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    action.subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: colorScheme.onSurfaceVariant,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

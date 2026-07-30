@@ -31,7 +31,9 @@ class _VolunteerAccountFormPageState extends State<VolunteerAccountFormPage> {
   final _authService = VolunteerAuthService();
 
   String? _selectedVolunteerId;
+  String? _selectedVolunteerName;
   bool _obscurePassword = true;
+  bool _passwordMeetsMinLength = false;
 
   static final RegExp _usernameRegex = RegExp(r'^[a-zA-Z0-9_]{3,20}$');
   static final RegExp _emailRegex = RegExp(
@@ -40,12 +42,29 @@ class _VolunteerAccountFormPageState extends State<VolunteerAccountFormPage> {
   static final RegExp _fullnameRegex = RegExp(r"^[a-zA-Z\s.\'-]{2,50}$");
 
   @override
+  void initState() {
+    super.initState();
+    _passwordController.addListener(_onPasswordChanged);
+  }
+
+  @override
   void dispose() {
+    _passwordController.removeListener(_onPasswordChanged);
     _emailController.dispose();
     _fullnameController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  /// Watches the password field so we can nudge the admin the moment it
+  /// satisfies the minimum length — a reminder to hand the password over
+  /// to the volunteer and have them change it themselves.
+  void _onPasswordChanged() {
+    final meetsMinLength = _passwordController.text.length >= 6;
+    if (meetsMinLength != _passwordMeetsMinLength) {
+      setState(() => _passwordMeetsMinLength = meetsMinLength);
+    }
   }
 
   String? _validateFullname(String? value) {
@@ -87,7 +106,54 @@ class _VolunteerAccountFormPageState extends State<VolunteerAccountFormPage> {
     });
   }
 
-  void _submit(BuildContext context) {
+  Future<bool> _confirmCreateAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Confirm Account Creation'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Please review the details below before creating this login. '
+                'This will create a Firebase Authentication account and link '
+                'it to the selected volunteer.',
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _ConfirmRow(
+                label: 'Volunteer',
+                value: _selectedVolunteerName ?? '-',
+              ),
+              _ConfirmRow(
+                label: 'Full Name',
+                value: _fullnameController.text.trim(),
+              ),
+              _ConfirmRow(label: 'Email', value: _emailController.text.trim()),
+              _ConfirmRow(
+                label: 'Username',
+                value: _usernameController.text.trim(),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Create Account'),
+            ),
+          ],
+        );
+      },
+    );
+    return confirmed == true;
+  }
+
+  void _submit(BuildContext context) async {
     if (_selectedVolunteerId == null) {
       GlobalScaffoldMessenger.showSnackBar(
         SnackBar(
@@ -98,6 +164,9 @@ class _VolunteerAccountFormPageState extends State<VolunteerAccountFormPage> {
       return;
     }
     if (!_formKey.currentState!.validate()) return;
+
+    final confirmed = await _confirmCreateAccount();
+    if (!confirmed || !context.mounted) return;
 
     context.read<VolunteerAccountBloc>().add(
       SubmitVolunteerAccount(
@@ -115,7 +184,7 @@ class _VolunteerAccountFormPageState extends State<VolunteerAccountFormPage> {
     return BlocProvider(
       create: (_) => VolunteerAccountBloc(),
       child: Scaffold(
-        appBar: AppBar(title: const Text('Add Volunteer Account')),
+        appBar: AppBar(title: const Text('Link Volunteer Account')),
         body: BlocConsumer<VolunteerAccountBloc, VolunteerAccountState>(
           listener: (context, state) {
             if (state is VolunteerAccountSuccess) {
@@ -196,8 +265,8 @@ class _VolunteerAccountFormPageState extends State<VolunteerAccountFormPage> {
                                 ),
                                 const SizedBox(height: AppSpacing.md),
 
-                                // Volunteer picker: only volunteers without a
-                                // linked account show up here.
+                                // Volunteer picker: only active volunteers
+                                // without a linked account show up here.
                                 StreamBuilder<List<Map<String, dynamic>>>(
                                   stream: _volunteerRepository
                                       .getUnlinkedVolunteers(),
@@ -213,7 +282,12 @@ class _VolunteerAccountFormPageState extends State<VolunteerAccountFormPage> {
                                       );
                                     }
 
-                                    final volunteers = snapshot.data!;
+                                    // Only active volunteers are eligible for
+                                    // a new login — an inactive volunteer
+                                    // shouldn't be linkable to an account.
+                                    final volunteers = snapshot.data!
+                                        .where((v) => v['isActive'] != false)
+                                        .toList();
 
                                     if (volunteers.isEmpty) {
                                       return Container(
@@ -260,10 +334,10 @@ class _VolunteerAccountFormPageState extends State<VolunteerAccountFormPage> {
                                       WidgetsBinding.instance
                                           .addPostFrameCallback((_) {
                                             if (mounted) {
-                                              setState(
-                                                () =>
-                                                    _selectedVolunteerId = null,
-                                              );
+                                              setState(() {
+                                                _selectedVolunteerId = null;
+                                                _selectedVolunteerName = null;
+                                              });
                                             }
                                           });
                                     }
@@ -300,6 +374,9 @@ class _VolunteerAccountFormPageState extends State<VolunteerAccountFormPage> {
                                                   );
                                               setState(() {
                                                 _selectedVolunteerId = value;
+                                                _selectedVolunteerName =
+                                                    selected['namaLengkap']
+                                                        as String;
                                                 if (_fullnameController.text
                                                     .trim()
                                                     .isEmpty) {
@@ -372,7 +449,8 @@ class _VolunteerAccountFormPageState extends State<VolunteerAccountFormPage> {
                                     filled: true,
                                     fillColor: Colors.white,
                                     helperText:
-                                        '3-20 characters, letters, numbers, underscores only',
+                                        'Must be 3-20 characters: letters, numbers, and underscores only.',
+                                    helperMaxLines: 2,
                                   ),
                                   validator: _validateUsername,
                                   textInputAction: TextInputAction.next,
@@ -393,6 +471,7 @@ class _VolunteerAccountFormPageState extends State<VolunteerAccountFormPage> {
                                     fillColor: Colors.white,
                                     helperText:
                                         'Minimum 6 characters. Share this with the volunteer.',
+                                    helperMaxLines: 2,
                                     suffixIcon: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
@@ -420,6 +499,52 @@ class _VolunteerAccountFormPageState extends State<VolunteerAccountFormPage> {
                                   validator: _validatePassword,
                                   textInputAction: TextInputAction.done,
                                   enabled: !isLoading,
+                                ),
+                                AnimatedSize(
+                                  duration: const Duration(milliseconds: 200),
+                                  curve: Curves.easeOutCubic,
+                                  alignment: Alignment.topCenter,
+                                  child: _passwordMeetsMinLength
+                                      ? Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: AppSpacing.sm,
+                                          ),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 10,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.blue.withValues(
+                                                alpha: 0.1,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    AppRadius.lg,
+                                                  ),
+                                            ),
+                                            child: const Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.info_outline_rounded,
+                                                  size: 18,
+                                                  color: Colors.blue,
+                                                ),
+                                                SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    'This password meets the minimum length. Share it with the volunteer now and ask them to change it after their first login.',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: Colors.blue,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        )
+                                      : const SizedBox(width: double.infinity),
                                 ),
                                 const SizedBox(height: AppSpacing.lg),
 
@@ -488,6 +613,42 @@ class _VolunteerAccountFormPageState extends State<VolunteerAccountFormPage> {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+class _ConfirmRow extends StatelessWidget {
+  const _ConfirmRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 90,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.black54,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value.isEmpty ? '-' : value,
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+        ],
       ),
     );
   }

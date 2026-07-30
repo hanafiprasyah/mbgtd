@@ -139,7 +139,41 @@ class _UserFormPageState extends State<UserFormPage> {
     return shouldLeave ?? false;
   }
 
-  void _save() {
+  Future<bool> _confirmCreateUser(UserModel user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Confirm New User'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Please review the details below before creating this user.',
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _ConfirmRow(label: 'Full Name', value: user.fullname),
+            _ConfirmRow(label: 'Email', value: user.email),
+            _ConfirmRow(label: 'Username', value: user.username),
+            _ConfirmRow(label: 'Role', value: user.role.toUpperCase()),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Create User'),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
+  }
+
+  void _save() async {
     if (!_formKey.currentState!.validate()) return;
 
     final user = UserModel(
@@ -150,8 +184,14 @@ class _UserFormPageState extends State<UserFormPage> {
       role: _role,
     );
 
+    final isCreating = widget.existing == null;
+    if (isCreating) {
+      final confirmed = await _confirmCreateUser(user);
+      if (!confirmed || !mounted) return;
+    }
+
     final bloc = context.read<UserBloc>();
-    if (widget.existing == null) {
+    if (isCreating) {
       bloc.add(AddUser(user));
     } else {
       bloc.add(UpdateUser(user));
@@ -172,52 +212,7 @@ class _UserFormPageState extends State<UserFormPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(isEdit ? 'Edit User' : 'Add Staff User'),
-          actions: [
-            if (isEdit)
-              IconButton(
-                icon: const Icon(Icons.delete_outline),
-                onPressed: () {
-                  final isVolunteer =
-                      widget.existing!.role.trim().toLowerCase() == 'volunteer';
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Delete User'),
-                      content: Text(
-                        isVolunteer
-                            ? 'Are you sure you want to delete this user? '
-                                  'This action cannot be undone.\n\n'
-                                  'This will remove their user record and '
-                                  'unlink their volunteer profile. Their '
-                                  'Firebase Authentication login still needs '
-                                  'to be removed manually from the Firebase '
-                                  'Console.'
-                            : 'Are you sure you want to delete this user? This action cannot be undone.',
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            final bloc = context.read<UserBloc>();
-                            bloc.add(DeleteUser(widget.existing!.id));
-                            Navigator.pop(context);
-                          },
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.red,
-                          ),
-                          child: const Text('Delete'),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-                tooltip: 'Delete user',
-              ),
-          ],
+          title: Text(isEdit ? 'Edit Staff User' : 'Add Staff User'),
         ),
         body: BlocConsumer<UserBloc, UserState>(
           listener: (context, state) {
@@ -483,5 +478,41 @@ class _UserFormPageState extends State<UserFormPage> {
       default:
         return Colors.grey;
     }
+  }
+}
+
+class _ConfirmRow extends StatelessWidget {
+  const _ConfirmRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 90,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.black54,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value.isEmpty ? '-' : value,
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
