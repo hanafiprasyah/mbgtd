@@ -19,36 +19,102 @@ class PayrollDocumentService {
   /// Indonesian characters; it is intentionally generated from snapshots only.
   static Future<void> exportReportCsv(List<PayrollPeriod> periods) async {
     final rows = <List<String>>[
+      ['LAPORAN PAYROLL LENGKAP'],
       [
-        'Tanggal reset',
-        'Total pengeluaran',
-        'Jumlah relawan',
-        'Tim',
-        'Total tim',
+        'Diekspor pada',
+        DateFormat('d MMMM y HH:mm', 'id_ID').format(DateTime.now()),
       ],
-      ...periods.expand((period) {
-        if (period.teamTotal.isEmpty) {
-          return [
-            [
-              _date(period.resetAt),
-              '${period.grandTotal}',
-              '${period.volunteers.length}',
-              '-',
-              '0',
-            ],
-          ];
-        }
-        return period.teamTotal.entries.map(
-          (team) => [
-            _date(period.resetAt),
-            '${period.grandTotal}',
-            '${period.volunteers.length}',
-            team.key,
-            '${team.value}',
-          ],
-        );
-      }),
+      [],
     ];
+    var selectedGrandTotal = 0;
+
+    for (final period in periods) {
+      selectedGrandTotal += period.grandTotal;
+      rows.addAll([
+        ['PERIODE DITUTUP', _date(period.resetAt)],
+        ['Total gaji keseluruhan periode', '${period.grandTotal}'],
+        [],
+        [
+          'Tim',
+          'Nama volunteer',
+          'Tanggal absensi',
+          'Status',
+          'Kehadiran efektif',
+          'Catatan',
+          'Total gaji volunteer',
+          'Total gaji tim',
+        ],
+      ]);
+
+      final teams = <String>{
+        ...period.teamTotal.keys,
+        ...period.volunteers.values.map(
+          (data) => (data['tim'] ?? '-').toString(),
+        ),
+      };
+      for (final team in teams) {
+        final members =
+            period.volunteers.values
+                .where((data) => (data['tim'] ?? '-').toString() == team)
+                .toList()
+              ..sort((a, b) => _name(a).compareTo(_name(b)));
+        final teamTotal =
+            period.teamTotal[team] ??
+            members.fold<int>(
+              0,
+              (sum, member) => sum + _number(member['totalGaji']).toInt(),
+            );
+
+        for (final member in members) {
+          final details = _dailyDetails(member);
+          final volunteerSalary = _number(member['totalGaji']).toInt();
+          if (details.isEmpty) {
+            rows.add([
+              team,
+              _name(member),
+              '-',
+              '-',
+              '-',
+              '-',
+              '$volunteerSalary',
+              '',
+            ]);
+            continue;
+          }
+          for (var index = 0; index < details.length; index++) {
+            final detail = details[index];
+            rows.add([
+              index == 0 ? team : '',
+              index == 0 ? _name(member) : '',
+              (detail['date'] ?? '-').toString(),
+              _attendanceLabel(detail),
+              '${detail['multiplier'] ?? 1}',
+              (detail['note'] ?? '').toString(),
+              index == 0 ? '$volunteerSalary' : '',
+              '',
+            ]);
+          }
+        }
+        rows.add([
+          '',
+          'TOTAL GAJI TIM $team',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '$teamTotal',
+        ]);
+      }
+      rows.add([]);
+    }
+    rows.addAll([
+      [
+        'TOTAL GAJI KESELURUHAN (SEMUA PERIODE TERPILIH)',
+        '$selectedGrandTotal',
+      ],
+      ['Jumlah periode', '${periods.length}'],
+    ]);
     final csv =
         '\uFEFF${rows.map((row) => row.map(_csvCell).join(',')).join('\r\n')}';
     await SharePlus.instance.share(
@@ -222,6 +288,33 @@ class PayrollDocumentService {
 
   static String _date(DateTime value) =>
       DateFormat('d MMMM y', 'en_US').format(value);
+  static String _name(Map<String, dynamic> value) =>
+      (value['nama'] ?? value['namaLengkap'] ?? '-').toString();
+  static List<Map<String, dynamic>> _dailyDetails(Map<String, dynamic> value) {
+    final raw = value['dailyDetails'];
+    if (raw is! List) return [];
+    final details = raw
+        .whereType<Map>()
+        .map((detail) => Map<String, dynamic>.from(detail))
+        .toList();
+    details.sort(
+      (a, b) =>
+          (a['date'] ?? '').toString().compareTo((b['date'] ?? '').toString()),
+    );
+    return details;
+  }
+
+  static String _attendanceLabel(Map<String, dynamic> detail) {
+    final type = (detail['attendanceType'] ?? 'full').toString();
+    if (type == 'absent' || _number(detail['multiplier']) == 0) {
+      return 'Tidak hadir';
+    }
+    if (_number(detail['multiplier']) < 1) {
+      return 'Setengah hari';
+    }
+    return 'Hadir penuh';
+  }
+
   static String _csvCell(String value) => '"${value.replaceAll('"', '""')}"';
   static num _number(dynamic value) =>
       value is num ? value : num.tryParse('$value') ?? 0;

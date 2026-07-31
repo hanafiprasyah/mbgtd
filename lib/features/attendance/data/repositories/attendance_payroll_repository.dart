@@ -514,6 +514,9 @@ class AttendancePayrollRepository {
           'date': date,
           'multiplier': multiplier,
           'attendanceType': attendanceType,
+          // Keep the scanner/admin note in the immutable payroll snapshot so
+          // archived exports remain useful after attendance is reset.
+          'note': attData['note'] ?? '',
         });
       }
 
