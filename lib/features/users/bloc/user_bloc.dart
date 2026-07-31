@@ -15,13 +15,22 @@ class UserBloc extends Bloc<UserEvent, UserState> {
           events.distinct().debounceTime(duration).switchMap(mapper);
     }
 
+    // Cancels the previous in-flight handler (and its underlying Firestore
+    // listener) whenever a new event of the same type comes in. Without
+    // this, LoadUser/FilterUser stack up concurrent `getUsers()` listeners
+    // every time they're re-dispatched (refresh, after a mutation, etc.),
+    // and each Firestore change then gets emitted once per open listener.
+    EventTransformer<T> restartable<T>() {
+      return (events, mapper) => events.switchMap(mapper);
+    }
+
     on<LoadUser>((event, emit) async {
       emit(UserLoading());
       await emit.forEach<List<UserModel>>(
         repository.getUsers(),
         onData: (data) => UserLoaded(data),
       );
-    });
+    }, transformer: restartable());
 
     on<AddUser>((event, emit) async {
       emit(UserLoading());
@@ -54,15 +63,22 @@ class UserBloc extends Bloc<UserEvent, UserState> {
     });
 
     on<SearchUser>((event, emit) async {
-      final hasFilter = event.role != null && event.role!.isNotEmpty;
-      if (event.query.trim().isEmpty && !hasFilter) {
-        add(LoadUser());
-        return;
-      }
-
       emit(UserLoading());
+
+      final hasFilter = event.role != null && event.role!.isNotEmpty;
+      final query = event.query.trim();
+
+      // Route through the same repository call LoadUser uses when there's
+      // nothing to actually search/filter by — but stay inside this
+      // handler (and its switchMap transformer) so the listener is
+      // properly cancelled the next time SearchUser fires, instead of
+      // handing off to LoadUser's separate, unrelated subscription.
+      final stream = query.isEmpty && !hasFilter
+          ? repository.getUsers()
+          : repository.searchUsers(query, role: event.role);
+
       await emit.forEach<List<UserModel>>(
-        repository.searchUsers(event.query, role: event.role),
+        stream,
         onData: (data) => UserLoaded(data),
       );
     }, transformer: debounce(const Duration(milliseconds: 500)));
@@ -73,7 +89,7 @@ class UserBloc extends Bloc<UserEvent, UserState> {
         repository.getUsers(role: event.role),
         onData: (data) => UserLoaded(data),
       );
-    });
+    }, transformer: restartable());
 
     on<GetUserById>((event, emit) async {
       emit(UserLoading());

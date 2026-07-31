@@ -31,9 +31,18 @@ class _KitchenListViewState extends State<_KitchenListView> {
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
 
+  // These two only affect small, self-contained widgets (the collapsible
+  // search field and the floating pill). They're intentionally NOT plain
+  // setState fields: BlocConsumer's `builder` re-runs on ANY ancestor
+  // rebuild (not just on new bloc states), so calling setState() on this
+  // whole State would rebuild the entire list/AnimationLimiter subtree
+  // below and replay its entrance animation every time. ValueNotifier +
+  // ValueListenableBuilder scope the rebuild to just the widgets that
+  // actually need it, leaving the list untouched.
+  final _isSearchVisible = ValueNotifier<bool>(false);
+  final _isFabGroupVisible = ValueNotifier<bool>(true);
+
   String _query = '';
-  bool _isSearchVisible = false;
-  bool _isFabGroupVisible = true;
   double _lastScrollOffset = 0;
 
   @override
@@ -47,6 +56,8 @@ class _KitchenListViewState extends State<_KitchenListView> {
     _scrollController.removeListener(_handleScroll);
     _scrollController.dispose();
     _searchController.dispose();
+    _isSearchVisible.dispose();
+    _isFabGroupVisible.dispose();
     super.dispose();
   }
 
@@ -56,36 +67,33 @@ class _KitchenListViewState extends State<_KitchenListView> {
 
     // Always show the floating group near the top of the list.
     if (offset <= 20) {
-      if (!_isFabGroupVisible) setState(() => _isFabGroupVisible = true);
+      _isFabGroupVisible.value = true;
       _lastScrollOffset = offset;
       return;
     }
 
     final delta = offset - _lastScrollOffset;
     const threshold = 8.0;
-    if (delta > threshold && _isFabGroupVisible) {
-      setState(() => _isFabGroupVisible = false);
-    } else if (delta < -threshold && !_isFabGroupVisible) {
-      setState(() => _isFabGroupVisible = true);
+    if (delta > threshold) {
+      _isFabGroupVisible.value = false;
+    } else if (delta < -threshold) {
+      _isFabGroupVisible.value = true;
     }
     _lastScrollOffset = offset;
   }
 
   void _toggleSearch() {
-    setState(() {
-      _isSearchVisible = !_isSearchVisible;
-      if (!_isSearchVisible) {
-        _searchController.clear();
-        _query = '';
-      }
-    });
+    final next = !_isSearchVisible.value;
+    _isSearchVisible.value = next;
+    if (!next && _query.isNotEmpty) {
+      _searchController.clear();
+      setState(() => _query = '');
+    }
   }
 
   void _clearSearch() {
-    setState(() {
-      _searchController.clear();
-      _query = '';
-    });
+    _searchController.clear();
+    setState(() => _query = '');
   }
 
   List<KitchenModel> _filterKitchens(List<KitchenModel> kitchens) {
@@ -141,56 +149,63 @@ class _KitchenListViewState extends State<_KitchenListView> {
                 pinned: true,
               ),
               SliverToBoxAdapter(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 280),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, animation) => FadeTransition(
-                    opacity: animation,
-                    child: SizeTransition(
-                      sizeFactor: animation,
-                      alignment: Alignment.topCenter,
-                      child: child,
-                    ),
-                  ),
-                  child: _isSearchVisible
-                      ? Padding(
-                          key: const ValueKey('search-field'),
-                          padding: const EdgeInsets.fromLTRB(
-                            AppSpacing.md,
-                            0,
-                            AppSpacing.md,
-                            AppSpacing.sm,
-                          ),
-                          child: TextField(
-                            controller: _searchController,
-                            autofocus: true,
-                            onChanged: (value) =>
-                                setState(() => _query = value),
-                            decoration: InputDecoration(
-                              hintText: 'Search by name or ID',
-                              prefixIcon: const Icon(Icons.search_rounded),
-                              suffixIcon: _query.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear_rounded),
-                                      onPressed: _clearSearch,
-                                    )
-                                  : null,
-                              filled: true,
-                              fillColor: colorScheme.surfaceContainerLow,
-                              contentPadding: const EdgeInsets.symmetric(
-                                vertical: 12,
+                child: ValueListenableBuilder<bool>(
+                  valueListenable: _isSearchVisible,
+                  builder: (context, isVisible, _) {
+                    return AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 280),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: SizeTransition(
+                          sizeFactor: animation,
+                          alignment: Alignment.topCenter,
+                          child: child,
+                        ),
+                      ),
+                      child: isVisible
+                          ? Padding(
+                              key: const ValueKey('search-field'),
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.md,
+                                0,
+                                AppSpacing.md,
+                                AppSpacing.sm,
                               ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AppRadius.lg,
+                              child: TextField(
+                                controller: _searchController,
+                                autofocus: true,
+                                onChanged: (value) =>
+                                    setState(() => _query = value),
+                                decoration: InputDecoration(
+                                  hintText: 'Search by name or ID',
+                                  prefixIcon: const Icon(Icons.search_rounded),
+                                  suffixIcon: _query.isNotEmpty
+                                      ? IconButton(
+                                          icon: const Icon(Icons.clear_rounded),
+                                          onPressed: _clearSearch,
+                                        )
+                                      : null,
+                                  filled: true,
+                                  fillColor: colorScheme.surfaceContainerLow,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppRadius.lg,
+                                    ),
+                                    borderSide: BorderSide.none,
+                                  ),
                                 ),
-                                borderSide: BorderSide.none,
                               ),
+                            )
+                          : const SizedBox.shrink(
+                              key: ValueKey('search-hidden'),
                             ),
-                          ),
-                        )
-                      : const SizedBox.shrink(key: ValueKey('search-hidden')),
+                    );
+                  },
                 ),
               ),
               if (state is KitchenLoading || state is KitchenInitial)
@@ -242,6 +257,7 @@ class _KitchenListViewState extends State<_KitchenListView> {
                       itemBuilder: (context, index) {
                         final kitchen = kitchens[index];
                         return AnimationConfiguration.staggeredList(
+                          key: ValueKey(kitchen.id),
                           position: index,
                           duration: const Duration(milliseconds: 375),
                           child: SlideAnimation(
@@ -259,11 +275,22 @@ class _KitchenListViewState extends State<_KitchenListView> {
           );
         },
       ),
-      floatingActionButton: _KitchenFabGroup(
-        isVisible: _isFabGroupVisible,
-        isSearchActive: _isSearchVisible,
-        onSearchPressed: _toggleSearch,
-        onAddPressed: () => Navigator.pushNamed(context, '/kitchen-add'),
+      floatingActionButton: ValueListenableBuilder<bool>(
+        valueListenable: _isFabGroupVisible,
+        builder: (context, isFabVisible, _) {
+          return ValueListenableBuilder<bool>(
+            valueListenable: _isSearchVisible,
+            builder: (context, isSearchVisible, _) {
+              return _KitchenFabGroup(
+                isVisible: isFabVisible,
+                isSearchActive: isSearchVisible,
+                onSearchPressed: _toggleSearch,
+                onAddPressed: () =>
+                    Navigator.pushNamed(context, '/kitchen-add'),
+              );
+            },
+          );
+        },
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );

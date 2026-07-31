@@ -17,11 +17,16 @@ Widget buildSettingTab(
       user != null &&
       (userData?['role']?.toLowerCase().contains('developer') ?? false);
 
+  final colorScheme = Theme.of(context).colorScheme;
+
   return Scaffold(
+    backgroundColor: colorScheme.surfaceContainerLowest,
     appBar: AppBar(
       title: const Text("Settings"),
       centerTitle: true,
       scrolledUnderElevation: 0,
+      surfaceTintColor: Colors.transparent,
+      backgroundColor: colorScheme.surfaceContainerLowest,
     ),
     body: user == null
         ? const Center(
@@ -78,21 +83,22 @@ Widget _userSetting(BuildContext context) {
       label: "Manage Users",
       subtitle: "View, edit, and remove user accounts",
       color: colorScheme.primary,
-      route: '/manage-users',
+      onTapNavigation: () => Navigator.pushNamed(context, '/manage-users'),
     ),
     _AdminAction(
       icon: Icons.volunteer_activism_rounded,
       label: "Add Volunteer Account",
       subtitle: "Create a login for an existing volunteer",
       color: colorScheme.tertiary,
-      route: '/volunteer-account-form',
+      onTapNavigation: () =>
+          Navigator.pushNamed(context, '/volunteer-account-form'),
     ),
     _AdminAction(
       icon: Icons.storefront_rounded,
       label: "Manage Kitchens",
       subtitle: "Configure kitchens across the program",
       color: colorScheme.secondary,
-      route: '/manage-kitchens',
+      onTapNavigation: () => Navigator.pushNamed(context, '/manage-kitchens'),
     ),
   ];
 
@@ -152,14 +158,14 @@ class _AdminAction {
   final String label;
   final String subtitle;
   final Color color;
-  final String route;
+  final VoidCallback onTapNavigation;
 
   const _AdminAction({
     required this.icon,
     required this.label,
     required this.subtitle,
     required this.color,
-    required this.route,
+    required this.onTapNavigation,
   });
 }
 
@@ -185,7 +191,7 @@ class _AdminActionTileState extends State<_AdminActionTile> {
     final action = widget.action;
 
     return InkWell(
-      onTap: () => Navigator.pushNamed(context, action.route),
+      onTap: action.onTapNavigation,
       onTapDown: (_) => _setPressed(true),
       onTapCancel: () => _setPressed(false),
       onTapUp: (_) => _setPressed(false),

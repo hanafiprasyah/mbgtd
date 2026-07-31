@@ -211,9 +211,7 @@ class _UserFormPageState extends State<UserFormPage> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(isEdit ? 'Edit Staff User' : 'Add Staff User'),
-        ),
+        appBar: AppBar(title: Text(isEdit ? 'Edit User' : 'Add Staff User')),
         body: BlocConsumer<UserBloc, UserState>(
           listener: (context, state) {
             if (state is UserSuccess) {

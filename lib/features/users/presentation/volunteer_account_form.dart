@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
@@ -35,6 +37,15 @@ class _VolunteerAccountFormPageState extends State<VolunteerAccountFormPage> {
   bool _obscurePassword = true;
   bool _passwordMeetsMinLength = false;
 
+  // Tracks whether every active volunteer already has a linked login
+  // account. When true, there's nothing left to create an account for,
+  // so the login-detail fields and the submit button are hidden/disabled.
+  // Starts as `true` (fields hidden, button disabled) so the very first
+  // frame — before the stream below has emitted anything — never shows
+  // an enabled button that immediately flips to disabled a moment later.
+  bool _noAvailableVolunteers = true;
+  StreamSubscription<List<Map<String, dynamic>>>? _unlinkedVolunteersSub;
+
   static final RegExp _usernameRegex = RegExp(r'^[a-zA-Z0-9_]{3,20}$');
   static final RegExp _emailRegex = RegExp(
     r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
@@ -45,11 +56,22 @@ class _VolunteerAccountFormPageState extends State<VolunteerAccountFormPage> {
   void initState() {
     super.initState();
     _passwordController.addListener(_onPasswordChanged);
+    _unlinkedVolunteersSub = _volunteerRepository
+        .getUnlinkedVolunteers()
+        .listen((volunteers) {
+          final activeUnlinked = volunteers
+              .where((v) => v['isActive'] != false)
+              .toList();
+          if (mounted) {
+            setState(() => _noAvailableVolunteers = activeUnlinked.isEmpty);
+          }
+        });
   }
 
   @override
   void dispose() {
     _passwordController.removeListener(_onPasswordChanged);
+    _unlinkedVolunteersSub?.cancel();
     _emailController.dispose();
     _fullnameController.dispose();
     _usernameController.dispose();
@@ -402,150 +424,164 @@ class _VolunteerAccountFormPageState extends State<VolunteerAccountFormPage> {
                                     );
                                   },
                                 ),
-                                const SizedBox(height: AppSpacing.md),
+                                // Login-detail fields (Full Name, Email,
+                                // Username, Password) only make sense when
+                                // there's still a volunteer left to link.
+                                // Once every active volunteer already has a
+                                // login, hide them entirely.
+                                if (!_noAvailableVolunteers) ...[
+                                  const SizedBox(height: AppSpacing.md),
 
-                                // Full Name Field
-                                TextFormField(
-                                  controller: _fullnameController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Full Name',
-                                    prefixIcon: Icon(Icons.person_outline),
-                                    border: OutlineInputBorder(),
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                  ),
-                                  validator: _validateFullname,
-                                  textInputAction: TextInputAction.next,
-                                  enabled: !isLoading,
-                                ),
-                                const SizedBox(height: AppSpacing.md),
-
-                                // Email Field
-                                TextFormField(
-                                  controller: _emailController,
-                                  keyboardType: TextInputType.emailAddress,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Email',
-                                    prefixIcon: Icon(Icons.email_outlined),
-                                    border: OutlineInputBorder(),
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    helperText: 'Used to log in to the app',
-                                  ),
-                                  validator: _validateEmail,
-                                  textInputAction: TextInputAction.next,
-                                  enabled: !isLoading,
-                                  autofillHints: const [AutofillHints.email],
-                                ),
-                                const SizedBox(height: AppSpacing.md),
-
-                                // Username Field
-                                TextFormField(
-                                  controller: _usernameController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Username',
-                                    prefixIcon: Icon(Icons.alternate_email),
-                                    border: OutlineInputBorder(),
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    helperText:
-                                        'Must be 3-20 characters: letters, numbers, and underscores only.',
-                                    helperMaxLines: 2,
-                                  ),
-                                  validator: _validateUsername,
-                                  textInputAction: TextInputAction.next,
-                                  enabled: !isLoading,
-                                  autofillHints: const [AutofillHints.username],
-                                ),
-                                const SizedBox(height: AppSpacing.md),
-
-                                // Password Field
-                                TextFormField(
-                                  controller: _passwordController,
-                                  obscureText: _obscurePassword,
-                                  decoration: InputDecoration(
-                                    labelText: 'Password',
-                                    prefixIcon: const Icon(Icons.lock_outline),
-                                    border: const OutlineInputBorder(),
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    helperText:
-                                        'Minimum 6 characters. Share this with the volunteer.',
-                                    helperMaxLines: 2,
-                                    suffixIcon: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        IconButton(
-                                          icon: Icon(
-                                            _obscurePassword
-                                                ? Icons.visibility_off
-                                                : Icons.visibility,
-                                          ),
-                                          onPressed: () => setState(
-                                            () => _obscurePassword =
-                                                !_obscurePassword,
-                                          ),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(Icons.autorenew),
-                                          tooltip: 'Generate random password',
-                                          onPressed: isLoading
-                                              ? null
-                                              : _generatePassword,
-                                        ),
-                                      ],
+                                  // Full Name Field
+                                  TextFormField(
+                                    controller: _fullnameController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Full Name',
+                                      prefixIcon: Icon(Icons.person_outline),
+                                      border: OutlineInputBorder(),
+                                      filled: true,
+                                      fillColor: Colors.white,
                                     ),
+                                    validator: _validateFullname,
+                                    textInputAction: TextInputAction.next,
+                                    enabled: !isLoading,
                                   ),
-                                  validator: _validatePassword,
-                                  textInputAction: TextInputAction.done,
-                                  enabled: !isLoading,
-                                ),
-                                AnimatedSize(
-                                  duration: const Duration(milliseconds: 200),
-                                  curve: Curves.easeOutCubic,
-                                  alignment: Alignment.topCenter,
-                                  child: _passwordMeetsMinLength
-                                      ? Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: AppSpacing.sm,
+                                  const SizedBox(height: AppSpacing.md),
+
+                                  // Email Field
+                                  TextFormField(
+                                    controller: _emailController,
+                                    keyboardType: TextInputType.emailAddress,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Email',
+                                      prefixIcon: Icon(Icons.email_outlined),
+                                      border: OutlineInputBorder(),
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      helperText: 'Used to log in to the app',
+                                    ),
+                                    validator: _validateEmail,
+                                    textInputAction: TextInputAction.next,
+                                    enabled: !isLoading,
+                                    autofillHints: const [AutofillHints.email],
+                                  ),
+                                  const SizedBox(height: AppSpacing.md),
+
+                                  // Username Field
+                                  TextFormField(
+                                    controller: _usernameController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Username',
+                                      prefixIcon: Icon(Icons.alternate_email),
+                                      border: OutlineInputBorder(),
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      helperText:
+                                          'Must be 3-20 characters: letters, numbers, and underscores only.',
+                                      helperMaxLines: 2,
+                                    ),
+                                    validator: _validateUsername,
+                                    textInputAction: TextInputAction.next,
+                                    enabled: !isLoading,
+                                    autofillHints: const [
+                                      AutofillHints.username,
+                                    ],
+                                  ),
+                                  const SizedBox(height: AppSpacing.md),
+
+                                  // Password Field
+                                  TextFormField(
+                                    controller: _passwordController,
+                                    obscureText: _obscurePassword,
+                                    decoration: InputDecoration(
+                                      labelText: 'Password',
+                                      prefixIcon: const Icon(
+                                        Icons.lock_outline,
+                                      ),
+                                      border: const OutlineInputBorder(),
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      helperText:
+                                          'Minimum 6 characters. Share this with the volunteer.',
+                                      helperMaxLines: 2,
+                                      suffixIcon: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            icon: Icon(
+                                              _obscurePassword
+                                                  ? Icons.visibility_off
+                                                  : Icons.visibility,
+                                            ),
+                                            onPressed: () => setState(
+                                              () => _obscurePassword =
+                                                  !_obscurePassword,
+                                            ),
                                           ),
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 10,
+                                          IconButton(
+                                            icon: const Icon(Icons.autorenew),
+                                            tooltip: 'Generate random password',
+                                            onPressed: isLoading
+                                                ? null
+                                                : _generatePassword,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    validator: _validatePassword,
+                                    textInputAction: TextInputAction.done,
+                                    enabled: !isLoading,
+                                  ),
+                                  AnimatedSize(
+                                    duration: const Duration(milliseconds: 200),
+                                    curve: Curves.easeOutCubic,
+                                    alignment: Alignment.topCenter,
+                                    child: _passwordMeetsMinLength
+                                        ? Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: AppSpacing.sm,
                                             ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.blue.withValues(
-                                                alpha: 0.1,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(
-                                                    AppRadius.lg,
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 10,
                                                   ),
-                                            ),
-                                            child: const Row(
-                                              children: [
-                                                Icon(
-                                                  Icons.info_outline_rounded,
-                                                  size: 18,
-                                                  color: Colors.blue,
+                                              decoration: BoxDecoration(
+                                                color: Colors.blue.withValues(
+                                                  alpha: 0.1,
                                                 ),
-                                                SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Text(
-                                                    'This password meets the minimum length. Share it with the volunteer now and ask them to change it after their first login.',
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      color: Colors.blue,
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                      AppRadius.lg,
+                                                    ),
+                                              ),
+                                              child: const Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.info_outline_rounded,
+                                                    size: 18,
+                                                    color: Colors.blue,
+                                                  ),
+                                                  SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      'This password meets the minimum length. Share it with the volunteer now and ask them to change it after their first login.',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.blue,
+                                                      ),
                                                     ),
                                                   ),
-                                                ),
-                                              ],
+                                                ],
+                                              ),
                                             ),
+                                          )
+                                        : const SizedBox(
+                                            width: double.infinity,
                                           ),
-                                        )
-                                      : const SizedBox(width: double.infinity),
-                                ),
+                                  ),
+                                ],
                                 const SizedBox(height: AppSpacing.lg),
 
                                 // Action Buttons
@@ -562,7 +598,9 @@ class _VolunteerAccountFormPageState extends State<VolunteerAccountFormPage> {
                                     const SizedBox(width: AppSpacing.md),
                                     Expanded(
                                       child: ElevatedButton(
-                                        onPressed: isLoading
+                                        onPressed:
+                                            (isLoading ||
+                                                _noAvailableVolunteers)
                                             ? null
                                             : () => _submit(context),
                                         style: ElevatedButton.styleFrom(

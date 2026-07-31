@@ -35,10 +35,10 @@ class _UserListPageState extends State<UserListPage> {
 
   String? _selectedRole;
   bool _isSearching = false;
-  bool _isSearchFieldVisible = false;
+  final ValueNotifier<bool> _isSearchFieldVisible = ValueNotifier(false);
 
   final _scrollController = ScrollController();
-  bool _isFabGroupVisible = true;
+  final ValueNotifier<bool> _isFabGroupVisible = ValueNotifier(true);
   double _lastScrollOffset = 0;
 
   int get _activeFilterCount {
@@ -61,6 +61,8 @@ class _UserListPageState extends State<UserListPage> {
     _debounce?.cancel();
     _scrollController.removeListener(_handleScroll);
     _scrollController.dispose();
+    _isSearchFieldVisible.dispose();
+    _isFabGroupVisible.dispose();
     super.dispose();
   }
 
@@ -70,17 +72,17 @@ class _UserListPageState extends State<UserListPage> {
 
     // Always show the floating group near the top of the list.
     if (offset <= 20) {
-      if (!_isFabGroupVisible) setState(() => _isFabGroupVisible = true);
+      if (!_isFabGroupVisible.value) _isFabGroupVisible.value = true;
       _lastScrollOffset = offset;
       return;
     }
 
     final delta = offset - _lastScrollOffset;
     const threshold = 8.0;
-    if (delta > threshold && _isFabGroupVisible) {
-      setState(() => _isFabGroupVisible = false);
-    } else if (delta < -threshold && !_isFabGroupVisible) {
-      setState(() => _isFabGroupVisible = true);
+    if (delta > threshold && _isFabGroupVisible.value) {
+      _isFabGroupVisible.value = false;
+    } else if (delta < -threshold && !_isFabGroupVisible.value) {
+      _isFabGroupVisible.value = true;
     }
     _lastScrollOffset = offset;
   }
@@ -113,15 +115,15 @@ class _UserListPageState extends State<UserListPage> {
   }
 
   void _toggleSearchField() {
-    final willShow = !_isSearchFieldVisible;
+    final willShow = !_isSearchFieldVisible.value;
 
-    setState(() => _isSearchFieldVisible = willShow);
+    _isSearchFieldVisible.value = willShow;
 
     if (willShow) {
       // Wait for the field to be laid out before requesting focus, so we
       // never focus a node that isn't attached to the tree yet.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _isSearchFieldVisible) {
+        if (mounted && _isSearchFieldVisible.value) {
           _searchFocusNode.requestFocus();
         }
       });
@@ -290,89 +292,111 @@ class _UserListPageState extends State<UserListPage> {
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Column(
             children: [
-              AnimatedSize(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                alignment: Alignment.topCenter,
-                child: _isSearchFieldVisible
-                    ? Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.04),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: TextField(
-                            controller: _searchController,
-                            focusNode: _searchFocusNode,
-                            onChanged: _onSearchChanged,
-                            style: const TextStyle(fontSize: 14),
-                            decoration: InputDecoration(
-                              hintText: 'Search users, email, role...',
-                              hintStyle: TextStyle(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                                fontSize: 14,
-                              ),
-                              prefixIcon: Padding(
-                                padding: const EdgeInsets.all(10),
-                                child: Icon(
-                                  Icons.search_rounded,
-                                  size: 20,
-                                  color: _isSearching
-                                      ? Theme.of(context).colorScheme.primary
-                                      : Theme.of(
+              ValueListenableBuilder<bool>(
+                valueListenable: _isSearchFieldVisible,
+                builder: (context, isSearchVisible, _) {
+                  return Column(
+                    children: [
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
+                        alignment: Alignment.topCenter,
+                        child: isSearchVisible
+                            ? Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  12,
+                                  12,
+                                  12,
+                                  4,
+                                ),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.surface,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.04,
+                                        ),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: TextField(
+                                    controller: _searchController,
+                                    focusNode: _searchFocusNode,
+                                    onChanged: _onSearchChanged,
+                                    style: const TextStyle(fontSize: 14),
+                                    decoration: InputDecoration(
+                                      hintText: 'Search users, email, role...',
+                                      hintStyle: TextStyle(
+                                        color: Theme.of(
                                           context,
                                         ).colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                              suffixIcon: _isSearching
-                                  ? IconButton(
-                                      icon: const Icon(
-                                        Icons.close_rounded,
-                                        size: 20,
+                                        fontSize: 14,
                                       ),
-                                      onPressed: _clearSearch,
-                                    )
-                                  : null,
-                              filled: true,
-                              fillColor: Colors.transparent,
-                              contentPadding: const EdgeInsets.symmetric(
-                                vertical: 14,
-                                horizontal: 12,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide.none,
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide.none,
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.primary.withValues(alpha: 0.3),
-                                  width: 1.2,
+                                      prefixIcon: Padding(
+                                        padding: const EdgeInsets.all(10),
+                                        child: Icon(
+                                          Icons.search_rounded,
+                                          size: 20,
+                                          color: _isSearching
+                                              ? Theme.of(
+                                                  context,
+                                                ).colorScheme.primary
+                                              : Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                      suffixIcon: _isSearching
+                                          ? IconButton(
+                                              icon: const Icon(
+                                                Icons.close_rounded,
+                                                size: 20,
+                                              ),
+                                              onPressed: _clearSearch,
+                                            )
+                                          : null,
+                                      filled: true,
+                                      fillColor: Colors.transparent,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            vertical: 14,
+                                            horizontal: 12,
+                                          ),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: BorderSide(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary
+                                              .withValues(alpha: 0.3),
+                                          width: 1.2,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      )
-                    : const SizedBox(width: double.infinity),
+                              )
+                            : const SizedBox(width: double.infinity),
+                      ),
+                      if (isSearchVisible) SizedBox(height: AppSpacing.md),
+                    ],
+                  );
+                },
               ),
-              if (_isSearchFieldVisible) SizedBox(height: AppSpacing.md),
               if (isFilterActive)
                 Padding(
                   padding: const EdgeInsets.only(
@@ -423,19 +447,29 @@ class _UserListPageState extends State<UserListPage> {
           ),
         ),
       ),
-      floatingActionButton: _FloatingActionGroup(
-        isVisible: _isFabGroupVisible,
-        filterCount: _activeFilterCount,
-        isSearchActive: _isSearchFieldVisible,
-        onSearchPressed: _toggleSearchField,
-        onFilterPressed: _showRoleFilterSheet,
-        onFilterLongPress: () {
-          setState(() => _selectedRole = null);
-          _applyCriteria();
-        },
-        onAddPressed: () async {
-          await Navigator.pushNamed(context, '/user-add');
-          if (mounted) _applyCriteria();
+      floatingActionButton: ValueListenableBuilder<bool>(
+        valueListenable: _isFabGroupVisible,
+        builder: (context, isFabVisible, _) {
+          return ValueListenableBuilder<bool>(
+            valueListenable: _isSearchFieldVisible,
+            builder: (context, isSearchVisible, _) {
+              return _FloatingActionGroup(
+                isVisible: isFabVisible,
+                filterCount: _activeFilterCount,
+                isSearchActive: isSearchVisible,
+                onSearchPressed: _toggleSearchField,
+                onFilterPressed: _showRoleFilterSheet,
+                onFilterLongPress: () {
+                  setState(() => _selectedRole = null);
+                  _applyCriteria();
+                },
+                onAddPressed: () async {
+                  await Navigator.pushNamed(context, '/user-add');
+                  if (mounted) _applyCriteria();
+                },
+              );
+            },
+          );
         },
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
@@ -459,7 +493,7 @@ class _UserListPageState extends State<UserListPage> {
       return _buildErrorState(state.message);
     }
     return const Center(
-      key: ValueKey('initial'),
+      key: ValueKey('loading'),
       child: CircularProgressIndicator(),
     );
   }

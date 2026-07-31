@@ -10,25 +10,69 @@ Widget buildModernInfoCard(
 ) {
   final cs = Theme.of(context).colorScheme;
 
-  return Container(
-    decoration: BoxDecoration(
-      color: cs.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-    ),
-    child: Column(
-      children: [
-        _modernTile(context, Icons.email_outlined, "Email", user.email ?? "-"),
-        _modernDivider(),
-        _modernTile(context, Icons.calendar_today, "Created", formatDate),
-        _modernDivider(),
-        _modernTile(context, Icons.access_time, "Last Login", relativeTime),
-      ],
-    ),
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Padding(
+        padding: const EdgeInsets.only(
+          left: AppSpacing.sm,
+          bottom: AppSpacing.sm,
+        ),
+        child: Text(
+          "ACCOUNT INFORMATION",
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: cs.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.8,
+          ),
+        ),
+      ),
+      Container(
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            _modernTile(
+              context,
+              Icons.email_outlined,
+              "Email",
+              user.email ?? "-",
+              cs.primary,
+            ),
+            _modernDivider(cs),
+            _modernTile(
+              context,
+              Icons.calendar_today_rounded,
+              "Created",
+              formatDate,
+              cs.secondary,
+            ),
+            _modernDivider(cs),
+            _modernTile(
+              context,
+              Icons.access_time_rounded,
+              "Last Login",
+              relativeTime,
+              cs.tertiary,
+            ),
+          ],
+        ),
+      ),
+    ],
   );
 }
 
-Widget _modernDivider() {
-  return const Divider(height: 1, indent: 16, endIndent: 16);
+Widget _modernDivider(ColorScheme cs) {
+  return Divider(
+    height: 1,
+    indent: 68,
+    endIndent: AppSpacing.md,
+    color: cs.outlineVariant.withValues(alpha: 0.3),
+  );
 }
 
 Widget _modernTile(
@@ -36,38 +80,45 @@ Widget _modernTile(
   IconData icon,
   String title,
   String value,
+  Color accent,
 ) {
   final cs = Theme.of(context).colorScheme;
 
   return Padding(
-    padding: const EdgeInsets.all(AppSpacing.md),
+    padding: const EdgeInsets.symmetric(
+      horizontal: AppSpacing.md,
+      vertical: AppSpacing.sm + 4,
+    ),
     child: Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(10),
+          width: 40,
+          height: 40,
           decoration: BoxDecoration(
-            color: cs.primaryContainer,
-            borderRadius: BorderRadius.circular(12),
+            color: accent.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(AppRadius.md),
           ),
-          child: Icon(icon, color: cs.onPrimaryContainer),
+          child: Icon(icon, color: accent, size: 20),
         ),
         const SizedBox(width: AppSpacing.md),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 title,
                 style: Theme.of(
                   context,
-                ).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+                ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
                 value,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: cs.onSurface,
+                ),
               ),
             ],
           ),
