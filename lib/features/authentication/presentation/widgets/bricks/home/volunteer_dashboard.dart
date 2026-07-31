@@ -3,6 +3,9 @@ import 'package:intl/intl.dart';
 import 'package:mbg_test/core/helper/design_system.dart';
 import 'package:mbg_test/core/services/camera_prewarm.dart';
 import 'package:mbg_test/features/attendance/data/repositories/attendance_payroll_repository.dart';
+import 'package:mbg_test/features/attendance/data/repositories/payroll_report_repository.dart';
+import 'package:mbg_test/features/attendance/data/services/payroll_document_service.dart';
+import 'package:mbg_test/features/attendance/data/models/payroll_period_model.dart';
 import 'package:mbg_test/features/attendance/presentation/pages/qr_generator_page.dart';
 import 'package:mbg_test/features/volunteer/data/models/volunteer_sp_history_model.dart';
 import 'package:mbg_test/features/volunteer/data/repositories/volunteer_repository.dart';
@@ -50,6 +53,7 @@ class _VolunteerDashboardState extends State<VolunteerDashboard> {
   // and calling setState() resubscribes the relevant StreamBuilder only.
   late Stream<Map<String, dynamic>> _dashboardStream;
   late Stream<List<VolunteerSpHistory>> _spHistoryStream;
+  late Stream<List<PayrollPeriod>> _payrollHistoryStream;
 
   // Caps the reading width on tablets/desktop so text and cards don't
   // stretch edge-to-edge on wide screens.
@@ -72,12 +76,47 @@ class _VolunteerDashboardState extends State<VolunteerDashboard> {
       widget.authUid,
     );
     _spHistoryStream = VolunteerRepository().getMySPHistory(widget.authUid);
+    _payrollHistoryStream = PayrollReportRepository().getMyPayrollHistory(
+      widget.authUid,
+    );
   }
 
   void _retrySpHistory() {
     setState(() {
       _spHistoryStream = VolunteerRepository().getMySPHistory(widget.authUid);
     });
+  }
+
+  // Tracks which payslip(s) are currently being exported (keyed by the
+  // period's reset timestamp, since that's unique per closed period) so the
+  // matching tile can swap its export button for a spinner instead of
+  // leaving the user guessing whether the tap registered — PDF export
+  // involves a font fetch + document build + share sheet, which isn't
+  // instant.
+  final Set<int> _exportingPayslips = {};
+
+  Future<void> _exportPayslip(
+    PayrollPeriod period,
+    Map<String, dynamic> data,
+  ) async {
+    final key = period.resetAt.millisecondsSinceEpoch;
+    if (_exportingPayslips.contains(key)) return;
+
+    setState(() => _exportingPayslips.add(key));
+    try {
+      await PayrollDocumentService.exportSlipPdf(period: period, data: data);
+    } catch (e) {
+      debugPrint("Error exporting payslip PDF: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to export payslip. Please try again.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _exportingPayslips.remove(key));
+    }
   }
 
   Future<void> _handleRefresh() async {
@@ -327,6 +366,198 @@ class _VolunteerDashboardState extends State<VolunteerDashboard> {
     );
   }
 
+  // ── Payslip history ──────────────────────────────────────────────────────
+
+  Widget _buildPayrollHistorySection(
+    BuildContext context,
+    AsyncSnapshot<List<PayrollPeriod>> snapshot,
+  ) {
+    Widget sectionChild;
+
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      sectionChild = Column(
+        key: const ValueKey('payroll-loading'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SkeletonBox(height: 44, borderRadius: BorderRadius.circular(12)),
+          const SizedBox(height: 10),
+          _SkeletonBox(height: 44, borderRadius: BorderRadius.circular(12)),
+        ],
+      );
+    } else if (snapshot.hasError) {
+      sectionChild = KeyedSubtree(
+        key: const ValueKey('payroll-error'),
+        child: _buildInlineError(
+          context,
+          message: "Payslip history couldn't be loaded.",
+          onRetry: () => setState(_initStreams),
+        ),
+      );
+    } else {
+      final slips = snapshot.data ?? [];
+
+      sectionChild = Column(
+        key: const ValueKey('payroll-content'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (slips.isEmpty)
+            _buildPayslipEmptyState(context)
+          else
+            Column(
+              children: [
+                for (int i = 0; i < slips.length; i++)
+                  _TileEntrance(
+                    child: _buildPayslipTimelineTile(
+                      context,
+                      slips[i],
+                      slips[i].volunteers.values.single,
+                      isLast: i == slips.length - 1,
+                    ),
+                  ),
+              ],
+            ),
+        ],
+      );
+    }
+
+    return _buildSectionCard(
+      context,
+      title: "Payslip History",
+      icon: Icons.receipt_long_rounded,
+      child: sectionChild,
+    );
+  }
+
+  Widget _buildPayslipEmptyState(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(
+            Icons.receipt_long_outlined,
+            size: 18,
+            color: colorScheme.outline,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              "No payslips yet.",
+              style: TextStyle(color: colorScheme.outline, fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPayslipTimelineTile(
+    BuildContext context,
+    PayrollPeriod period,
+    Map<String, dynamic> data, {
+    required bool isLast,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final total = data['totalGaji'] ?? data['totalSalary'] ?? data['gaji'] ?? 0;
+    final key = period.resetAt.millisecondsSinceEpoch;
+    final isExporting = _exportingPayslips.contains(key);
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Timeline rail: dot + connecting line — same visual language as
+          // the SP Warning History and attendance timeline above.
+          Column(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.receipt_long_rounded,
+                  size: 16,
+                  color: colorScheme.primary,
+                ),
+              ),
+              if (!isLast)
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    color: Colors.grey.withValues(alpha: 0.25),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          // Content
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          DateFormat(
+                            'd MMMM y',
+                            'en_US',
+                          ).format(period.resetAt),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: 36,
+                        height: 36,
+                        child: isExporting
+                            ? const Padding(
+                                padding: EdgeInsets.all(8),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : IconButton(
+                                padding: EdgeInsets.zero,
+                                tooltip: 'Export PDF',
+                                icon: const Icon(
+                                  Icons.picture_as_pdf_outlined,
+                                  size: 18,
+                                ),
+                                onPressed: data.isEmpty
+                                    ? null
+                                    : () => _exportPayslip(period, data),
+                              ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _currencyFormatter.format(total),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Main content ────────────────────────────────────────────────────────
 
   Widget _buildContent(BuildContext context, Map<String, dynamic> data) {
@@ -407,6 +638,24 @@ class _VolunteerDashboardState extends State<VolunteerDashboard> {
                       builder: (context, spSnapshot) {
                         return _buildSPSection(context, spSnapshot);
                       },
+                    ),
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    AppSpacing.xl,
+                    AppSpacing.md,
+                    0,
+                  ),
+                  child: _FadeSlideIn(
+                    delay: const Duration(milliseconds: 180),
+                    child: StreamBuilder<List<PayrollPeriod>>(
+                      stream: _payrollHistoryStream,
+                      builder: (context, payrollSnapshot) =>
+                          _buildPayrollHistorySection(context, payrollSnapshot),
                     ),
                   ),
                 ),

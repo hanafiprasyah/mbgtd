@@ -5,9 +5,12 @@ import 'package:mbg_test/core/services/camera_prewarm.dart';
 import 'package:mbg_test/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Initialize Indonesian locale for date formatting
+  await initializeDateFormatting('id_ID', null);
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await dotenv.load();
 
