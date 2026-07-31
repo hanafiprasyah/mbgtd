@@ -43,7 +43,7 @@ class LoginFormWidget extends StatelessWidget {
       children: [
         // Title
         Text(
-          "MBGTD Apps",
+          "GeezeHub Login",
           style: Theme.of(
             context,
           ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),

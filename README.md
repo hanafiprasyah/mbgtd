@@ -1,6 +1,6 @@
-# 📱 MBGTD Apps (Makan Bergizi Gratis Team Dashboard)
+# 📱 GEEZEHUB (Makan Bergizi Gratis Team Dashboard)
 
-Aplikasi MBGTD Apps adalah sistem manajemen operasional relawan yang dirancang untuk mendukung program Makan Bergizi Gratis. Aplikasi ini mengintegrasikan fitur absensi berbasis QR, pengelolaan relawan, payroll berbasis snapshot + pool system, inventaris yayasan, serta reporting otomatis dalam format Excel.
+Aplikasi GEEZEHUB adalah sistem manajemen operasional relawan yang dirancang untuk mendukung program Makan Bergizi Gratis. Aplikasi ini mengintegrasikan fitur absensi berbasis QR, pengelolaan relawan, payroll berbasis snapshot + pool system, inventaris yayasan, serta reporting otomatis dalam format Excel.
 
 ---
 
