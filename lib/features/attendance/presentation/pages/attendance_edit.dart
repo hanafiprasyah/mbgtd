@@ -58,6 +58,29 @@ class _EditAttendancePageState extends State<EditAttendancePage> {
     Navigator.pop(context);
   }
 
+  Future<void> deleteAttendance() async {
+    await FirebaseFirestore.instance
+        .collection('attendances')
+        .doc(widget.attendanceId)
+        .delete();
+
+    if (!mounted) return;
+    Navigator.pop(context);
+  }
+
+  void _showDeleteConfirmationDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return _DeleteAttendanceDialog(
+          volunteerName: volunteerName,
+          onConfirmed: deleteAttendance,
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -209,10 +232,142 @@ class _EditAttendancePageState extends State<EditAttendancePage> {
                   child: const Text("Save Changes"),
                 ),
               ),
+
+              const SizedBox(height: 12),
+
+              // Delete Button
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _showDeleteConfirmationDialog,
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  label: const Text(
+                    "Delete Attendance",
+                    style: TextStyle(color: Colors.red),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: const BorderSide(color: Colors.red),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _DeleteAttendanceDialog extends StatefulWidget {
+  final String volunteerName;
+  final VoidCallback onConfirmed;
+
+  const _DeleteAttendanceDialog({
+    required this.volunteerName,
+    required this.onConfirmed,
+  });
+
+  @override
+  State<_DeleteAttendanceDialog> createState() =>
+      _DeleteAttendanceDialogState();
+}
+
+class _DeleteAttendanceDialogState extends State<_DeleteAttendanceDialog> {
+  final _confirmController = TextEditingController();
+  bool _isMatch = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _confirmController.addListener(_onConfirmTextChanged);
+  }
+
+  void _onConfirmTextChanged() {
+    final matched =
+        _confirmController.text.trim() == widget.volunteerName.trim();
+    if (matched != _isMatch) {
+      setState(() => _isMatch = matched);
+    }
+  }
+
+  @override
+  void dispose() {
+    _confirmController.removeListener(_onConfirmTextChanged);
+    _confirmController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Row(
+        children: [
+          Icon(Icons.warning_amber_rounded, color: Colors.red),
+          SizedBox(width: 8),
+          Text("Delete Attendance"),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "This action cannot be undone. Please type the volunteer's full name below to confirm deletion:",
+            style: TextStyle(fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              widget.volunteerName,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _confirmController,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: "Type full name here",
+              filled: true,
+              fillColor: Colors.grey.shade100,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("Cancel"),
+        ),
+        ElevatedButton(
+          onPressed: _isMatch
+              ? () {
+                  Navigator.pop(context);
+                  widget.onConfirmed();
+                }
+              : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+            disabledBackgroundColor: Colors.red.withAlpha(60),
+            foregroundColor: Colors.white,
+          ),
+          child: const Text("Delete"),
+        ),
+      ],
     );
   }
 }

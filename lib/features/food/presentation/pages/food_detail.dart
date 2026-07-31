@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:vector_math/vector_math_64.dart' show Vector3;
 import 'package:mbg_test/core/helper/global_scaffold_messenger.dart';
 import 'package:mbg_test/features/food/bloc/food_bloc.dart';
 import 'package:mbg_test/features/food/bloc/food_event.dart';
@@ -91,16 +92,19 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
           title: const Text('Menu Details'),
           actions: [
             IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () {
-                Navigator.pushNamed(context, '/food-edit', arguments: food);
-              },
-            ),
-            IconButton(
               icon: const Icon(Icons.delete, color: Colors.red),
               onPressed: () => _confirmDelete(context),
             ),
           ],
+        ),
+        floatingActionButton: FloatingActionButton.small(
+          tooltip: 'Edit Food Data',
+          backgroundColor: colorScheme.primary,
+          foregroundColor: Colors.white,
+          onPressed: () {
+            Navigator.pushNamed(context, '/food-edit', arguments: food);
+          },
+          child: const Icon(Icons.edit),
         ),
         body: CustomScrollView(
           slivers: [
@@ -319,24 +323,14 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
   void _confirmDelete(BuildContext context) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Menu'),
-        content: Text('Are you sure you want to delete "${food.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              setState(() => _isDeleting = true);
-              context.read<FoodBloc>().add(DeleteFood(food.id!));
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
+      builder: (ctx) => _DeleteFoodConfirmDialog(
+        foodName: food.name,
+        requiredName: food.diketahuiOleh,
+        onConfirmed: () {
+          Navigator.pop(ctx);
+          setState(() => _isDeleting = true);
+          context.read<FoodBloc>().add(DeleteFood(food.id!));
+        },
       ),
     );
   }
@@ -360,8 +354,8 @@ class _ZoomableImageState extends State<_ZoomableImage> {
     } else {
       final position = _doubleTapDetails!.localPosition;
       _controller.value = Matrix4.identity()
-        ..translate(-position.dx * 2, -position.dy * 2)
-        ..scale(2.5);
+        ..translateByVector3(Vector3(-position.dx * 2, -position.dy * 2, 0))
+        ..scaleByVector3(Vector3.all(2.5));
     }
   }
 
@@ -388,6 +382,114 @@ class _ZoomableImageState extends State<_ZoomableImage> {
           },
         ),
       ),
+    );
+  }
+}
+
+/// Confirmation dialog for deleting a food item. Requires the user to type
+/// the nutritionist (SPPI) name tied to this menu before the Delete button
+/// becomes enabled. The [TextEditingController] is owned by this widget's
+/// own State and disposed in its `dispose()`, so it's only ever torn down
+/// once the dialog is truly unmounted -- not manually via `.then()` on the
+/// showDialog future, which can race with the dialog's exit animation and
+/// throw "used after being disposed".
+class _DeleteFoodConfirmDialog extends StatefulWidget {
+  final String foodName;
+  final String requiredName;
+  final VoidCallback onConfirmed;
+
+  const _DeleteFoodConfirmDialog({
+    required this.foodName,
+    required this.requiredName,
+    required this.onConfirmed,
+  });
+
+  @override
+  State<_DeleteFoodConfirmDialog> createState() =>
+      _DeleteFoodConfirmDialogState();
+}
+
+class _DeleteFoodConfirmDialogState extends State<_DeleteFoodConfirmDialog> {
+  late final TextEditingController _textController;
+  late final String _requiredName;
+  late final bool _hasRequiredName;
+
+  @override
+  void initState() {
+    super.initState();
+    _textController = TextEditingController();
+    _requiredName = widget.requiredName.trim();
+    _hasRequiredName = _requiredName.isNotEmpty;
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _textController,
+      builder: (context, value, _) {
+        final typed = value.text.trim();
+        final isValid = _hasRequiredName
+            ? typed.toLowerCase() == _requiredName.toLowerCase()
+            : typed.isNotEmpty;
+
+        return AlertDialog(
+          title: const Text('Delete Menu'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text.rich(
+                TextSpan(
+                  text: 'You are about to delete ',
+                  children: [
+                    TextSpan(
+                      text: '"${widget.foodName}"',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const TextSpan(text: '. This action cannot be undone.'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _hasRequiredName
+                    ? 'Type the SPPI name "$_requiredName" to confirm:'
+                    : 'Type the SPPI name to confirm:',
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _textController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: _hasRequiredName
+                      ? _requiredName
+                      : 'Nutritionist name',
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: isValid ? widget.onConfirmed : null,
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -124,12 +124,68 @@ class _VolunteerFormPageState extends State<VolunteerFormPage> {
       namaBank: _namaBank,
     );
 
-    final bloc = context.read<VolunteerBloc>();
     if (_existing == null) {
-      bloc.add(AddVolunteer(volunteer));
+      // Add flow: no confirmation dialog, save immediately.
+      context.read<VolunteerBloc>().add(AddVolunteer(volunteer));
     } else {
-      bloc.add(UpdateVolunteer(volunteer));
+      // Edit flow: require the user to review changes before saving.
+      _confirmAndUpdate(volunteer);
     }
+  }
+
+  Future<void> _confirmAndUpdate(Volunteer updated) async {
+    final changes = _buildFieldChanges(_existing!, updated);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => _EditConfirmationDialog(changes: changes),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    context.read<VolunteerBloc>().add(UpdateVolunteer(updated));
+  }
+
+  List<_FieldChange> _buildFieldChanges(Volunteer old, Volunteer updated) {
+    final dateFormat = DateFormat('dd MMM yyyy');
+    return [
+      _FieldChange(
+        label: 'Full Name',
+        oldValue: old.namaLengkap,
+        newValue: updated.namaLengkap,
+      ),
+      _FieldChange(
+        label: 'Address',
+        oldValue: old.alamat,
+        newValue: updated.alamat,
+      ),
+      _FieldChange(
+        label: 'Gender',
+        oldValue: old.jenisKelamin,
+        newValue: updated.jenisKelamin,
+      ),
+      _FieldChange(
+        label: 'Birth Date',
+        oldValue: dateFormat.format(old.tanggalLahir),
+        newValue: dateFormat.format(updated.tanggalLahir),
+      ),
+      _FieldChange(label: 'Team', oldValue: old.tim, newValue: updated.tim),
+      _FieldChange(
+        label: 'Account Number',
+        oldValue: old.noRek ?? '',
+        newValue: updated.noRek ?? '',
+      ),
+      _FieldChange(
+        label: 'Bank Name',
+        oldValue: old.namaBank ?? '',
+        newValue: updated.namaBank ?? '',
+      ),
+      _FieldChange(
+        label: 'Status',
+        oldValue: old.isActive ? 'Active' : 'Inactive',
+        newValue: updated.isActive ? 'Active' : 'Inactive',
+      ),
+    ];
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
@@ -478,6 +534,149 @@ class _StatusToggle extends StatelessWidget {
                     ? (value ? Colors.blueAccent : Colors.grey)
                     : Colors.grey,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Edit confirmation
+// ---------------------------------------------------------------------------
+
+/// Represents a single form field's old and new value, used to render the
+/// edit confirmation dialog. Only relevant for the edit flow — the add flow
+/// has no "old" value to compare against.
+class _FieldChange {
+  const _FieldChange({
+    required this.label,
+    required this.oldValue,
+    required this.newValue,
+  });
+
+  final String label;
+  final String oldValue;
+  final String newValue;
+
+  bool get isChanged => oldValue.trim() != newValue.trim();
+}
+
+/// Confirmation dialog shown before saving an edited volunteer. Lists every
+/// field that will be saved; fields the user actually changed also show
+/// their previous value (struck through) as a reference.
+class _EditConfirmationDialog extends StatelessWidget {
+  const _EditConfirmationDialog({required this.changes});
+
+  final List<_FieldChange> changes;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final changedCount = changes.where((c) => c.isChanged).length;
+
+    return AlertDialog(
+      title: const Text('Confirm Changes'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                changedCount > 0
+                    ? 'Please review the data below before saving. '
+                          '$changedCount field${changedCount > 1 ? 's' : ''} '
+                          'changed.'
+                    : 'No fields were changed. Save anyway?',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              for (final change in changes) ...[
+                _FieldChangeTile(change: change),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Renders a single field row inside the edit confirmation dialog: label,
+/// the new value that will be saved, and — only if the value actually
+/// changed — the previous value shown struck through above it.
+class _FieldChangeTile extends StatelessWidget {
+  const _FieldChangeTile({required this.change});
+
+  final _FieldChange change;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: change.isChanged
+            ? colorScheme.primaryContainer.withValues(alpha: 0.25)
+            : colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppSpacing.xs),
+        border: change.isChanged
+            ? Border.all(color: colorScheme.primary.withValues(alpha: 0.3))
+            : null,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                change.label,
+                style: textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              if (change.isChanged) ...[
+                const SizedBox(width: 6),
+                Icon(Icons.edit_rounded, size: 12, color: colorScheme.primary),
+              ],
+            ],
+          ),
+          const SizedBox(height: 2),
+          if (change.isChanged)
+            Text(
+              change.oldValue.trim().isEmpty ? '(empty)' : change.oldValue,
+              style: textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                decoration: TextDecoration.lineThrough,
+              ),
+            ),
+          Text(
+            change.newValue.trim().isEmpty ? '(empty)' : change.newValue,
+            style: textTheme.bodyMedium?.copyWith(
+              fontWeight: change.isChanged
+                  ? FontWeight.w600
+                  : FontWeight.normal,
             ),
           ),
         ],

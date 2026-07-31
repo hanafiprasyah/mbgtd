@@ -289,23 +289,9 @@ class _VolunteerListPageState extends State<VolunteerListPage> with RouteAware {
   Future<void> _confirmDelete(Volunteer volunteer) async {
     final confirm = await showDialog<bool>(
       context: context,
+      barrierDismissible: false,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Confirm Delete'),
-          content: Text(
-            'Are you sure you want to delete ${volunteer.namaLengkap}?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
+        return _DeleteVolunteerDialog(volunteerName: volunteer.namaLengkap);
       },
     );
 
@@ -949,6 +935,103 @@ class _CountBadge extends StatelessWidget {
           height: 1,
         ),
       ),
+    );
+  }
+}
+
+/// Confirmation dialog for deleting a volunteer. Requires the user to type
+/// the volunteer's full name exactly before the Delete button is enabled,
+/// preventing accidental deletions.
+class _DeleteVolunteerDialog extends StatefulWidget {
+  const _DeleteVolunteerDialog({required this.volunteerName});
+
+  final String volunteerName;
+
+  @override
+  State<_DeleteVolunteerDialog> createState() => _DeleteVolunteerDialogState();
+}
+
+class _DeleteVolunteerDialogState extends State<_DeleteVolunteerDialog> {
+  final _inputController = TextEditingController();
+  bool _isMatch = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _inputController.addListener(_onInputChanged);
+  }
+
+  void _onInputChanged() {
+    final isMatch = _inputController.text == widget.volunteerName;
+    if (isMatch != _isMatch) {
+      setState(() => _isMatch = isMatch);
+    }
+  }
+
+  @override
+  void dispose() {
+    _inputController.removeListener(_onInputChanged);
+    _inputController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final hasInput = _inputController.text.isNotEmpty;
+
+    return AlertDialog(
+      title: const Text('Confirm Delete'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text.rich(
+            TextSpan(
+              text: 'This action cannot be undone. Type ',
+              children: [
+                TextSpan(
+                  text: widget.volunteerName,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const TextSpan(text: ' to confirm deletion.'),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: _inputController,
+            autofocus: true,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) {
+              if (_isMatch) Navigator.pop(context, true);
+            },
+            decoration: InputDecoration(
+              hintText: widget.volunteerName,
+              isDense: true,
+              border: const OutlineInputBorder(),
+              errorText: hasInput && !_isMatch ? 'Name does not match' : null,
+              suffixIcon: _isMatch
+                  ? Icon(Icons.check_circle, color: colorScheme.primary)
+                  : null,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: colorScheme.error,
+            foregroundColor: colorScheme.onError,
+          ),
+          onPressed: _isMatch ? () => Navigator.pop(context, true) : null,
+          child: const Text('Delete'),
+        ),
+      ],
     );
   }
 }

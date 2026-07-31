@@ -701,15 +701,15 @@ class _PayrollPageState extends State<PayrollPage> {
     }
   }
 
-  String _formatDisplayDate(String dateStr) {
-    if (dateStr.isEmpty || dateStr == '-') return dateStr;
-    try {
-      final parsed = DateFormat('yyyy-MM-dd').parse(dateStr);
-      return DateFormat('d MMM yyyy', 'en_US').format(parsed);
-    } catch (e) {
-      return dateStr;
-    }
-  }
+  // String _formatDisplayDate(String dateStr) {
+  //   if (dateStr.isEmpty || dateStr == '-') return dateStr;
+  //   try {
+  //     final parsed = DateFormat('yyyy-MM-dd').parse(dateStr);
+  //     return DateFormat('d MMM yyyy', 'en_US').format(parsed);
+  //   } catch (e) {
+  //     return dateStr;
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -990,19 +990,19 @@ class _PayrollPageState extends State<PayrollPage> {
                         final totalTeam = teamTotals[team] ?? 0;
 
                         // Detect Chef & Check if any contributions from Masak as Burden value
-                        final isChefTeam =
-                            team.toString().trim().toLowerCase() == 'chef';
-                        final teamChips = teamDayMap[team] ?? [];
-                        final hasMasakExtra =
-                            isChefTeam &&
-                            teamChips.any(
-                              (s) =>
-                                  ((s['extraFromMasakBurden'] as num?)
-                                          ?.toDouble() ??
-                                      0.0) >
-                                  0,
-                            );
-                        final chipsHeight = hasMasakExtra ? 132.0 : 100.0;
+                        // final isChefTeam =
+                        //     team.toString().trim().toLowerCase() == 'chef';
+                        // final teamChips = teamDayMap[team] ?? [];
+                        // final hasMasakExtra =
+                        //     isChefTeam &&
+                        //     teamChips.any(
+                        //       (s) =>
+                        //           ((s['extraFromMasakBurden'] as num?)
+                        //                   ?.toDouble() ??
+                        //               0.0) >
+                        //           0,
+                        //     );
+                        // final chipsHeight = hasMasakExtra ? 132.0 : 100.0;
 
                         return SliverMainAxisGroup(
                           slivers: [
@@ -1016,201 +1016,201 @@ class _PayrollPageState extends State<PayrollPage> {
                             ),
 
                             // TEAM-DAY SUMMARY (chips) — only shown when there is scan data
-                            if (teamChips.isNotEmpty)
-                              SliverToBoxAdapter(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                  child: SizedBox(
-                                    height: chipsHeight,
-                                    child: Stack(
-                                      children: [
-                                        ListView.separated(
-                                          scrollDirection: Axis.horizontal,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 4,
-                                          ),
-                                          itemCount:
-                                              (teamDayMap[team] ?? []).length,
-                                          separatorBuilder: (_, _) =>
-                                              const SizedBox(width: 8),
-                                          physics:
-                                              const BouncingScrollPhysics(),
-                                          itemBuilder: (context, index) {
-                                            final summary =
-                                                (teamDayMap[team] ?? [])[index];
+                            // if (teamChips.isNotEmpty)
+                            //   SliverToBoxAdapter(
+                            //     child: Padding(
+                            //       padding: const EdgeInsets.symmetric(
+                            //         horizontal: 16,
+                            //         vertical: 8,
+                            //       ),
+                            //       child: SizedBox(
+                            //         height: chipsHeight,
+                            //         child: Stack(
+                            //           children: [
+                            //             ListView.separated(
+                            //               scrollDirection: Axis.horizontal,
+                            //               padding: const EdgeInsets.symmetric(
+                            //                 horizontal: 4,
+                            //               ),
+                            //               itemCount:
+                            //                   (teamDayMap[team] ?? []).length,
+                            //               separatorBuilder: (_, _) =>
+                            //                   const SizedBox(width: 8),
+                            //               physics:
+                            //                   const BouncingScrollPhysics(),
+                            //               itemBuilder: (context, index) {
+                            //                 final summary =
+                            //                     (teamDayMap[team] ?? [])[index];
 
-                                            final date = summary['date'] ?? '-';
-                                            final displayDate =
-                                                _formatDisplayDate(date);
-                                            final full =
-                                                summary['fullCount'] ?? 0;
-                                            final half =
-                                                summary['halfCount'] ?? 0;
-                                            final absent =
-                                                summary['absentCount'] ?? 0;
-                                            final share =
-                                                summary['sharePerFull'] ?? 0.0;
+                            //                 final date = summary['date'] ?? '-';
+                            //                 final displayDate =
+                            //                     _formatDisplayDate(date);
+                            //                 final full =
+                            //                     summary['fullCount'] ?? 0;
+                            //                 final half =
+                            //                     summary['halfCount'] ?? 0;
+                            //                 final absent =
+                            //                     summary['absentCount'] ?? 0;
+                            //                 final share =
+                            //                     summary['sharePerFull'] ?? 0.0;
 
-                                            // Burden value from Masak H/A at the same date
-                                            final masakExtra = isChefTeam
-                                                ? ((summary['extraFromMasakBurden']
-                                                              as num?)
-                                                          ?.toDouble() ??
-                                                      0.0)
-                                                : 0.0;
+                            //                 // Burden value from Masak H/A at the same date
+                            //                 final masakExtra = isChefTeam
+                            //                     ? ((summary['extraFromMasakBurden']
+                            //                                   as num?)
+                            //                               ?.toDouble() ??
+                            //                           0.0)
+                            //                     : 0.0;
 
-                                            final today = DateFormat(
-                                              'yyyy-MM-dd',
-                                            ).format(DateTime.now());
-                                            final isToday = date == today;
+                            //                 final today = DateFormat(
+                            //                   'yyyy-MM-dd',
+                            //                 ).format(DateTime.now());
+                            //                 final isToday = date == today;
 
-                                            return Container(
-                                              width: 140,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 10,
-                                                    vertical: 8,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: isToday
-                                                    ? Theme.of(
-                                                        context,
-                                                      ).primaryColor.withValues(
-                                                        alpha: 0.15,
-                                                      )
-                                                    : Theme.of(
-                                                        context,
-                                                      ).primaryColor.withValues(
-                                                        alpha: 0.06,
-                                                      ),
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                                border: Border.all(
-                                                  color: isToday
-                                                      ? Theme.of(
-                                                          context,
-                                                        ).primaryColor
-                                                      : Theme.of(context)
-                                                            .primaryColor
-                                                            .withValues(
-                                                              alpha: 0.12,
-                                                            ),
-                                                  width: isToday ? 1.5 : 1,
-                                                ),
-                                              ),
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Text(
-                                                    displayDate,
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      color: Theme.of(
-                                                        context,
-                                                      ).primaryColor,
-                                                    ),
-                                                  ),
-                                                  if (isToday)
-                                                    Container(
-                                                      margin:
-                                                          const EdgeInsets.only(
-                                                            top: 4,
-                                                          ),
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 4,
-                                                            vertical: 2,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.green
-                                                            .withValues(
-                                                              alpha: 0.15,
-                                                            ),
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              6,
-                                                            ),
-                                                      ),
-                                                      child: const Text(
-                                                        'Today',
-                                                        style: TextStyle(
-                                                          fontSize: 6,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          color: Colors.green,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    'F:$full • H:$half • A:$absent',
-                                                    style: TextStyle(
-                                                      fontSize: 11,
-                                                      color:
-                                                          Colors.grey.shade700,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    'Share: ${currencyFormatter.format((share).toInt())}',
-                                                    style: const TextStyle(
-                                                      fontSize: 11,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                    ),
-                                                  ),
+                            //                 return Container(
+                            //                   width: 140,
+                            //                   padding:
+                            //                       const EdgeInsets.symmetric(
+                            //                         horizontal: 10,
+                            //                         vertical: 8,
+                            //                       ),
+                            //                   decoration: BoxDecoration(
+                            //                     color: isToday
+                            //                         ? Theme.of(
+                            //                             context,
+                            //                           ).primaryColor.withValues(
+                            //                             alpha: 0.15,
+                            //                           )
+                            //                         : Theme.of(
+                            //                             context,
+                            //                           ).primaryColor.withValues(
+                            //                             alpha: 0.06,
+                            //                           ),
+                            //                     borderRadius:
+                            //                         BorderRadius.circular(12),
+                            //                     border: Border.all(
+                            //                       color: isToday
+                            //                           ? Theme.of(
+                            //                               context,
+                            //                             ).primaryColor
+                            //                           : Theme.of(context)
+                            //                                 .primaryColor
+                            //                                 .withValues(
+                            //                                   alpha: 0.12,
+                            //                                 ),
+                            //                       width: isToday ? 1.5 : 1,
+                            //                     ),
+                            //                   ),
+                            //                   child: Column(
+                            //                     crossAxisAlignment:
+                            //                         CrossAxisAlignment.start,
+                            //                     mainAxisAlignment:
+                            //                         MainAxisAlignment.center,
+                            //                     children: [
+                            //                       Text(
+                            //                         displayDate,
+                            //                         style: TextStyle(
+                            //                           fontSize: 12,
+                            //                           fontWeight:
+                            //                               FontWeight.w700,
+                            //                           color: Theme.of(
+                            //                             context,
+                            //                           ).primaryColor,
+                            //                         ),
+                            //                       ),
+                            //                       if (isToday)
+                            //                         Container(
+                            //                           margin:
+                            //                               const EdgeInsets.only(
+                            //                                 top: 4,
+                            //                               ),
+                            //                           padding:
+                            //                               const EdgeInsets.symmetric(
+                            //                                 horizontal: 4,
+                            //                                 vertical: 2,
+                            //                               ),
+                            //                           decoration: BoxDecoration(
+                            //                             color: Colors.green
+                            //                                 .withValues(
+                            //                                   alpha: 0.15,
+                            //                                 ),
+                            //                             borderRadius:
+                            //                                 BorderRadius.circular(
+                            //                                   6,
+                            //                                 ),
+                            //                           ),
+                            //                           child: const Text(
+                            //                             'Today',
+                            //                             style: TextStyle(
+                            //                               fontSize: 6,
+                            //                               fontWeight:
+                            //                                   FontWeight.bold,
+                            //                               color: Colors.green,
+                            //                             ),
+                            //                           ),
+                            //                         ),
+                            //                       const SizedBox(height: 4),
+                            //                       Text(
+                            //                         'F:$full • H:$half • A:$absent',
+                            //                         style: TextStyle(
+                            //                           fontSize: 11,
+                            //                           color:
+                            //                               Colors.grey.shade700,
+                            //                         ),
+                            //                       ),
+                            //                       const SizedBox(height: 4),
+                            //                       Text(
+                            //                         'Share: ${currencyFormatter.format((share).toInt())}',
+                            //                         style: const TextStyle(
+                            //                           fontSize: 11,
+                            //                           fontWeight:
+                            //                               FontWeight.w600,
+                            //                         ),
+                            //                       ),
 
-                                                  // Show burden from Masak at this date
-                                                  if (masakExtra > 0) ...[
-                                                    const SizedBox(height: 4),
-                                                    Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 6,
-                                                            vertical: 2,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.deepOrange
-                                                            .withValues(
-                                                              alpha: 0.12,
-                                                            ),
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              6,
-                                                            ),
-                                                      ),
-                                                      child: Text(
-                                                        '+${currencyFormatter.format(masakExtra.toInt())}\ndari Masak H/A',
-                                                        style: TextStyle(
-                                                          fontSize: 9,
-                                                          height: 1.2,
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                          color: Colors
-                                                              .deepOrange
-                                                              .shade700,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ],
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
+                            //                       // Show burden from Masak at this date
+                            //                       if (masakExtra > 0) ...[
+                            //                         const SizedBox(height: 4),
+                            //                         Container(
+                            //                           padding:
+                            //                               const EdgeInsets.symmetric(
+                            //                                 horizontal: 6,
+                            //                                 vertical: 2,
+                            //                               ),
+                            //                           decoration: BoxDecoration(
+                            //                             color: Colors.deepOrange
+                            //                                 .withValues(
+                            //                                   alpha: 0.12,
+                            //                                 ),
+                            //                             borderRadius:
+                            //                                 BorderRadius.circular(
+                            //                                   6,
+                            //                                 ),
+                            //                           ),
+                            //                           child: Text(
+                            //                             '+${currencyFormatter.format(masakExtra.toInt())}\ndari Masak H/A',
+                            //                             style: TextStyle(
+                            //                               fontSize: 9,
+                            //                               height: 1.2,
+                            //                               fontWeight:
+                            //                                   FontWeight.w600,
+                            //                               color: Colors
+                            //                                   .deepOrange
+                            //                                   .shade700,
+                            //                             ),
+                            //                           ),
+                            //                         ),
+                            //                       ],
+                            //                     ],
+                            //                   ),
+                            //                 );
+                            //               },
+                            //             ),
+                            //           ],
+                            //         ),
+                            //       ),
+                            //     ),
+                            //   ),
 
                             // TEAM LIST
                             SliverList(
